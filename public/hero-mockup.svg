@@ -1,0 +1,166 @@
+<svg width="1344" height="768" viewBox="0 0 1344 768" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D0D0F"/>
+      <stop offset="100%" stop-color="#1a1020"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E1E26"/>
+      <stop offset="100%" stop-color="#16161A"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1344" height="768" fill="url(#bg)"/>
+  
+  <!-- Violet glow orb -->
+  <ellipse cx="672" cy="200" rx="400" ry="200" fill="#6D4AFF" opacity="0.06"/>
+
+  <!-- Sidebar -->
+  <rect x="0" y="0" width="220" height="768" fill="#0D0D0F"/>
+  <rect x="220" y="0" width="1" height="768" fill="#252530"/>
+  
+  <!-- Logo in sidebar -->
+  <rect x="24" y="24" width="36" height="36" rx="10" fill="#6D4AFF" opacity="0.2"/>
+  <rect x="28" y="28" width="28" height="28" rx="7" fill="#6D4AFF" opacity="0.4"/>
+  <text x="67" y="38" font-family="Inter,sans-serif" font-size="14" font-weight="700" fill="white">InvoPlus</text>
+  <text x="67" y="52" font-family="Inter,sans-serif" font-size="10" fill="#9898A6">Canton Network</text>
+  
+  <!-- Nav items -->
+  <rect x="16" y="80" width="188" height="38" rx="10" fill="#6D4AFF" opacity="0.15"/>
+  <rect x="16" y="80" width="188" height="38" rx="10" fill="none" stroke="#6D4AFF" stroke-width="0.8" opacity="0.4"/>
+  <text x="48" y="104" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="white">Marketplace</text>
+  
+  <text x="48" y="140" font-family="Inter,sans-serif" font-size="13" fill="#9898A6">Dashboard</text>
+  <text x="48" y="170" font-family="Inter,sans-serif" font-size="13" fill="#9898A6">Invoices</text>
+  <text x="48" y="200" font-family="Inter,sans-serif" font-size="13" fill="#9898A6">My Offers</text>
+  <text x="48" y="230" font-family="Inter,sans-serif" font-size="13" fill="#9898A6">Portfolio</text>
+  <text x="48" y="260" font-family="Inter,sans-serif" font-size="13" fill="#9898A6">Analytics</text>
+  
+  <!-- Network status -->
+  <circle cx="30" cy="730" r="4" fill="#22c55e"/>
+  <text x="42" y="735" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Canton Network · Live</text>
+
+  <!-- Main content area -->
+  <!-- Header -->
+  <rect x="220" y="0" width="1124" height="60" fill="#0D0D0F" opacity="0.9"/>
+  <rect x="220" y="60" width="1124" height="1" fill="#252530"/>
+  <text x="248" y="37" font-family="Inter,sans-serif" font-size="18" font-weight="600" fill="white">Marketplace</text>
+  
+  <!-- Connect button -->
+  <rect x="1160" y="14" width="164" height="34" rx="10" fill="#6D4AFF"/>
+  <text x="1242" y="36" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="white" text-anchor="middle">Connect Canton Wallet</text>
+
+  <!-- Privacy banner -->
+  <rect x="248" y="80" width="1096" height="52" rx="14" fill="#6D4AFF" opacity="0.1"/>
+  <rect x="248" y="80" width="1096" height="52" rx="14" fill="none" stroke="#6D4AFF" stroke-width="0.8" opacity="0.4"/>
+  <text x="280" y="100" font-family="Inter,sans-serif" font-size="11" font-weight="600" fill="#a78fff">🔒  Private Sealed-Bid Auctions · Powered by Canton Network</text>
+  <text x="280" y="118" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Every bid is a private Canton contract. Competing financiers cannot see your offer. Settlement is atomic.</text>
+
+  <!-- Stats row -->
+  <rect x="248" y="150" width="175" height="66" rx="14" fill="url(#card)" stroke="#252530" stroke-width="1"/>
+  <text x="264" y="175" font-family="Inter,sans-serif" font-size="22" font-weight="700" fill="white">12</text>
+  <text x="264" y="196" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Active Auctions</text>
+
+  <rect x="438" y="150" width="175" height="66" rx="14" fill="url(#card)" stroke="#252530" stroke-width="1"/>
+  <text x="454" y="175" font-family="Inter,sans-serif" font-size="22" font-weight="700" fill="white">88.4%</text>
+  <text x="454" y="196" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Avg Advance Rate</text>
+
+  <rect x="628" y="150" width="175" height="66" rx="14" fill="url(#card)" stroke="#252530" stroke-width="1"/>
+  <text x="644" y="175" font-family="Inter,sans-serif" font-size="22" font-weight="700" fill="#22c55e">3.2s</text>
+  <text x="644" y="196" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Settlement Time</text>
+
+  <!-- Auction cards -->
+  <!-- Card 1 -->
+  <rect x="248" y="234" width="1096" height="120" rx="16" fill="url(#card)" stroke="#252530" stroke-width="1"/>
+  
+  <!-- Grade badge -->
+  <rect x="272" y="254" width="30" height="20" rx="6" fill="#22c55e" opacity="0.15"/>
+  <text x="279" y="268" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#22c55e">A+</text>
+  <text x="310" y="268" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Manufacturing · #INV-2839</text>
+  
+  <text x="272" y="294" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="white">ManuCo Systems</text>
+  <text x="272" y="312" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Due 2025-09-01</text>
+
+  <!-- Invoice amount -->
+  <text x="620" y="272" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Invoice Value</text>
+  <text x="620" y="296" font-family="Inter,sans-serif" font-size="18" font-weight="700" fill="white">$127,500</text>
+
+  <!-- Yield -->
+  <text x="780" y="272" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Expected Yield</text>
+  <text x="780" y="296" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="#22c55e">9.2–11.4%</text>
+
+  <!-- Sealed bids -->
+  <text x="940" y="272" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">🔒 Sealed Bids</text>
+  <text x="940" y="296" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="white">3 received</text>
+
+  <!-- Timer -->
+  <text x="1060" y="272" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Closes In</text>
+  <text x="1060" y="296" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="#f97316">18h 32m</text>
+
+  <!-- Bid button -->
+  <rect x="1200" y="264" width="120" height="38" rx="12" fill="#6D4AFF"/>
+  <text x="1260" y="288" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="white" text-anchor="middle">🔒 Place Bid</text>
+
+  <!-- Card 2 -->
+  <rect x="248" y="368" width="1096" height="120" rx="16" fill="url(#card)" stroke="#252530" stroke-width="1"/>
+  
+  <rect x="272" y="388" width="24" height="20" rx="6" fill="#3b82f6" opacity="0.15"/>
+  <text x="279" y="402" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#3b82f6">A</text>
+  <text x="310" y="402" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Retail · #INV-2840</text>
+  
+  <text x="272" y="428" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="white">RetailGroup Inc</text>
+  <text x="272" y="446" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Due 2025-07-30</text>
+
+  <text x="620" y="406" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Invoice Value</text>
+  <text x="620" y="430" font-family="Inter,sans-serif" font-size="18" font-weight="700" fill="white">$32,100</text>
+
+  <text x="780" y="406" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Expected Yield</text>
+  <text x="780" y="430" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="#22c55e">7.8–9.1%</text>
+
+  <text x="940" y="406" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">🔒 Sealed Bids</text>
+  <text x="940" y="430" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="white">2 received</text>
+
+  <text x="1060" y="406" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Closes In</text>
+  <text x="1060" y="430" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="#f97316">6h 10m</text>
+
+  <!-- My bid indicator -->
+  <rect x="1182" y="396" width="156" height="36" rx="10" fill="#6D4AFF" opacity="0.15"/>
+  <rect x="1182" y="396" width="156" height="36" rx="10" fill="none" stroke="#6D4AFF" stroke-width="0.8" opacity="0.4"/>
+  <text x="1260" y="419" font-family="Inter,sans-serif" font-size="11" font-weight="600" fill="#a78fff" text-anchor="middle">👁 My Bid: 88% (private)</text>
+
+  <!-- Card 3 -->
+  <rect x="248" y="502" width="1096" height="120" rx="16" fill="url(#card)" stroke="#252530" stroke-width="1"/>
+  
+  <rect x="272" y="522" width="30" height="20" rx="6" fill="#22c55e" opacity="0.15"/>
+  <text x="277" y="536" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#22c55e">A+</text>
+  <text x="310" y="536" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Logistics · #INV-2836</text>
+  
+  <text x="272" y="562" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="white">SupplyChain Co</text>
+  <text x="272" y="580" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Due 2025-08-20</text>
+
+  <text x="620" y="540" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Invoice Value</text>
+  <text x="620" y="564" font-family="Inter,sans-serif" font-size="18" font-weight="700" fill="white">$220,000</text>
+
+  <text x="780" y="540" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Expected Yield</text>
+  <text x="780" y="564" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="#22c55e">6.5–8.2%</text>
+
+  <text x="940" y="540" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">🔒 Sealed Bids</text>
+  <text x="940" y="564" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="white">5 received</text>
+
+  <text x="1060" y="540" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Closes In</text>
+  <text x="1060" y="564" font-family="Inter,sans-serif" font-size="16" font-weight="600" fill="#f97316">2d 4h</text>
+
+  <rect x="1200" y="532" width="120" height="38" rx="12" fill="#6D4AFF"/>
+  <text x="1260" y="556" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="white" text-anchor="middle">🔒 Place Bid</text>
+
+  <!-- Bottom Canton proof bar -->
+  <rect x="248" y="636" width="1096" height="34" rx="10" fill="#16161A" stroke="#252530" stroke-width="1"/>
+  <circle cx="270" cy="653" r="4" fill="#22c55e"/>
+  <text x="284" y="658" font-family="Inter,sans-serif" font-size="11" fill="#9898A6">Canton Network · All bids are sealed private contracts · Anti-double-financing registry · Atomic settlement</text>
+
+</svg>
