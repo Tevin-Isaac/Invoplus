@@ -1,0 +1,60 @@
+import Image from 'next/image'
+import Link from 'next/link'
+
+const links = {
+  Product: ['How It Works', 'For Businesses', 'For Investors', 'Pricing', 'Changelog'],
+  Company:  ['About', 'Blog', 'Careers', 'Press', 'Contact'],
+  Legal:    ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Security'],
+}
+
+export function Footer() {
+  return (
+    <footer className="bg-gray-950 border-t border-white/5">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 mb-12">
+          {/* Brand */}
+          <div className="lg:col-span-2">
+            <Link href="/" className="flex items-center gap-2.5 mb-4">
+              <Image src="/invoplus.png" alt="InvoPlus" width={32} height={32} className="rounded-lg" />
+              <span className="text-lg font-bold text-white">InvoPlus</span>
+            </Link>
+            <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-6">
+              The first private blind-auction invoice financing marketplace.
+              Built on Canton Network — privacy is native, not bolted on.
+            </p>
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              All systems operational
+            </div>
+          </div>
+
+          {/* Links */}
+          {Object.entries(links).map(([group, items]) => (
+            <div key={group}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">{group}</p>
+              <ul className="space-y-3">
+                {items.map(item => (
+                  <li key={item}>
+                    <Link href="#" className="text-sm text-gray-500 hover:text-white transition-colors">
+                      {item}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-gray-600">
+            © {new Date().getFullYear()} InvoPlus. Built on{' '}
+            <span className="text-violet-500">Canton Network</span>.
+          </p>
+          <p className="text-xs text-gray-600">
+            Made for the Build on Canton Hackathon 2025
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}

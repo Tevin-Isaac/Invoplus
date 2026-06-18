@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --violet: #6D4AFF;
+  --violet-light: #8B6FFF;
+  --violet-dark: #5537E8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #252530; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #6D4AFF; }
+
+/* Selection */
+::selection { background: #6D4AFF33; color: #6D4AFF; }
+
+/* Glass card utility */
+.glass {
+  background: rgba(22, 22, 26, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid #252530;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6D4AFF 0%, #9575ff 50%, #c4b0ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Violet glow */
+.violet-glow {
+  box-shadow: 0 0 40px rgba(109, 74, 255, 0.15);
+}
