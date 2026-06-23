@@ -1,5 +1,6 @@
--- InvoPlus: Daml Script for demo setup on Canton DevNet
--- Run with: daml script --dar .daml/dist/invoplus-1.0.0.dar --script-name InvoPlus.Setup:setupDemo
+-- InvoPlus: Comprehensive Daml Script for Canton DevNet demo
+-- Covers the full platform lifecycle including onboarding, auctions, repayment, and disputes.
+-- Run: daml script --dar .daml/dist/invoplus-1.0.0.dar --script-name InvoPlus.Setup:setupDemo
 module InvoPlus.Setup where
 
 import DA.Time (time, addRelTime, seconds)
@@ -8,20 +9,115 @@ import Daml.Script
 import InvoPlus.Types
 import InvoPlus.Invoice
 import InvoPlus.Registry
+import InvoPlus.Platform
+import InvoPlus.Financier
+import InvoPlus.Repayment
 
--- Allocates demo parties and creates sample contracts on the DevNet sandbox.
+-- ─── Full end-to-end demo ────────────────────────────────────────────────────
+
 setupDemo : Script ()
 setupDemo = do
-  -- Allocate parties
-  platform  <- allocatePartyWithHint "InvoPlus-Platform"  (PartyIdHint "invplus_platform")
-  seller    <- allocatePartyWithHint "Acme-Corp"           (PartyIdHint "invplus_seller_acme")
-  financier <- allocatePartyWithHint "Capital-Partners"    (PartyIdHint "invplus_financier_cp")
 
-  let demoDate = date 2026 Jun 23
-  let dueDate  = date 2026 Sep 23  -- 90 days net
+  -- 1. Allocate parties
+  platform   <- allocatePartyWithHint "InvoPlus-Platform"   (PartyIdHint "invplus_platform")
+  seller     <- allocatePartyWithHint "Acme-Corp"            (PartyIdHint "invplus_seller_acme")
+  seller2    <- allocatePartyWithHint "NovaBuild-Corp"       (PartyIdHint "invplus_seller_novabuild")
+  financier  <- allocatePartyWithHint "Capital-Partners"     (PartyIdHint "invplus_fin_cp")
+  financier2 <- allocatePartyWithHint "Apex-Fund"            (PartyIdHint "invplus_fin_apex")
 
-  -- Seller uploads invoice
-  invoiceCid <- submit seller do
+  let baseDate  = date 2026 Jun 23
+  let dueDate1  = date 2026 Sep 23   -- 90 days
+  let dueDate2  = date 2026 Aug 15   -- 53 days
+  let baseTime  = time baseDate 9 0 0
+  let auctionEnd1 = addRelTime baseTime (seconds (72 * 3600))
+  let auctionEnd2 = addRelTime baseTime (seconds (48 * 3600))
+
+  -- 2. Platform initialises global config
+  _configCid <- submit platform do
+    createCmd PlatformConfig with
+      platform            = platform
+      defaultAuctionHours = 72
+      minInvoiceAmount    = 1000.0
+      maxInvoiceAmount    = 5000000.0
+      platformFeeBps      = 100    -- 1%
+      allowedCurrencies   = ["USD", "EUR", "GBP"]
+      maintenanceMode     = False
+      updatedAt           = baseTime
+
+  -- 3. Platform onboards sellers
+  sellerOnboardCid <- submit platform do
+    createCmd SellerOnboarding with
+      platform       = platform
+      seller         = seller
+      companyName    = "Acme Corp Ltd"
+      taxId          = "GB123456789"
+      jurisdiction   = "GB"
+      kybStatus      = "Pending"
+      riskLimit      = 500000.0
+      approvedAt     = None
+      rejectedAt     = None
+      rejectedReason = ""
+      submittedAt    = baseTime
+
+  _ <- submit platform do exerciseCmd sellerOnboardCid ApproveSeller
+
+  -- 4. Platform onboards financiers with profiles
+  fin1ProfileCid <- submit platform do
+    createCmd FinancierProfile with
+      platform           = platform
+      financier          = financier
+      displayName        = "Capital Partners LLC"
+      entityType         = "FundManager"
+      jurisdiction       = "US-NY"
+      kycStatus          = "Pending"
+      capitalCommitted   = 2000000.0
+      capitalDeployed    = 0.0
+      totalBidsSubmitted = 0
+      totalBidsWon       = 0
+      totalDefaultsHeld  = 0
+      avgAdvanceRate     = 0.0
+      avgAnnualRate      = 0.0
+      reputationScore    = 80
+      joinedAt           = baseTime
+      lastActiveAt       = baseTime
+
+  fin1ProfileCid <- submit platform do exerciseCmd fin1ProfileCid ApproveFinancier
+
+  fin2ProfileCid <- submit platform do
+    createCmd FinancierProfile with
+      platform           = platform
+      financier          = financier2
+      displayName        = "Apex Fund Management"
+      entityType         = "FundManager"
+      jurisdiction       = "UK"
+      kycStatus          = "Pending"
+      capitalCommitted   = 1500000.0
+      capitalDeployed    = 0.0
+      totalBidsSubmitted = 0
+      totalBidsWon       = 0
+      totalDefaultsHeld  = 0
+      avgAdvanceRate     = 0.0
+      avgAnnualRate      = 0.0
+      reputationScore    = 75
+      joinedAt           = baseTime
+      lastActiveAt       = baseTime
+
+  _ <- submit platform do exerciseCmd fin2ProfileCid ApproveFinancier
+
+  -- 5. Financier 1 creates capital account
+  capAccCid <- submit platform do
+    createCmd CapitalAccount with
+      platform       = platform
+      financier      = financier
+      totalDeployed  = 0.0
+      totalEarned    = 0.0
+      totalPrincipal = 0.0
+      activePositions= 0
+      currency       = "USD"
+      lastUpdatedAt  = baseTime
+
+  -- 6. Seller uploads Invoice 1: $125,000 from GlobalTech (Grade A)
+  inv1Cid <- submit seller do
     createCmd InvoiceContract with
       seller      = seller
       platform    = platform
@@ -30,47 +126,220 @@ setupDemo = do
       debtorTaxId = "GB123456789"
       faceAmount  = 125000.0
       currency    = "USD"
-      issueDate   = demoDate
-      dueDate     = dueDate
+      issueDate   = baseDate
+      dueDate     = dueDate1
       docHash     = "sha256:a3f8c2d1e4b9f7a6c5d3e2b1f8a7c6d5e4b3a2f1"
       invoiceHash = "sha256:inv0042_globaltech_125000"
       aiScore     = 0
-      riskGrade   = Grade_B
+      riskGrade   = Grade_A
       status      = Pending
-      uploadedAt  = time demoDate 9 0 0
+      uploadedAt  = baseTime
 
-  -- Platform verifies with AI score
-  verifiedCid <- submit platform do
-    exerciseCmd invoiceCid VerifyInvoice with
-      score = 87
-      grade = Grade_A
+  -- 7. Platform scores and verifies Invoice 1
+  inv1VerifiedCid <- submit platform do
+    exerciseCmd inv1Cid VerifyInvoice with score = 87; grade = Grade_A
 
-  -- Seller lists for auction (72 hours)
-  let auctionEnd = addRelTime (time demoDate 10 0 0) (seconds (72 * 3600))
-  (auctionCid, regCid) <- submit seller do
-    exerciseCmd verifiedCid ListForAuction with
+  -- 8. Seller lists Invoice 1 for sealed-bid auction
+  (auction1Cid, reg1Cid) <- submit seller do
+    exerciseCmd inv1VerifiedCid ListForAuction with
       terms = AuctionTerms with
         minAdvanceRate = 0.82
         maxAnnualRate  = 0.18
         durationHours  = 72
-      auctionEnd = auctionEnd
+      auctionEnd = auctionEnd1
 
-  -- Financier submits sealed bid (seller cannot see this)
-  (newAuctionCid, bidCid) <- submit financier do
-    exerciseCmd auctionCid SubmitBid with
+  -- 9. Seller uploads Invoice 2: $89,500 from Apex Manufacturing (Grade A)
+  inv2Cid <- submit seller do
+    createCmd InvoiceContract with
+      seller      = seller
+      platform    = platform
+      invoiceId   = "INV-2026-0041"
+      debtorName  = "Apex Manufacturing Ltd"
+      debtorTaxId = "US-EIN-12-3456789"
+      faceAmount  = 89500.0
+      currency    = "USD"
+      issueDate   = baseDate
+      dueDate     = dueDate2
+      docHash     = "sha256:b4c9d3e5f1a7b6c8d2e4f3a1b5c7d9e3f2a6b8"
+      invoiceHash = "sha256:inv0041_apex_89500"
+      aiScore     = 0
+      riskGrade   = Grade_A
+      status      = Pending
+      uploadedAt  = baseTime
+
+  _inv2VerifiedCid <- submit platform do
+    exerciseCmd inv2Cid VerifyInvoice with score = 91; grade = Grade_A
+
+  -- 10. Two financiers submit sealed bids on Auction 1
+  --     Seller CANNOT see either bid (Canton sub-tx privacy)
+  (auction1Updated, bid1Cid) <- submit financier do
+    exerciseCmd auction1Cid SubmitBid with
       financier   = financier
-      advanceRate = 0.88
+      advanceRate = 0.88   -- Capital Partners bids 88% advance, 11.5% APR
       annualRate  = 0.115
 
-  -- Platform settles auction
-  fundedCid <- submit platform do
-    exerciseCmd newAuctionCid SettleAuction with
-      winnerBidCid = bidCid
-      loserBidCids = []
-      regEntryCid  = regCid
+  (auction1Final, bid2Cid) <- submit financier2 do
+    exerciseCmd auction1Updated SubmitBid with
+      financier   = financier2
+      advanceRate = 0.87   -- Apex Fund bids 87% advance, 11.8% APR
+      annualRate  = 0.118
 
-  debug "InvoPlus demo setup complete."
-  debug "FundedInvoice contract created:"
-  funded <- queryContractId platform fundedCid
+  -- 11. Platform settles Auction 1 — Capital Partners wins (higher advance rate)
+  funded1Cid <- submit platform do
+    exerciseCmd auction1Final SettleAuction with
+      winnerBidCid = bid1Cid     -- Capital Partners
+      loserBidCids = [bid2Cid]   -- Apex Fund loses — bid content stays private forever
+      regEntryCid  = reg1Cid
+
+  -- 12. Platform records win in Capital Partners' profile + account
+  fin1ProfileCid <- submit platform do
+    exerciseCmd fin1ProfileCid RecordBidWin with
+      fundedAmount = 110000.0   -- 125000 * 0.88
+      advanceRate  = 0.88
+      annualRate   = 0.115
+
+  capAccCid <- submit platform do
+    exerciseCmd capAccCid DeployCapital with
+      amount    = 110000.0
+      invoiceId = "INV-2026-0042"
+
+  -- 13. Platform issues a fee receipt (1% of funded amount = $1,100)
+  _feeCid <- submit platform do
+    createCmd FeeReceipt with
+      platform     = platform
+      payer        = seller
+      invoiceId    = "INV-2026-0042"
+      faceAmount   = 125000.0
+      fundedAmount = 110000.0
+      feeBps       = 100
+      feeAmount    = 1100.0
+      currency     = "USD"
+      issuedAt     = auctionEnd1
+
+  -- 14. 90 days later: debtor pays. Seller requests repayment to financier.
+  let repayTime = addRelTime auctionEnd1 (seconds (90 * 24 * 3600))
+  repayReqCid <- submit seller do
+    createCmd RepaymentRequest with
+      seller       = seller
+      financier    = financier
+      platform     = platform
+      invoiceId    = "INV-2026-0042"
+      fundedAmount = 110000.0
+      yieldAmount  = 3464.38  -- 110000 * 11.5% * (90/365)
+      totalDue     = 113464.38
+      currency     = "USD"
+      debtorPaidAt = repayTime
+      requestedAt  = repayTime
+      status       = "Pending"
+
+  repayReqCid <- submit platform do exerciseCmd repayReqCid ApproveRepayment
+
+  _confirmCid <- submit platform do exerciseCmd repayReqCid CompleteRepayment
+
+  -- 15. Update Capital Partners' account to reflect repayment
+  _ <- submit platform do
+    exerciseCmd capAccCid CollectRepayment with
+      principal = 110000.0
+      yield     = 3464.38
+
+  -- 16. Platform creates a daily settlement summary
+  _summaryCid <- submit platform do
+    createCmd SettlementSummary with
+      platform      = platform
+      summaryDate   = "2026-06-23"
+      totalInvoices = 1
+      totalFunded   = 110000.0
+      totalFees     = 1100.0
+      avgAdvRate    = 0.88
+      avgAnnualRate = 0.115
+      gradeACnt     = 1
+      gradeBCnt     = 0
+      gradeCCnt     = 0
+      gradeDCnt     = 0
+      currency      = "USD"
+      createdAt     = auctionEnd1
+
+  debug "=== InvoPlus Full Demo Complete ==="
+  debug "Parties created: platform, 2 sellers, 2 financiers"
+  debug "Contracts created: PlatformConfig, SellerOnboarding, FinancierProfile x2, CapitalAccount"
+  debug "Invoice lifecycle: Upload → Score → Verify → Auction → Sealed Bids → Settlement → Repayment"
+  debug "FundedInvoice + RepaymentConfirmation + FeeReceipt + SettlementSummary"
+  debug "Loaded funded invoice:"
+  funded <- queryContractId platform funded1Cid
   debug funded
+  return ()
+
+-- ─── Dispute scenario ────────────────────────────────────────────────────────
+-- Separate script to demo dispute resolution flow.
+
+setupDisputeDemo : Script ()
+setupDisputeDemo = do
+  platform  <- allocatePartyWithHint "InvoPlus-Platform-Dispute" (PartyIdHint "invplus_platform_d")
+  seller    <- allocatePartyWithHint "Trouble-Corp"              (PartyIdHint "invplus_seller_trouble")
+  financier <- allocatePartyWithHint "Patient-Fund"              (PartyIdHint "invplus_fin_patient")
+
+  let t = time (date 2026 Jun 23) 9 0 0
+
+  -- Fast-path: create a FundedInvoice directly for dispute demo
+  fundedCid <- submit seller do
+    createCmd FundedInvoice with
+      seller       = seller
+      financier    = financier
+      platform     = platform
+      invoiceId    = "INV-DISPUTE-001"
+      debtorName   = "Bankrupt Buyer Ltd"
+      faceAmount   = 50000.0
+      fundedAmount = 43000.0
+      advanceRate  = 0.86
+      annualRate   = 0.14
+      currency     = "USD"
+      dueDate      = date 2026 Jun 15  -- already past due
+      settledAt    = t
+      invoiceHash  = "sha256:dispute_inv_001"
+
+  -- Platform marks default
+  submit platform do exerciseCmd fundedCid MarkDefault
+
+  -- Platform issues default notice
+  noticeCid <- submit platform do
+    createCmd DefaultNotice with
+      platform     = platform
+      seller       = seller
+      financier    = financier
+      invoiceId    = "INV-DISPUTE-001"
+      faceAmount   = 50000.0
+      fundedAmount = 43000.0
+      currency     = "USD"
+      dueDate      = "2026-06-15"
+      issuedAt     = t
+      recoveryRef  = ""
+
+  -- Financier acknowledges
+  _ <- submit financier do exerciseCmd noticeCid AcknowledgeDefault
+
+  -- Seller tries to dispute (claiming partial payment)
+  repayReqCid <- submit seller do
+    createCmd RepaymentRequest with
+      seller       = seller
+      financier    = financier
+      platform     = platform
+      invoiceId    = "INV-DISPUTE-001"
+      fundedAmount = 43000.0
+      yieldAmount  = 1640.0
+      totalDue     = 44640.0
+      currency     = "USD"
+      debtorPaidAt = t
+      requestedAt  = t
+      status       = "Pending"
+
+  disputeCid <- submit seller do
+    exerciseCmd repayReqCid RaiseDispute with reason = "Debtor paid 60% — requesting partial credit"
+
+  disputeCid <- submit platform do exerciseCmd disputeCid ReviewDispute
+
+  _ <- submit platform do
+    exerciseCmd disputeCid ResolveForFinancier with
+      resolutionNote = "Evidence reviewed: debtor payment insufficient. Seller must pursue remainder. Financier recovers available funds."
+
+  debug "Dispute demo complete."
   return ()

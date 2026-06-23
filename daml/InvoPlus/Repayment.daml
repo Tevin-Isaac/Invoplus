@@ -1,0 +1,196 @@
+-- InvoPlus: Repayment tracking, dispute resolution, and default management
+-- When a debtor pays the seller, the seller triggers repayment to the financier.
+-- If a debtor defaults, the platform opens a dispute resolution case.
+module InvoPlus.Repayment where
+
+import DA.Time (Time)
+
+-- Seller-initiated repayment request after collecting from debtor.
+-- Platform validates and triggers financier payment.
+template RepaymentRequest
+  with
+    seller       : Party
+    financier    : Party
+    platform     : Party
+    invoiceId    : Text
+    fundedAmount : Decimal   -- principal to return
+    yieldAmount  : Decimal   -- interest earned by financier
+    totalDue     : Decimal   -- fundedAmount + yieldAmount
+    currency     : Text
+    debtorPaidAt : Time      -- when debtor actually paid the seller
+    requestedAt  : Time
+    status       : Text      -- "Pending" | "Approved" | "Completed" | "Disputed"
+  where
+    signatory seller
+    observer financier, platform
+
+    -- Platform confirms debtor payment and approves repayment.
+    choice ApproveRepayment : ContractId RepaymentRequest
+      controller platform
+      do
+        assertMsg "Must be Pending" (status == "Pending")
+        assertMsg "Total must equal funded + yield" (totalDue == fundedAmount + yieldAmount)
+        create this with status = "Approved"
+
+    -- Platform marks repayment as completed (funds transferred).
+    choice CompleteRepayment : ContractId RepaymentConfirmation
+      controller platform
+      do
+        assertMsg "Must be Approved before completing" (status == "Approved")
+        now <- getTime
+        create RepaymentConfirmation with
+          seller       = seller
+          financier    = financier
+          platform     = platform
+          invoiceId    = invoiceId
+          fundedAmount = fundedAmount
+          yieldAmount  = yieldAmount
+          totalDue     = totalDue
+          currency     = currency
+          completedAt  = now
+
+    -- Either party can raise a dispute.
+    choice RaiseDispute : ContractId DisputeCase
+      with reason : Text
+      controller seller
+      do
+        now <- getTime
+        create DisputeCase with
+          seller       = seller
+          financier    = financier
+          platform     = platform
+          invoiceId    = invoiceId
+          reason       = reason
+          status       = "Open"
+          resolution   = ""
+          openedAt     = now
+          resolvedAt   = None
+
+-- Immutable confirmation once repayment is complete.
+-- Both seller and financier are signatories — Canton guarantees both agreed.
+template RepaymentConfirmation
+  with
+    seller       : Party
+    financier    : Party
+    platform     : Party
+    invoiceId    : Text
+    fundedAmount : Decimal
+    yieldAmount  : Decimal
+    totalDue     : Decimal
+    currency     : Text
+    completedAt  : Time
+  where
+    signatory seller, financier
+    observer platform
+
+-- Dispute case opened when seller or financier disagrees on a repayment.
+-- Platform acts as arbitrator.
+template DisputeCase
+  with
+    seller     : Party
+    financier  : Party
+    platform   : Party
+    invoiceId  : Text
+    reason     : Text
+    status     : Text       -- "Open" | "UnderReview" | "ResolvedForSeller" | "ResolvedForFinancier" | "Escalated"
+    resolution : Text       -- platform's written resolution
+    openedAt   : Time
+    resolvedAt : Optional Time
+  where
+    signatory platform
+    observer seller, financier
+
+    choice ReviewDispute : ContractId DisputeCase
+      controller platform
+      do
+        assertMsg "Must be Open" (status == "Open")
+        create this with status = "UnderReview"
+
+    choice ResolveForSeller : ContractId DisputeCase
+      with resolutionNote : Text
+      controller platform
+      do
+        assertMsg "Must be UnderReview" (status == "UnderReview")
+        now <- getTime
+        create this with
+          status     = "ResolvedForSeller"
+          resolution = resolutionNote
+          resolvedAt = Some now
+
+    choice ResolveForFinancier : ContractId DisputeCase
+      with resolutionNote : Text
+      controller platform
+      do
+        assertMsg "Must be UnderReview" (status == "UnderReview")
+        now <- getTime
+        create this with
+          status     = "ResolvedForFinancier"
+          resolution = resolutionNote
+          resolvedAt = Some now
+
+    choice EscalateDispute : ContractId DisputeCase
+      controller platform
+      do
+        create this with status = "Escalated"
+
+-- Default notice — raised by platform when debtor misses payment.
+-- Allows financier to pursue their legal claim.
+template DefaultNotice
+  with
+    platform     : Party
+    seller       : Party
+    financier    : Party
+    invoiceId    : Text
+    faceAmount   : Decimal
+    fundedAmount : Decimal
+    currency     : Text
+    dueDate      : Text
+    issuedAt     : Time
+    recoveryRef  : Text   -- external legal case reference, if applicable
+  where
+    signatory platform
+    observer seller, financier
+
+    -- Financier acknowledges the default and begins recovery.
+    choice AcknowledgeDefault : ContractId DefaultNotice
+      controller financier
+      do
+        create this with recoveryRef = "RECOVERY-" <> invoiceId
+
+    -- Platform closes the default notice when fully resolved.
+    choice CloseDefault : ()
+      controller platform
+      do return ()
+
+-- Extension request — seller asks for more time before repaying.
+-- Requires both seller and financier to agree.
+template ExtensionRequest
+  with
+    seller         : Party
+    financier      : Party
+    platform       : Party
+    invoiceId      : Text
+    originalDueDate: Text
+    requestedDays  : Int   -- how many extra days
+    additionalRate : Decimal  -- extra interest for extension period
+    reason         : Text
+    status         : Text  -- "Pending" | "Approved" | "Rejected"
+    requestedAt    : Time
+  where
+    signatory seller
+    observer financier, platform
+
+    -- Financier approves — both parties now agree to new terms.
+    choice ApproveExtension : ContractId ExtensionRequest
+      controller financier
+      do
+        assertMsg "Must be Pending" (status == "Pending")
+        assertMsg "Extension must be 1-30 days" (requestedDays >= 1 && requestedDays <= 30)
+        create this with status = "Approved"
+
+    -- Financier rejects — original due date stands.
+    choice RejectExtension : ContractId ExtensionRequest
+      controller financier
+      do
+        assertMsg "Must be Pending" (status == "Pending")
+        create this with status = "Rejected"

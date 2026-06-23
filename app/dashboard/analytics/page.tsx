@@ -104,7 +104,7 @@ export default function AnalyticsPage() {
           {/* Grade breakdown */}
           <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
             <h3 className="text-sm font-semibold text-white mb-1">Invoice Grade Distribution</h3>
-            <p className="text-xs text-dark-muted mb-4">Based on AI risk scoring engine</p>
+            <p className="text-xs text-dark-muted mb-4">Based on InvoPlus risk scoring engine</p>
             <div className="flex items-center gap-6">
               <ResponsiveContainer width={160} height={160}>
                 <PieChart>

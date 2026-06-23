@@ -1,0 +1,147 @@
+-- InvoPlus: Financier onboarding, profile, and reputation system
+-- Each accredited financier has an on-chain profile managed by the platform.
+-- The profile tracks bid history, win rate, total deployed capital, and compliance.
+module InvoPlus.Financier where
+
+import DA.Time (Time)
+import InvoPlus.Types
+
+-- Financier profile — created by platform after KYC/AML checks.
+-- Financier can read their own; platform can update it.
+template FinancierProfile
+  with
+    platform           : Party
+    financier          : Party
+    displayName        : Text
+    entityType         : Text     -- "Bank" | "FundManager" | "FamilyOffice" | "Individual"
+    jurisdiction       : Text     -- e.g. "UK", "US-NY"
+    kycStatus          : Text     -- "Pending" | "Approved" | "Suspended"
+    capitalCommitted   : Decimal  -- max they pledge to deploy (USD)
+    capitalDeployed    : Decimal  -- current outstanding (USD)
+    totalBidsSubmitted : Int
+    totalBidsWon       : Int
+    totalDefaultsHeld  : Int
+    avgAdvanceRate     : Decimal  -- rolling avg of won bids
+    avgAnnualRate      : Decimal
+    reputationScore    : Int      -- 0-100, platform-computed
+    joinedAt           : Time
+    lastActiveAt       : Time
+  where
+    signatory platform
+    observer financier
+
+    -- Platform approves financier after KYC checks.
+    choice ApproveFinancier : ContractId FinancierProfile
+      controller platform
+      do
+        assertMsg "Must be Pending" (kycStatus == "Pending")
+        now <- getTime
+        create this with kycStatus = "Approved"; lastActiveAt = now
+
+    -- Platform suspends a financier (e.g. compliance issue).
+    choice SuspendFinancier : ContractId FinancierProfile
+      controller platform
+      do
+        create this with kycStatus = "Suspended"
+
+    -- Financier updates their committed capital pledge.
+    choice UpdateCommitment : ContractId FinancierProfile
+      with newCommitment : Decimal
+      controller financier
+      do
+        assertMsg "Must be approved to update" (kycStatus == "Approved")
+        assertMsg "Commitment must be positive" (newCommitment > 0.0)
+        now <- getTime
+        create this with capitalCommitted = newCommitment; lastActiveAt = now
+
+    -- Platform records a bid win and updates stats.
+    choice RecordBidWin : ContractId FinancierProfile
+      with
+        fundedAmount : Decimal
+        advanceRate  : Decimal
+        annualRate   : Decimal
+      controller platform
+      do
+        assertMsg "Approved financiers only" (kycStatus == "Approved")
+        assertMsg "Cannot exceed committed capital" (capitalDeployed + fundedAmount <= capitalCommitted)
+        now <- getTime
+        let newWon = totalBidsWon + 1
+        let newDeployed = capitalDeployed + fundedAmount
+        let newAvgAdv = (avgAdvanceRate * intToDecimal totalBidsWon + advanceRate) / intToDecimal newWon
+        let newAvgAnn = (avgAnnualRate * intToDecimal totalBidsWon + annualRate) / intToDecimal newWon
+        create this with
+          totalBidsSubmitted = totalBidsSubmitted + 1
+          totalBidsWon       = newWon
+          capitalDeployed    = newDeployed
+          avgAdvanceRate     = newAvgAdv
+          avgAnnualRate      = newAvgAnn
+          lastActiveAt       = now
+
+    -- Platform records repayment — reduces deployed capital.
+    choice RecordRepayment : ContractId FinancierProfile
+      with repaidAmount : Decimal
+      controller platform
+      do
+        now <- getTime
+        create this with
+          capitalDeployed = capitalDeployed - repaidAmount
+          lastActiveAt    = now
+
+-- Bid history entry — immutable record of each bid outcome.
+-- Created after auction settlement; both parties observe.
+template BidHistory
+  with
+    platform     : Party
+    financier    : Party
+    seller       : Party
+    invoiceId    : Text
+    auctionId    : Text
+    bidAdvRate   : Decimal
+    bidAnnRate   : Decimal
+    faceAmount   : Decimal
+    outcome      : Text  -- "Won" | "Lost" | "Withdrawn" | "AuctionCancelled"
+    fundedAmount : Decimal  -- 0 if not won
+    settledAt    : Time
+  where
+    signatory platform
+    observer financier, seller
+
+-- Financier capital account — tracks running P&L across all positions.
+-- Updated after each settlement and repayment.
+template CapitalAccount
+  with
+    platform       : Party
+    financier      : Party
+    totalDeployed  : Decimal  -- current outstanding
+    totalEarned    : Decimal  -- cumulative yield collected
+    totalPrincipal : Decimal  -- cumulative principal returned
+    activePositions: Int
+    currency       : Text
+    lastUpdatedAt  : Time
+  where
+    signatory platform
+    observer financier
+
+    choice DeployCapital : ContractId CapitalAccount
+      with amount : Decimal; invoiceId : Text
+      controller platform
+      do
+        assertMsg "Amount must be positive" (amount > 0.0)
+        now <- getTime
+        create this with
+          totalDeployed   = totalDeployed + amount
+          activePositions = activePositions + 1
+          lastUpdatedAt   = now
+
+    choice CollectRepayment : ContractId CapitalAccount
+      with principal : Decimal; yield : Decimal
+      controller platform
+      do
+        assertMsg "Principal must be positive" (principal > 0.0)
+        now <- getTime
+        create this with
+          totalDeployed   = totalDeployed - principal
+          totalEarned     = totalEarned + yield
+          totalPrincipal  = totalPrincipal + principal
+          activePositions = activePositions - 1
+          lastUpdatedAt   = now

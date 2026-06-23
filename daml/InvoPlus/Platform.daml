@@ -1,0 +1,130 @@
+-- InvoPlus: Platform governance and configuration contracts
+-- The platform party holds configuration and manages participant onboarding.
+-- All choices here are controller = platform — no other party can mutate platform state.
+module InvoPlus.Platform where
+
+import DA.Time (Time)
+import InvoPlus.Types
+
+-- Platform-wide configuration stored as a Canton contract.
+-- Updated by platform admin; all other parties can read (observer).
+template PlatformConfig
+  with
+    platform            : Party
+    defaultAuctionHours : Int       -- default duration for new auctions (e.g. 72)
+    minInvoiceAmount    : Decimal   -- floor for invoice face value (e.g. 1000.0)
+    maxInvoiceAmount    : Decimal   -- ceiling (e.g. 5000000.0)
+    platformFeeBps      : Int       -- basis points charged on settlement (e.g. 100 = 1%)
+    allowedCurrencies   : [Text]    -- e.g. ["USD", "EUR", "GBP"]
+    maintenanceMode     : Bool      -- pauses new submissions if True
+    updatedAt           : Time
+  where
+    signatory platform
+
+    -- Update global parameters.
+    choice UpdateConfig : ContractId PlatformConfig
+      with
+        newAuctionHours   : Int
+        newFeeBps         : Int
+        newMinAmount      : Decimal
+        newMaxAmount      : Decimal
+        newMaintenance    : Bool
+      controller platform
+      do
+        assertMsg "Fee must be 0–500 bps" (newFeeBps >= 0 && newFeeBps <= 500)
+        assertMsg "Min must be less than max" (newMinAmount < newMaxAmount)
+        assertMsg "Auction duration must be positive" (newAuctionHours > 0)
+        now <- getTime
+        create this with
+          defaultAuctionHours = newAuctionHours
+          platformFeeBps      = newFeeBps
+          minInvoiceAmount    = newMinAmount
+          maxInvoiceAmount    = newMaxAmount
+          maintenanceMode     = newMaintenance
+          updatedAt           = now
+
+    -- Toggle maintenance mode (halts all new submissions).
+    choice SetMaintenance : ContractId PlatformConfig
+      with enable : Bool
+      controller platform
+      do
+        now <- getTime
+        create this with maintenanceMode = enable; updatedAt = now
+
+-- A formal onboarding record for each seller.
+-- Platform KYB (Know Your Business) check result, stored on Canton.
+-- Seller can read their own record; platform is signatory.
+template SellerOnboarding
+  with
+    platform      : Party
+    seller        : Party
+    companyName   : Text
+    taxId         : Text
+    jurisdiction  : Text  -- e.g. "GB", "US-DE"
+    kybStatus     : Text  -- "Pending" | "Approved" | "Rejected"
+    riskLimit     : Decimal  -- max outstanding financed amount at any time
+    approvedAt    : Optional Time
+    rejectedAt    : Optional Time
+    rejectedReason: Text
+    submittedAt   : Time
+  where
+    signatory platform
+    observer seller
+
+    choice ApproveSeller : ContractId SellerOnboarding
+      controller platform
+      do
+        assertMsg "Can only approve Pending sellers" (kybStatus == "Pending")
+        now <- getTime
+        create this with kybStatus = "Approved"; approvedAt = Some now
+
+    choice RejectSeller : ContractId SellerOnboarding
+      with reason : Text
+      controller platform
+      do
+        assertMsg "Can only reject Pending sellers" (kybStatus == "Pending")
+        now <- getTime
+        create this with kybStatus = "Rejected"; rejectedAt = Some now; rejectedReason = reason
+
+    choice UpdateRiskLimit : ContractId SellerOnboarding
+      with newLimit : Decimal
+      controller platform
+      do
+        assertMsg "Limit must be positive" (newLimit > 0.0)
+        create this with riskLimit = newLimit
+
+-- Platform-issued fee receipt after each successful settlement.
+-- Immutable record; both platform and the paying party observe.
+template FeeReceipt
+  with
+    platform     : Party
+    payer        : Party   -- the seller (fee deducted from funded amount)
+    invoiceId    : Text
+    faceAmount   : Decimal
+    fundedAmount : Decimal
+    feeBps       : Int
+    feeAmount    : Decimal -- faceAmount * feeBps / 10000
+    currency     : Text
+    issuedAt     : Time
+  where
+    signatory platform
+    observer payer
+
+-- Aggregate daily settlement summary (created by platform at end of each auction day).
+template SettlementSummary
+  with
+    platform      : Party
+    summaryDate   : Text   -- YYYY-MM-DD
+    totalInvoices : Int
+    totalFunded   : Decimal
+    totalFees     : Decimal
+    avgAdvRate    : Decimal
+    avgAnnualRate : Decimal
+    gradeACnt     : Int
+    gradeBCnt     : Int
+    gradeCCnt     : Int
+    gradeDCnt     : Int
+    currency      : Text
+    createdAt     : Time
+  where
+    signatory platform

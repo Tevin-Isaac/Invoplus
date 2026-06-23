@@ -1,299 +1,306 @@
-# InvoPlus — Private Invoice Financing Marketplace on Canton Network
+# InvoPlus — Private Invoice Financing on Canton Network
 
-> Built for the **Build on Canton Hackathon** · Track: Private DeFi & Capital Markets
+**Build on Canton Hackathon** · Private DeFi & Capital Markets Track
 
----
-
-## What Is InvoPlus?
-
-InvoPlus is a two-sided marketplace where businesses turn unpaid invoices into instant cash — and financiers earn yield by funding those invoices through a **sealed-bid auction**.
-
-**The problem it solves:**
-A business delivers $125,000 worth of goods to a client. The client has 90 days to pay. The business needs that cash now. Traditional invoice financing takes weeks, charges 12–18% APR, and exposes bids to all parties. InvoPlus does it in seconds, at 8–11% APR, with complete bid privacy — all enforced by Canton Network's blockchain.
+InvoPlus is a two-sided marketplace where businesses sell outstanding invoices to financiers at a discount — entirely on Canton Network. Canton's sub-transaction privacy means financiers bid against each other without seeing competing offers. The anti-fraud registry prevents any invoice from being financed twice. Settlement is atomic.
 
 ---
 
-## How It Actually Works (Step by Step)
+## The Problem
 
+Businesses with B2B invoices (e.g. a $125,000 invoice due in 90 days) often need cash now. Traditional invoice factoring goes through slow, opaque middlemen who charge 15–25%. Existing crypto DeFi protocols expose bid information publicly, enabling front-running and collusion.
+
+## What InvoPlus Does
+
+1. **Seller uploads an invoice** → InvoiceContract created on Canton ledger
+2. **Platform verifies** → risk score computed (tenor, amount, currency, debtor profile) → score written permanently on-chain
+3. **Seller lists for auction** → Auction + RegistryEntry created atomically (anti-double-finance)
+4. **Financiers submit sealed bids** → SealedBid contract, seller cannot see it (Canton privacy)
+5. **Platform settles** → single atomic Canton transaction: all losing bids archived, FundedInvoice created, registry deregistered
+6. **Debtor pays → seller repays financier** → RepaymentRequest → RepaymentConfirmation (signed by both)
+
+---
+
+## Why Canton Specifically
+
+| Feature | How InvoPlus uses it |
+|---|---|
+| Sub-transaction privacy | SealedBid has `observer platform` only — seller is NOT an observer — enforced by the ledger, not by application logic |
+| Atomic multi-party transactions | SettleAuction archives all losing bids + creates FundedInvoice in ONE transaction — no partial state |
+| Daml smart contracts | All lifecycle logic lives in Daml — platform cannot alter outcomes, only exercise choices Daml allows |
+| Anti-fraud registry | RegistryEntry created at listing prevents double-financing — same invoice hash cannot exist twice |
+| Real-time ledger | WebSocket connection to Canton DevNet shows live block numbers in the UI |
+
+---
+
+## Risk Scoring Engine (No External API)
+
+InvoPlus uses a deterministic scoring engine (`lib/risk-engine.ts`) — no external dependencies:
+
+- **Tenor** (days until due): shorter = lower risk
+- **Invoice amount**: very large concentrations penalised
+- **Currency**: major reserve currencies (USD/EUR/GBP) score higher
+- **Debtor name**: registered legal entities (Ltd, Corp, GmbH) score higher
+- **Invoice number format**: structured numbering indicates professionalism
+- **Days until due**: invoices already past due are heavily penalised
+
+Returns: score 0–100, grade A/B/C/D, recommended advance rate range, risk/positive factors.
+The score is written on-chain when the platform calls `VerifyInvoice` — immutable after that.
+
+---
+
+## Daml Contract Architecture
+
+### 7 Modules, 14 Templates, 20+ Choices
+
+| Module | Templates |
+|---|---|
+| `InvoPlus.Types` | RiskGrade, InvoiceStatus, Money, AuctionTerms, BidResult |
+| `InvoPlus.Registry` | RegistryEntry, RegistryLookupRequest |
+| `InvoPlus.Invoice` | InvoiceContract, Auction, SealedBid, FundedInvoice |
+| `InvoPlus.Platform` | PlatformConfig, SellerOnboarding, FeeReceipt, SettlementSummary |
+| `InvoPlus.Financier` | FinancierProfile, BidHistory, CapitalAccount |
+| `InvoPlus.Repayment` | RepaymentRequest, RepaymentConfirmation, DisputeCase, DefaultNotice, ExtensionRequest |
+| `InvoPlus.Setup` | Daml Scripts: setupDemo, setupDisputeDemo |
+
+### InvoiceContract — core lifecycle
+
+```daml
+template InvoiceContract
+  with
+    seller, platform : Party
+    invoiceId, debtorName, debtorTaxId : Text
+    faceAmount : Decimal; currency : Text
+    issueDate, dueDate : Date
+    docHash, invoiceHash : Text   -- SHA-256 for anti-fraud
+    aiScore : Int; riskGrade : RiskGrade
+    status : InvoiceStatus
+  where
+    signatory seller
+    observer platform
+
+    choice VerifyInvoice : ContractId InvoiceContract   -- controller platform
+    choice RejectInvoice : ContractId InvoiceContract   -- controller platform
+    choice ListForAuction : (ContractId Auction, ContractId RegistryEntry)  -- controller seller
 ```
-Business uploads invoice PDF
-        ↓
-Claude AI (Anthropic) reads the invoice, verifies it's real,
-scores the credit risk 0-100, assigns grade A/B/C/D
-        ↓
-AI score is written permanently into a Daml InvoiceContract
-on Canton Network (tamper-proof, on-chain)
-        ↓
-Business lists the invoice for a sealed-bid auction
-(sets minimum advance rate e.g. 80%, auction runs 24-72 hours)
-        ↓
-Multiple financiers submit SealedBid contracts on Canton
-— Canton's privacy model means financiers CANNOT see each other's bids
-— the seller also cannot see bid amounts while the auction is live
-        ↓
-Auction closes → InvoPlus platform reveals all bids
-→ highest advance rate wins
-→ FundedInvoice contract created: both parties sign atomically
-→ Cash transferred in 3.2 seconds
-        ↓
-When debtor pays the business 90 days later,
-business repays financier: principal + agreed yield
+
+### SealedBid — Canton privacy primitive
+
+```daml
+template SealedBid
+  with
+    financier, seller, platform : Party
+    advanceRate, annualRate, fundedAmount : Decimal
+    isRevealed : Bool
+  where
+    signatory financier
+    observer platform
+    -- seller intentionally NOT an observer — cannot see bid amounts
+
+    choice RevealBid : ContractId SealedBid    -- controller platform
+    choice WithdrawBid : ()                    -- controller financier
+```
+
+### Auction.SettleAuction — atomic settlement
+
+```daml
+    choice SettleAuction : ContractId FundedInvoice
+      -- archives ALL losing bids (contents sealed forever)
+      -- creates FundedInvoice signed by seller + financier
+      -- removes RegistryEntry atomically
+      -- all in ONE Canton transaction
+```
+
+### Repayment flow
+
+```daml
+-- Seller creates after collecting from debtor
+template RepaymentRequest  (signatory seller; observer financier, platform)
+
+-- Platform approves → completes → immutable confirmation
+template RepaymentConfirmation  (signatory seller, financier)
+
+-- Dispute arbitration by platform
+template DisputeCase       (signatory platform; observer seller, financier)
+  choice ReviewDispute, ResolveForSeller, ResolveForFinancier, EscalateDispute
+
+-- When debtor misses payment
+template DefaultNotice     (signatory platform; observer seller, financier)
+
+-- Seller requests extra time; financier must approve
+template ExtensionRequest  (signatory seller; observer financier)
+  choice ApproveExtension, RejectExtension
 ```
 
 ---
 
-## Why Canton Network?
+## API Routes — 10 Canton Contract Endpoints
 
-Canton is the only blockchain that makes this privacy model work. Two specific features:
+### Ledger Info
 
-**1. Sub-transaction privacy (sealed bids)**
-In a `SealedBid` Daml contract, only the bidding financier and InvoPlus platform are signatories/observers. The seller is deliberately NOT an observer. This means the seller's wallet literally cannot see bid amounts — enforced at the cryptographic ledger level, not just by UI logic. Competing financiers also cannot see each other's bids.
+| Route | Description |
+|---|---|
+| `GET /api/canton/ledger-status` | Live block number, package count, network name |
+| `POST /api/canton/provision-party` | Allocate a real Canton party on DevNet |
+| `GET /api/canton/users` | List ledger participants |
+| `POST /api/canton/acs` | Query Active Contract Set for any party |
+| `GET /api/canton/ws-config` | WebSocket auth config for client-side connection |
 
-**2. Atomic settlement**
-When InvoPlus exercises `SettleAuction`, all state changes happen in a single atomic transaction: the winning bid is archived, losing bids are archived (their contents stay private forever), and the `FundedInvoice` contract is created with both parties as signatories. Either everything succeeds or nothing does. No partial fills, no failed transfers.
+### Contract Operations
 
-**3. Anti-fraud registry**
-A `RegistryEntry` contract is created on-chain when an invoice is listed. As long as this entry exists, the same invoice cannot be listed again by the same or different seller. This prevents double-financing fraud — a major problem in traditional invoice financing.
-
----
-
-## Where AI (Claude) Fits In
-
-AI is the **trust engine** that makes the auction valuable. Without AI scoring:
-- Financiers don't know if an invoice is real or forged
-- Financiers don't know if the debtor is likely to pay
-- No rational financier would bid on an unverified invoice
-
-**What Claude does when an invoice is uploaded:**
-1. Reads the invoice text/data
-2. Extracts structured fields (invoice number, debtor, amount, due date)
-3. Assesses credit risk based on debtor profile and invoice terms
-4. Returns a **risk score (0–100)** and **grade (A/B/C/D)**
-5. Lists positive factors, risk factors, and any fraud flags
-6. Explains its reasoning in plain English
-
-This score is then passed to the Daml `InvoiceContract.VerifyInvoice` choice and recorded permanently on the Canton ledger. Financiers can trust the score because it came from a neutral AI and is on-chain — no one can tamper with it after the fact.
-
-**Model used:** `claude-haiku-4-5-20251001` (fast, cheap, accurate for document analysis)
+| Route | Daml Choice |
+|---|---|
+| `POST /api/canton/contracts/create-invoice` | submitAndWait → create InvoiceContract |
+| `POST /api/canton/contracts/verify-invoice` | InvoiceContract.VerifyInvoice |
+| `POST /api/canton/contracts/list-auction` | InvoiceContract.ListForAuction |
+| `POST /api/canton/contracts/submit-bid` | Auction.SubmitBid |
+| `POST /api/canton/contracts/settle-auction` | Auction.SettleAuction |
+| `POST /api/canton/contracts/cancel-auction` | Auction.CancelAuction |
+| `POST /api/canton/contracts/repay` | Create RepaymentRequest |
+| `POST /api/canton/contracts/withdraw-bid` | SealedBid.WithdrawBid |
+| `POST /api/canton/contracts/list` | ACS query filtered by template type |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Smart contracts | **Daml** on Canton Network | Invoice lifecycle, sealed bids, settlement, anti-fraud |
-| Blockchain | **Canton DevNet** (FiveNorth validator) | Privacy, atomicity, immutable ledger |
-| AI scoring | **Claude API** (Anthropic) | Invoice verification and risk grading |
-| Frontend | **Next.js 14** (App Router) | Seller + financier dashboard |
-| Canton SDK | **@c7-digital/ledger** | TypeScript client for Canton JSON Ledger API v2 |
-| Styling | **Tailwind CSS** + shadcn/ui | UI components |
-| Charts | **Recharts** | Analytics dashboard |
-| IDE/Deploy | **Seaport** (app.devnet.seaport.to) | Write, build, and deploy Daml to Canton |
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14 App Router, TypeScript, Tailwind CSS |
+| Charts | Recharts |
+| Canton SDK | @c7-digital/ledger (TypedHttpClient for ledger end; raw fetch for contract ops) |
+| Canton Auth | OIDC client_credentials flow, token cached 8h |
+| Daml | SDK 2.9.4, target 2.1 |
+| Risk Engine | Deterministic rule-based scoring (no external API) |
 
 ---
 
 ## Project Structure
 
 ```
-InvoPlus/
+invoplus/
 ├── app/
-│   ├── api/
-│   │   ├── ai/
-│   │   │   └── score-invoice/     ← Claude AI scoring endpoint
-│   │   └── canton/
-│   │       ├── ledger-status/     ← Live Canton block + package count
-│   │       ├── provision-party/   ← Allocate real Canton party on DevNet
-│   │       ├── acs/               ← Query Active Contract Set
-│   │       ├── ws-config/         ← WebSocket auth for real-time streaming
-│   │       └── users/             ← List ledger participants
+│   ├── api/canton/
+│   │   ├── ledger-status/      ← live Canton connection check
+│   │   ├── provision-party/    ← allocate real Canton party
+│   │   ├── acs/                ← Active Contract Set query
+│   │   ├── users/              ← ledger participant list
+│   │   ├── ws-config/          ← WebSocket auth config
+│   │   └── contracts/
+│   │       ├── create-invoice/ ← submit InvoiceContract to Canton
+│   │       ├── verify-invoice/ ← platform scores + writes to ledger
+│   │       ├── list-auction/   ← list for sealed-bid auction (atomic)
+│   │       ├── submit-bid/     ← financier places sealed bid
+│   │       ├── settle-auction/ ← platform settles atomically
+│   │       ├── cancel-auction/ ← seller cancels auction
+│   │       ├── repay/          ← seller repays financier
+│   │       ├── withdraw-bid/   ← financier withdraws bid
+│   │       └── list/           ← ACS query by template type
 │   └── dashboard/
-│       ├── page.tsx               ← Overview (stats, recent invoices, live feed)
-│       ├── invoices/              ← Upload + AI scoring + invoice management
-│       ├── marketplace/           ← Browse auctions, submit sealed bids
-│       ├── offers/                ← Financier's bid history
-│       ├── portfolio/             ← Funded positions + yield tracking
-│       ├── analytics/             ← Charts: volume, rates, grade distribution
-│       └── settings/              ← Party ID, Canton status, notifications
-├── daml/
-│   └── InvoPlus/
-│       ├── Types.daml             ← Shared types: RiskGrade, InvoiceStatus, etc.
-│       ├── Registry.daml          ← Anti-fraud double-financing registry
-│       ├── Invoice.daml           ← Full lifecycle: Invoice → Auction → SealedBid → FundedInvoice
-│       └── Setup.daml             ← Daml Script to bootstrap demo on Canton DevNet
+│       ├── page.tsx            ← overview with live Canton block
+│       ├── invoices/           ← submit invoices, risk score, list for auction
+│       ├── marketplace/        ← browse auctions, place sealed bids
+│       ├── offers/             ← my bids history, withdraw pending bids
+│       ├── portfolio/          ← funded positions, FundedInvoice contracts
+│       ├── analytics/          ← charts, Canton network stats
+│       └── settings/           ← party ID, live ledger data, security info
+├── daml/InvoPlus/
+│   ├── Types.daml
+│   ├── Registry.daml
+│   ├── Invoice.daml
+│   ├── Platform.daml
+│   ├── Financier.daml
+│   ├── Repayment.daml
+│   └── Setup.daml
 ├── lib/
-│   ├── canton-server.ts           ← Server-side Canton API client (@c7-digital/ledger)
-│   ├── canton.tsx                 ← Client-side Canton context (party, wallet, ledger status)
-│   └── utils.ts                   ← Helpers
-├── public/
-│   ├── landing.html               ← Landing page (Framer export, served via middleware)
-│   ├── invoplus.png               ← Logo
-│   └── *.svg                      ← All landing page illustrations
-├── daml.yaml                      ← Daml project config (SDK 2.9.4)
-└── .env.local                     ← Credentials (gitignored)
+│   ├── canton-server.ts        ← all server-side Canton API calls
+│   ├── canton.tsx              ← client-side Canton context
+│   ├── risk-engine.ts          ← deterministic invoice risk scoring
+│   └── utils.ts
+└── daml.yaml
 ```
 
 ---
 
-## Daml Smart Contracts
+## Local Setup
 
-The backend is entirely Daml contracts on Canton. Here is the full lifecycle:
+```bash
+npm install
 
-### InvoiceContract
-```
-signatory: seller
-observer: platform
+# Create .env.local:
+CANTON_LEDGER_URL=https://ledger-api.validator.devnet.sandbox.fivenorth.io
+CANTON_AUTH_URL=https://auth.sandbox.fivenorth.io/application/o/token/
+CANTON_CLIENT_ID=validator-devnet-m2m
+CANTON_CLIENT_SECRET=<secret from hackathon>
+CANTON_WS_URL=wss://ledger-api.validator.devnet.sandbox.fivenorth.io
+INVOPLUS_PACKAGE_ID=   # set after Seaport deployment
 
-Choices:
-  VerifyInvoice (platform) → sets AI score + grade, marks Verified
-  RejectInvoice (platform) → marks Rejected
-  ListForAuction (seller)  → creates Auction + RegistryEntry atomically
-```
-
-### Auction
-```
-signatory: seller
-observer: platform
-
-Choices:
-  SubmitBid (any financier) → creates SealedBid (seller cannot see it)
-  SettleAuction (platform)  → picks winner, creates FundedInvoice, archives all bids
-  CancelAuction (seller)    → returns invoice to Verified state
+npm run dev
+# → http://localhost:3000
 ```
 
-### SealedBid ← THE KEY PRIVACY CONTRACT
-```
-signatory: financier
-observer: platform
-(seller is NOT an observer — cannot see bid amounts)
+---
 
-Choices:
-  RevealBid (platform)   → adds seller as observer (called during settlement only)
-  WithdrawBid (financier) → financier pulls out before auction ends
-```
+## Seaport Deployment (Daml → Canton)
 
-### FundedInvoice
-```
-signatory: seller AND financier (both must agree — atomic)
-observer: platform
+1. Go to **https://app.devnet.seaport.to** and sign in
+2. Create a new project called `invoplus`
+3. Upload all files from the `daml/` folder + `daml.yaml`
+4. Click **Build** → wait for compilation
+5. Click **Deploy** → select **"5n sandbox"** validator
+6. Copy the **Package ID** → paste into `.env.local` as `INVOPLUS_PACKAGE_ID=...`
+7. Restart dev server — all contract routes are now live on Canton DevNet
 
-Choices:
-  RepayFinancier (seller) → triggered when debtor pays
-  MarkDefault (platform)  → for dispute resolution
+### Run demo Daml script (optional)
+
+```
+daml script --dar invoplus-1.0.0.dar --script-name InvoPlus.Setup:setupDemo
 ```
 
-### RegistryEntry (anti-fraud)
-```
-signatory: platform
-observer: seller
+Allocates 5 parties, runs full lifecycle: onboarding → invoice → auction → 2 sealed bids → settlement → repayment.
 
-Created when invoice is listed.
-Archived only when FundedInvoice is repaid.
-Prevents any duplicate listing of same invoice.
-```
+---
+
+## Demo Walkthrough
+
+### As a Business (Seller)
+
+1. Dashboard → **Connect Canton Wallet** → Business / Seller
+2. **Invoices** → New Invoice → fill debtor company, amount, due date
+3. Risk score computed and written on-chain
+4. Once verified → **List for Sealed-Bid Auction**
+
+### As a Financier
+
+1. Dashboard → **Connect Canton Wallet** → Financier / Buyer
+2. **Marketplace** → see open auctions with risk grades and yield ranges
+3. **Place Sealed Bid** → set advance rate and annual rate with sliders
+4. Your bid is a private Canton contract — seller cannot see it
+5. **My Offers** → view bid status, withdraw if needed
+6. After settlement → **Portfolio** to see FundedInvoice position
+
+---
+
+## Why This Wins
+
+| Criterion | InvoPlus |
+|---|---|
+| Canton-native | 6 Daml modules, 14 templates, 20+ choices — every action is a Canton contract |
+| Privacy | SealedBid uses Canton sub-tx privacy to cryptographically prevent bid leakage — not a UI trick |
+| Real use case | Invoice financing is a $3T market; Canton's atomic settlement solves a real trust problem |
+| Complete product | Full lifecycle: onboarding → upload → score → auction → bid → settle → repay → dispute |
+| Live on DevNet | All API routes connect to real Canton DevNet; block number shown live in every page header |
 
 ---
 
 ## Canton DevNet Credentials
 
-These are the shared hackathon validator credentials (sandbox only):
-
 ```
-Ledger REST:  https://ledger-api.validator.devnet.sandbox.fivenorth.io/
-Ledger WS:    wss://ledger-api.validator.devnet.sandbox.fivenorth.io
-Auth URL:     https://auth.sandbox.fivenorth.io/application/o/token/
+Ledger REST:  https://ledger-api.validator.devnet.sandbox.fivenorth.io
+WebSocket:    wss://ledger-api.validator.devnet.sandbox.fivenorth.io
+Auth:         https://auth.sandbox.fivenorth.io/application/o/token/
 Client ID:    validator-devnet-m2m
-Client Secret: r69FQmevLRwEgMB8NnKaSDHPewTOSx7Yy5jucsqAlmsAaJc3DlggedCz4tyyonl4W2WoOVzkUIjy8dHTlc16AOJQzx02QzJylAUG56oLTCoVCJUUK40vRv9CqQEY3fjn
+Seaport IDE:  https://app.devnet.seaport.to
 ```
 
-Token expires every 8 hours. The app auto-refreshes it in `lib/canton-server.ts`.
-
----
-
-## Setup & Running Locally
-
-### 1. Install dependencies
-```bash
-npm install
-```
-
-### 2. Set environment variables
-Create `.env.local` (already in `.gitignore`):
-```env
-CANTON_LEDGER_URL=https://ledger-api.validator.devnet.sandbox.fivenorth.io
-CANTON_AUTH_URL=https://auth.sandbox.fivenorth.io/application/o/token/
-CANTON_CLIENT_ID=validator-devnet-m2m
-CANTON_CLIENT_SECRET=r69FQmevLRwEgMB8NnKaSDHPewTOSx7Yy5jucsqAlmsAaJc3DlggedCz4tyyonl4W2WoOVzkUIjy8dHTlc16AOJQzx02QzJylAUG56oLTCoVCJUUK40vRv9CqQEY3fjn
-CANTON_WS_URL=wss://ledger-api.validator.devnet.sandbox.fivenorth.io
-ANTHROPIC_API_KEY=your-anthropic-api-key-here
-INVOPLUS_PACKAGE_ID=                          # filled after Seaport DAR deployment
-```
-
-### 3. Run the app
-```bash
-npm run dev
-# → http://localhost:3000
-```
-
-Landing page is at `/`, dashboard is at `/dashboard`.
-
----
-
-## Deploying the Daml Contracts via Seaport
-
-The Daml code lives in `daml/InvoPlus/`. To deploy it to Canton DevNet:
-
-1. Go to **https://app.devnet.seaport.to** and sign in
-2. Create a **New Project**
-3. Copy these files into the Seaport editor:
-   - `daml/InvoPlus/Types.daml`
-   - `daml/InvoPlus/Registry.daml`
-   - `daml/InvoPlus/Invoice.daml`
-   - `daml/InvoPlus/Setup.daml`
-4. Update `daml.yaml` in the project
-5. Click **Build** in the toolbar
-6. Click **Deploy** → select **"5n sandbox"** validator (pre-configured for hackathon)
-7. After deployment, right-click the `.dar` → **Copy Package ID**
-8. Add it to `.env.local` as `INVOPLUS_PACKAGE_ID=<the-id>`
-
-Once deployed, run the `Setup.daml` script from Seaport to create demo parties and run a full end-to-end auction.
-
----
-
-## How to Demo
-
-**As a Business (Seller):**
-1. Open `/dashboard` → click **Connect Canton Wallet** → choose **Business / Seller**
-2. A real Canton party is provisioned on DevNet (you'll see a real party ID)
-3. Go to **Invoices** → click upload zone → enter invoice details → click **Score with Claude AI**
-4. Claude analyzes the invoice and returns a risk score, grade, positive/risk factors
-5. Click **List for Auction** to create an Auction contract on Canton
-
-**As a Financier:**
-1. Connect wallet as **Financier / Buyer**
-2. Go to **Marketplace** → browse live auctions with AI scores and grades
-3. Click **Place Bid** → set advance rate + annual rate → submit sealed bid
-4. Your bid is a private `SealedBid` contract on Canton — the seller cannot see it
-5. After auction ends, check **My Offers** to see if you won
-
----
-
-## Why This Wins the Hackathon
-
-| Judging Criterion | Our Answer |
-|---|---|
-| **Uses Canton's unique capabilities** | Sub-transaction privacy for sealed bids — impossible on Ethereum or Solana |
-| **Real-world use case** | Invoice financing is a $3T global market. Businesses genuinely need this. |
-| **AI integration** | Claude verifies every invoice and scores risk — the trust layer for financiers |
-| **Working demo** | Live on Canton DevNet with real party provisioning and block tracking |
-| **Technical depth** | Full Daml contract lifecycle (5 templates, 10+ choices), @c7-digital/ledger SDK, ACS queries |
-| **Business model** | Platform takes 1% fee on funded invoices — aligns with Canton Coin rewards |
-
----
-
-## Team
-
-- **Tevin Isaac** — Frontend, Canton integration, architecture
-- **[Partner name]** — [Partner role]
-
-Built at the **Build on Canton Hackathon** · Prize pool: $7,000
+Client secret is in `.env.local` (gitignored — never committed to git).

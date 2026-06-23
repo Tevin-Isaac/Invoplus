@@ -9,3 +9,12 @@ dependencies:
   - daml-stdlib
   - daml-script
 data-dependencies: []
+
+# Modules:
+#   InvoPlus.Types     — shared data types: RiskGrade, InvoiceStatus, Money, AuctionTerms
+#   InvoPlus.Registry  — anti-fraud RegistryEntry, RegistryLookupRequest
+#   InvoPlus.Invoice   — InvoiceContract, Auction, SealedBid, FundedInvoice
+#   InvoPlus.Platform  — PlatformConfig, SellerOnboarding, FeeReceipt, SettlementSummary
+#   InvoPlus.Financier — FinancierProfile, BidHistory, CapitalAccount
+#   InvoPlus.Repayment — RepaymentRequest, RepaymentConfirmation, DisputeCase, DefaultNotice, ExtensionRequest
+#   InvoPlus.Setup     — Daml Scripts: setupDemo, setupDisputeDemo
