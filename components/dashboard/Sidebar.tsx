@@ -9,6 +9,7 @@ import {
   Settings, Menu, X, TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCanton } from '@/lib/canton'
 
 const navItems = [
   { href: '/dashboard',             icon: LayoutDashboard, label: 'Overview' },
@@ -23,6 +24,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { ledgerStatus, ledgerLoading } = useCanton()
 
   return (
     <>
@@ -81,13 +83,24 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Canton status */}
+        {/* Canton DevNet live status */}
         <div className="p-4 border-t border-dark-border">
           <div className="flex items-center gap-2.5 px-3 py-2">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <div>
+            <span className={cn(
+              'w-2 h-2 rounded-full',
+              ledgerLoading ? 'bg-yellow-400 animate-pulse' :
+              ledgerStatus?.ok ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+            )} />
+            <div className="min-w-0">
               <p className="text-xs font-medium text-white">Canton Network</p>
-              <p className="text-xs text-dark-muted">LocalNet · Connected</p>
+              <p className="text-xs text-dark-muted truncate">
+                {ledgerLoading
+                  ? 'Connecting…'
+                  : ledgerStatus?.ok
+                    ? `DevNet · Block ${ledgerStatus.offset?.toLocaleString()}`
+                    : 'DevNet · Offline'
+                }
+              </p>
             </div>
           </div>
         </div>
