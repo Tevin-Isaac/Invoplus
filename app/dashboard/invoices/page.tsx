@@ -1,18 +1,19 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { Upload, Search, Filter, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, Bot, AlertTriangle, X } from 'lucide-react'
+import { Upload, Search, Filter, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCanton } from '@/lib/canton'
 
 type InvoiceStatus = 'funded' | 'bidding' | 'verified' | 'pending' | 'rejected'
 
 const mockInvoices = [
-  { id: 'INV-2026-0042', buyer: 'GlobalTech Solutions Ltd',  amount: 125000, currency: 'USD', dueDate: '2026-09-23', status: 'funded'   as InvoiceStatus, grade: 'A',  aiScore: 87 },
-  { id: 'INV-2026-0041', buyer: 'Apex Manufacturing',        amount: 89500,  currency: 'USD', dueDate: '2026-10-12', status: 'bidding'  as InvoiceStatus, grade: 'A',  aiScore: 91 },
-  { id: 'INV-2026-0040', buyer: 'Summit Retail Group',       amount: 234000, currency: 'USD', dueDate: '2026-08-30', status: 'verified' as InvoiceStatus, grade: 'B',  aiScore: 74 },
-  { id: 'INV-2026-0039', buyer: 'NovaBuild Corp',            amount: 67200,  currency: 'USD', dueDate: '2026-08-15', status: 'funded'   as InvoiceStatus, grade: 'B',  aiScore: 79 },
-  { id: 'INV-2026-0038', buyer: 'Nexus Partners Ltd',        amount: 55000,  currency: 'USD', dueDate: '2026-09-05', status: 'pending'  as InvoiceStatus, grade: '—',  aiScore: 0  },
+  { id: 'INV-2026-0042', buyer: 'GlobalTech Solutions Ltd',  amount: 125000, currency: 'USD', dueDate: '2026-09-23', status: 'funded'   as InvoiceStatus, grade: 'A', aiScore: 87 },
+  { id: 'INV-2026-0041', buyer: 'Apex Manufacturing',        amount: 89500,  currency: 'USD', dueDate: '2026-10-12', status: 'bidding'  as InvoiceStatus, grade: 'A', aiScore: 91 },
+  { id: 'INV-2026-0040', buyer: 'Summit Retail Group',       amount: 234000, currency: 'USD', dueDate: '2026-08-30', status: 'verified' as InvoiceStatus, grade: 'B', aiScore: 74 },
+  { id: 'INV-2026-0039', buyer: 'NovaBuild Corp',            amount: 67200,  currency: 'USD', dueDate: '2026-08-15', status: 'funded'   as InvoiceStatus, grade: 'B', aiScore: 79 },
+  { id: 'INV-2026-0038', buyer: 'Nexus Partners Ltd',        amount: 55000,  currency: 'USD', dueDate: '2026-09-05', status: 'pending'  as InvoiceStatus, grade: '—', aiScore: 0  },
 ]
 
 const statusConfig: Record<InvoiceStatus, { label: string; icon: typeof CheckCircle; color: string }> = {
@@ -23,71 +24,64 @@ const statusConfig: Record<InvoiceStatus, { label: string; icon: typeof CheckCir
   rejected: { label: 'Rejected', icon: XCircle,     color: 'text-red-400 bg-red-500/10 border-red-500/20' },
 }
 
-interface AIResult {
-  score: number
-  grade: string
-  isVerified: boolean
-  extractedData: {
-    invoiceNumber: string
-    debtorName: string
-    amount: number
-    currency: string
-    dueDate: string
-    description: string
-  }
-  riskFactors: string[]
-  positiveFactors: string[]
-  fraudFlags: string[]
-  reasoning: string
+interface ScoreResult {
+  ok: boolean
+  contractId?: string
+  invoiceId?: string
+  riskScore?: number
+  riskGrade?: string
+  advanceRateRange?: string
+  tenorDays?: number
+  summary?: string
+  riskFactors?: string[]
+  positiveFactors?: string[]
+  cantonTemplateId?: string
+  error?: string
 }
 
+const today = new Date().toISOString().split('T')[0]
+
 export default function InvoicesPage() {
+  const { party } = useCanton()
   const [filter, setFilter] = useState<string>('all')
   const [drag, setDrag] = useState(false)
-  const [scoring, setScoring] = useState(false)
-  const [aiResult, setAiResult] = useState<AIResult | null>(null)
-  const [aiError, setAiError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState<ScoreResult | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ invoiceNumber: '', debtorName: '', amount: '', currency: 'USD', dueDate: '' })
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [form, setForm] = useState({
+    invoiceId: '', debtorName: '', debtorTaxId: '', amount: '',
+    currency: 'USD', issueDate: today, dueDate: '',
+  })
 
   const filtered = filter === 'all' ? mockInvoices : mockInvoices.filter(i => i.status === filter)
 
-  const handleFileOrSubmit = async (invoiceText?: string) => {
-    setScoring(true)
-    setAiResult(null)
-    setAiError(null)
+  const handleSubmit = async () => {
+    if (!form.debtorName || !form.amount || !form.dueDate) return
+    setSubmitting(true)
+    setResult(null)
     try {
-      const res = await fetch('/api/ai/score-invoice', {
+      const res = await fetch('/api/canton/contracts/create-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invoiceText ? { invoiceText } : { ...form, amount: parseFloat(form.amount) }),
+        body: JSON.stringify({
+          sellerPartyId: party?.id ?? 'demo-seller',
+          platformPartyId: party?.id ?? 'demo-seller',
+          invoiceId: form.invoiceId || `INV-${Date.now()}`,
+          debtorName: form.debtorName,
+          debtorTaxId: form.debtorTaxId,
+          faceAmount: parseFloat(form.amount),
+          currency: form.currency,
+          issueDate: form.issueDate,
+          dueDate: form.dueDate,
+        }),
       })
       const data = await res.json()
-      if (data.ok) {
-        setAiResult(data)
-        setShowForm(false)
-      } else {
-        setAiError(data.error ?? 'Scoring failed')
-      }
+      setResult(data)
+      if (data.ok) setShowForm(false)
     } catch (e) {
-      setAiError(e instanceof Error ? e.message : 'Network error')
+      setResult({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
     } finally {
-      setScoring(false)
-    }
-  }
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault()
-    setDrag(false)
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    // For text-based files, read content; for PDFs show form
-    if (file.type === 'text/plain') {
-      const text = await file.text()
-      handleFileOrSubmit(text)
-    } else {
-      setShowForm(true)
+      setSubmitting(false)
     }
   }
 
@@ -100,182 +94,186 @@ export default function InvoicesPage() {
         <div
           onDragOver={e => { e.preventDefault(); setDrag(true) }}
           onDragLeave={() => setDrag(false)}
-          onDrop={handleDrop}
-          onClick={() => !scoring && setShowForm(true)}
+          onDrop={e => { e.preventDefault(); setDrag(false); setShowForm(true) }}
+          onClick={() => !submitting && setShowForm(true)}
           className={cn(
             'border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer',
             drag ? 'border-violet-500 bg-violet-500/5' : 'border-dark-border hover:border-violet-500/50 hover:bg-violet-500/[0.02]'
           )}
         >
-          <input ref={fileRef} type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.txt"
-            onChange={async e => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              if (file.type === 'text/plain') { const t = await file.text(); handleFileOrSubmit(t) }
-              else setShowForm(true)
-            }} />
-          {scoring ? (
+          {submitting ? (
             <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto">
-                <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-              </div>
-              <p className="text-sm font-semibold text-white">Claude is analyzing your invoice…</p>
-              <p className="text-xs text-dark-muted">Extracting data · Scoring risk · Checking for fraud</p>
+              <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
+              <p className="text-sm font-semibold text-white">Submitting to Canton ledger…</p>
+              <p className="text-xs text-dark-muted">Creating InvoiceContract · Running risk scoring · Registering anti-fraud entry</p>
             </div>
           ) : (
             <>
               <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
                 <Upload className="w-6 h-6 text-violet-400" />
               </div>
-              <p className="text-sm font-semibold text-white mb-1">Drop invoice here or click to upload</p>
-              <p className="text-xs text-dark-muted mb-4">PDF, PNG, JPEG · AI (Claude) extracts all fields and scores risk automatically</p>
+              <p className="text-sm font-semibold text-white mb-1">Submit invoice to Canton Network</p>
+              <p className="text-xs text-dark-muted mb-4">
+                Creates a real <span className="text-violet-400 font-mono">InvoiceContract</span> on the ledger · Risk scored by InvoPlus engine · Anti-fraud registry entry created atomically
+              </p>
               <span className="text-xs font-semibold text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-4 py-2 rounded-xl transition-colors">
-                Choose File or Enter Details
+                New Invoice
               </span>
             </>
           )}
         </div>
 
-        {/* Manual entry form */}
-        {showForm && !scoring && (
+        {/* Invoice form */}
+        {showForm && !submitting && (
           <div className="bg-dark-card border border-violet-500/30 rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-violet-400" />
-                <h3 className="text-sm font-semibold text-white">Invoice Details → Claude AI Scoring</h3>
+                <ShieldCheck className="w-4 h-4 text-violet-400" />
+                <h3 className="text-sm font-semibold text-white">New Invoice → Canton InvoiceContract</h3>
               </div>
-              <button onClick={() => setShowForm(false)} className="text-dark-muted hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setShowForm(false)} className="text-dark-muted hover:text-white"><X className="w-4 h-4" /></button>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'Invoice Number', key: 'invoiceId', placeholder: 'INV-2026-0043' },
+                { label: 'Debtor Company (who owes you)', key: 'debtorName', placeholder: 'GlobalTech Solutions Ltd' },
+                { label: 'Debtor Tax ID (for fraud check)', key: 'debtorTaxId', placeholder: 'GB123456789' },
+                { label: 'Amount', key: 'amount', placeholder: '125000', type: 'number' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-xs text-dark-muted mb-1 block">{f.label}</label>
+                  <input
+                    value={(form as any)[f.key]}
+                    onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    type={f.type ?? 'text'}
+                    className="w-full bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-dark-muted outline-none focus:border-violet-500/50"
+                  />
+                </div>
+              ))}
               <div>
-                <label className="text-xs text-dark-muted mb-1 block">Invoice Number</label>
-                <input value={form.invoiceNumber} onChange={e => setForm(p => ({ ...p, invoiceNumber: e.target.value }))}
-                  placeholder="INV-2026-0043"
-                  className="w-full bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-dark-muted outline-none focus:border-violet-500/50" />
-              </div>
-              <div>
-                <label className="text-xs text-dark-muted mb-1 block">Debtor Company (who owes you)</label>
-                <input value={form.debtorName} onChange={e => setForm(p => ({ ...p, debtorName: e.target.value }))}
-                  placeholder="GlobalTech Solutions Ltd"
-                  className="w-full bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-dark-muted outline-none focus:border-violet-500/50" />
-              </div>
-              <div>
-                <label className="text-xs text-dark-muted mb-1 block">Invoice Amount</label>
-                <input value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
-                  placeholder="125000" type="number"
-                  className="w-full bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-dark-muted outline-none focus:border-violet-500/50" />
+                <label className="text-xs text-dark-muted mb-1 block">Currency</label>
+                <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
+                  className="w-full bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500/50">
+                  {['USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD'].map(c => <option key={c}>{c}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs text-dark-muted mb-1 block">Due Date</label>
                 <input value={form.dueDate} onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))}
-                  type="date"
+                  type="date" min={today}
                   className="w-full bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500/50" />
               </div>
             </div>
-            <button
-              onClick={() => handleFileOrSubmit()}
-              disabled={!form.debtorName || !form.amount}
-              className="w-full bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white font-semibold text-sm py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              <Bot className="w-4 h-4" />
-              Score with Claude AI
-            </button>
-          </div>
-        )}
 
-        {/* AI error */}
-        {aiError && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-red-400">Scoring failed</p>
-              <p className="text-xs text-dark-muted mt-0.5">{aiError}</p>
-              <p className="text-xs text-dark-muted mt-1">Make sure ANTHROPIC_API_KEY is set in .env.local</p>
-            </div>
-          </div>
-        )}
-
-        {/* AI result */}
-        {aiResult && (
-          <div className="bg-dark-card border border-violet-500/30 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-violet-400" />
-                <span className="text-sm font-semibold text-white">Claude AI Risk Assessment</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={cn('text-xs font-bold px-2.5 py-1 rounded-md border',
-                  aiResult.grade === 'A' ? 'bg-green-500/15 text-green-400 border-green-500/30' :
-                  aiResult.grade === 'B' ? 'bg-violet-500/15 text-violet-400 border-violet-500/30' :
-                  'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-                )}>Grade {aiResult.grade}</span>
-                <span className="text-2xl font-bold text-white">{aiResult.score}<span className="text-sm text-dark-muted">/100</span></span>
-              </div>
-            </div>
-
-            {/* Score bar */}
-            <div className="h-2 bg-dark-border rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-1000"
-                style={{ width: `${aiResult.score}%`, background: aiResult.score >= 80 ? '#22C55E' : aiResult.score >= 60 ? '#6D4AFF' : '#F59E0B' }} />
-            </div>
-
-            <p className="text-sm text-dark-muted italic">"{aiResult.reasoning}"</p>
-
-            {/* Extracted data */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Canton flow info */}
+            <div className="bg-dark-bg border border-dark-border rounded-xl p-4 space-y-1.5">
+              <p className="text-xs font-semibold text-white mb-2">What happens on Canton when you submit:</p>
               {[
-                { label: 'Invoice #', val: aiResult.extractedData.invoiceNumber },
-                { label: 'Debtor', val: aiResult.extractedData.debtorName },
-                { label: 'Amount', val: `${aiResult.extractedData.currency} ${aiResult.extractedData.amount?.toLocaleString()}` },
-                { label: 'Due Date', val: aiResult.extractedData.dueDate },
-                { label: 'Description', val: aiResult.extractedData.description },
-                { label: 'Verified', val: aiResult.isVerified ? '✓ Yes' : '✗ No' },
-              ].map(item => (
-                <div key={item.label} className="bg-dark-bg border border-dark-border rounded-xl p-3">
-                  <p className="text-xs text-dark-muted">{item.label}</p>
-                  <p className="text-sm font-medium text-white truncate">{item.val}</p>
+                'InvoiceContract created with your party as signatory',
+                'Risk score computed (tenor, amount, currency, debtor profile)',
+                'RegistryEntry created — prevents double-financing fraud',
+                'Invoice status: Pending → awaiting platform verification',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-xs text-violet-400 font-bold shrink-0">{i + 1}.</span>
+                  <p className="text-xs text-dark-muted">{step}</p>
                 </div>
               ))}
             </div>
 
-            {/* Risk / positive factors */}
-            <div className="grid grid-cols-2 gap-4">
-              {aiResult.positiveFactors.length > 0 && (
-                <div>
-                  <p className="text-xs text-green-400 font-semibold mb-2">Positive Factors</p>
-                  <ul className="space-y-1">
-                    {aiResult.positiveFactors.map((f, i) => <li key={i} className="text-xs text-dark-muted flex gap-1.5"><span className="text-green-400">+</span>{f}</li>)}
-                  </ul>
-                </div>
-              )}
-              {aiResult.riskFactors.length > 0 && (
-                <div>
-                  <p className="text-xs text-yellow-400 font-semibold mb-2">Risk Factors</p>
-                  <ul className="space-y-1">
-                    {aiResult.riskFactors.map((f, i) => <li key={i} className="text-xs text-dark-muted flex gap-1.5"><span className="text-yellow-400">−</span>{f}</li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {aiResult.fraudFlags.length > 0 && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
-                <p className="text-xs text-red-400 font-semibold mb-1">⚠ Fraud Flags</p>
-                {aiResult.fraudFlags.map((f, i) => <p key={i} className="text-xs text-dark-muted">{f}</p>)}
+            {!party && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-xs text-yellow-400">
+                Connect your Canton wallet first to submit as a real party on the ledger.
               </div>
             )}
 
             <button
-              disabled={!aiResult.isVerified}
-              className="w-full bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white font-semibold text-sm py-3 rounded-xl transition-colors"
+              onClick={handleSubmit}
+              disabled={!form.debtorName || !form.amount || !form.dueDate}
+              className="w-full bg-violet-500 hover:bg-violet-600 disabled:opacity-50 text-white font-semibold text-sm py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              {aiResult.isVerified ? 'Submit to Canton Ledger & List for Auction →' : 'Cannot list — verification failed'}
+              <ShieldCheck className="w-4 h-4" />
+              Create InvoiceContract on Canton
             </button>
-            <p className="text-xs text-dark-muted text-center">
-              This score will be recorded permanently in the Daml InvoiceContract on Canton Network
-            </p>
+          </div>
+        )}
+
+        {/* Canton result */}
+        {result && (
+          <div className={cn('rounded-2xl p-6 border space-y-4', result.ok ? 'bg-dark-card border-green-500/30' : 'bg-red-500/5 border-red-500/30')}>
+            {result.ok ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <span className="text-sm font-semibold text-white">InvoiceContract created on Canton</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-xs font-bold px-2.5 py-1 rounded-md border',
+                      result.riskGrade === 'A' ? 'bg-green-500/15 text-green-400 border-green-500/30' :
+                      result.riskGrade === 'B' ? 'bg-violet-500/15 text-violet-400 border-violet-500/30' :
+                      'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
+                    )}>Grade {result.riskGrade}</span>
+                    <span className="text-2xl font-bold text-white">{result.riskScore}<span className="text-sm text-dark-muted">/100</span></span>
+                  </div>
+                </div>
+
+                <div className="h-1.5 bg-dark-border rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${result.riskScore}%`, background: (result.riskScore ?? 0) >= 80 ? '#22C55E' : (result.riskScore ?? 0) >= 60 ? '#6D4AFF' : '#F59E0B' }} />
+                </div>
+
+                <p className="text-sm text-dark-muted italic">"{result.summary}"</p>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Contract ID', val: result.contractId?.slice(0, 20) + '…' },
+                    { label: 'Advance Rate Range', val: result.advanceRateRange },
+                    { label: 'Tenor', val: `${result.tenorDays} days` },
+                  ].map(item => (
+                    <div key={item.label} className="bg-dark-bg border border-dark-border rounded-xl p-3">
+                      <p className="text-xs text-dark-muted">{item.label}</p>
+                      <p className="text-sm font-medium text-white font-mono truncate">{item.val}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {(result.positiveFactors ?? []).length > 0 && (
+                    <div>
+                      <p className="text-xs text-green-400 font-semibold mb-2">Positive Factors</p>
+                      <ul className="space-y-1">{result.positiveFactors?.map((f, i) => <li key={i} className="text-xs text-dark-muted flex gap-1.5"><span className="text-green-400">+</span>{f}</li>)}</ul>
+                    </div>
+                  )}
+                  {(result.riskFactors ?? []).length > 0 && (
+                    <div>
+                      <p className="text-xs text-yellow-400 font-semibold mb-2">Risk Factors</p>
+                      <ul className="space-y-1">{result.riskFactors?.map((f, i) => <li key={i} className="text-xs text-dark-muted flex gap-1.5"><span className="text-yellow-400">−</span>{f}</li>)}</ul>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-dark-bg border border-violet-500/20 rounded-xl p-3">
+                  <p className="text-xs text-dark-muted font-mono">{result.cantonTemplateId}</p>
+                </div>
+
+                <button className="w-full bg-violet-500 hover:bg-violet-600 text-white font-semibold text-sm py-3 rounded-xl transition-colors">
+                  List for Sealed-Bid Auction →
+                </button>
+              </>
+            ) : (
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-400">Submission failed</p>
+                  <p className="text-xs text-dark-muted mt-0.5">{result.error}</p>
+                  {result.error?.includes('INVOPLUS_PACKAGE_ID') && (
+                    <p className="text-xs text-violet-400 mt-2">Deploy the Daml DAR via Seaport IDE first, then set INVOPLUS_PACKAGE_ID in .env.local</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -284,10 +282,8 @@ export default function InvoicesPage() {
           <div className="flex items-center gap-2 flex-wrap">
             {['all', 'pending', 'verified', 'bidding', 'funded'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={cn(
-                  'text-xs font-medium px-3 py-1.5 rounded-lg capitalize border transition-all',
-                  filter === f ? 'bg-violet-500 border-violet-500 text-white' : 'bg-dark-card border-dark-border text-dark-muted hover:text-white'
-                )}>
+                className={cn('text-xs font-medium px-3 py-1.5 rounded-lg capitalize border transition-all',
+                  filter === f ? 'bg-violet-500 border-violet-500 text-white' : 'bg-dark-card border-dark-border text-dark-muted hover:text-white')}>
                 {f === 'all' ? 'All Invoices' : f}
               </button>
             ))}
@@ -307,7 +303,7 @@ export default function InvoicesPage() {
         <div className="bg-dark-card border border-dark-border rounded-2xl overflow-hidden">
           <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-5 py-3 border-b border-dark-border text-xs font-semibold text-dark-muted uppercase tracking-wider">
             <span>Invoice / Debtor</span><span>Amount</span><span>Due Date</span>
-            <span>AI Score</span><span>Status</span><span>Action</span>
+            <span>Risk Score</span><span>Status</span><span>Action</span>
           </div>
           <div className="divide-y divide-dark-border">
             {filtered.map(inv => {
@@ -332,25 +328,19 @@ export default function InvoicesPage() {
                         </div>
                         <span className="text-xs text-white font-medium">{inv.aiScore}</span>
                       </>
-                    ) : (
-                      <span className="text-xs text-dark-muted">Pending</span>
-                    )}
+                    ) : <span className="text-xs text-dark-muted">Pending</span>}
                   </div>
                   <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border w-fit', sc.color)}>
                     <Icon className="w-3 h-3" />{sc.label}
                   </span>
                   <div>
                     {inv.status === 'verified' && (
-                      <a href="/dashboard/marketplace" className="text-xs font-semibold text-violet-400 hover:text-white bg-violet-500/10 hover:bg-violet-500 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all">
-                        List for Bids
-                      </a>
+                      <a href="/dashboard/marketplace" className="text-xs font-semibold text-violet-400 hover:text-white bg-violet-500/10 hover:bg-violet-500 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all">List for Bids</a>
                     )}
                     {inv.status === 'bidding' && (
-                      <a href="/dashboard/marketplace" className="text-xs font-semibold text-violet-400 hover:text-white bg-violet-500/10 hover:bg-violet-500 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all">
-                        View Offers
-                      </a>
+                      <a href="/dashboard/marketplace" className="text-xs font-semibold text-violet-400 hover:text-white bg-violet-500/10 hover:bg-violet-500 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all">View Offers</a>
                     )}
-                    {(inv.status === 'funded' || inv.status === 'pending') && <span className="text-xs text-dark-muted">—</span>}
+                    {['funded', 'pending'].includes(inv.status) && <span className="text-xs text-dark-muted">—</span>}
                   </div>
                 </div>
               )
