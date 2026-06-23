@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { Lock, CheckCircle, Clock, XCircle, EyeOff, Zap, Loader2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -121,6 +121,53 @@ export default function OffersPage() {
       setWithdrawing(null)
     }
   }
+
+  useEffect(() => {
+    if (!party?.id) return
+    // Only financiers will have SealedBid contracts as signatory
+    if (party.type !== 'financier') return
+
+    const load = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [party.id], template: 'bid' }),
+        })
+        const data = await res.json()
+        if (data.ok) {
+          const rows: MyOffer[] = (data.contracts || []).map((c: any, idx: number) => {
+            const p = c.payload || {}
+            const face = Number(p.faceAmount?.value ?? p.faceAmount ?? 0)
+            const advance = Number(p.advanceRate?.value ?? p.advanceRate ?? 0)
+            const annual = Number(p.annualRate?.value ?? p.annualRate ?? 0)
+            const net = Math.round(face * (advance))
+            const estYield = Math.round(net * (annual))
+            const status = p.isRevealed ? 'won' : 'pending'
+            return {
+              id: c.contractId,
+              auctionId: p.invoiceId?.value ?? p.invoiceId ?? `inv-${idx}`,
+              buyer: p.seller?.value ?? p.seller ?? 'seller',
+              invoiceAmount: face,
+              advanceRate: Math.round(advance * 100),
+              annualRate: Math.round(annual * 100),
+              netToSeller: net,
+              estimatedYield: estYield,
+              status: status as any,
+              closedAt: null,
+              cantonRef: c.contractId,
+              bidContractId: c.contractId,
+            }
+          })
+          setOffers(rows)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    load()
+  }, [party])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

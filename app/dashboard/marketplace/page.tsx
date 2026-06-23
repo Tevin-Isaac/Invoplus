@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { Lock, Timer, TrendingUp, Shield, ChevronRight, Eye, EyeOff, CheckCircle, Zap, Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -276,7 +276,53 @@ function BidModal({ auction, onClose, onBidPlaced }: {
 export default function MarketplacePage() {
   const [auctions, setAuctions] = useState<Auction[]>(demoAuctions)
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
-  const { ledgerStatus } = useCanton()
+  const { ledgerStatus, party } = useCanton()
+
+  useEffect(() => {
+    if (!party?.id) return
+
+    const load = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [party.id], template: 'auction' }),
+        })
+        const data = await res.json()
+        if (data.ok) {
+          const rows = (data.contracts || []).map((c: any) => {
+            const p = c.payload || {}
+            const face = Number(p.faceAmount?.value ?? p.faceAmount ?? 0)
+            const riskScore = Number(p.aiScore?.value ?? p.aiScore ?? 0)
+            const grade = p.riskGrade?.value ?? p.riskGrade ?? '—'
+            return {
+              id: c.contractId.slice(0, 12),
+              invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
+              buyer: p.debtorName?.value ?? p.debtorName ?? 'Unknown',
+              industry: '—',
+              amount: face,
+              currency: p.currency?.value ?? p.currency ?? 'USD',
+              dueDate: p.dueDate?.value ?? p.dueDate ?? '',
+              grade,
+              riskScore,
+              timeLeft: 'N/A',
+              bidsReceived: Number(p.bidCount ?? 0),
+              myBid: null,
+              status: p.settled ? 'settled' : 'open',
+              expectedYield: '—',
+              auctionContractId: c.contractId,
+            } as Auction
+          })
+
+          setAuctions(rows)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    load()
+  }, [party])
 
   const handleBidPlaced = (auctionId: string, advanceRate: number) => {
     setAuctions(prev => prev.map(a => a.id === auctionId ? { ...a, myBid: advanceRate, bidsReceived: a.bidsReceived + 1 } : a))

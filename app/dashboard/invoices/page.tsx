@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { Upload, Search, Filter, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -8,13 +8,8 @@ import { useCanton } from '@/lib/canton'
 
 type InvoiceStatus = 'funded' | 'bidding' | 'verified' | 'pending' | 'rejected'
 
-const mockInvoices = [
-  { id: 'INV-2026-0042', buyer: 'GlobalTech Solutions Ltd',  amount: 125000, currency: 'USD', dueDate: '2026-09-23', status: 'funded'   as InvoiceStatus, grade: 'A', aiScore: 87 },
-  { id: 'INV-2026-0041', buyer: 'Apex Manufacturing',        amount: 89500,  currency: 'USD', dueDate: '2026-10-12', status: 'bidding'  as InvoiceStatus, grade: 'A', aiScore: 91 },
-  { id: 'INV-2026-0040', buyer: 'Summit Retail Group',       amount: 234000, currency: 'USD', dueDate: '2026-08-30', status: 'verified' as InvoiceStatus, grade: 'B', aiScore: 74 },
-  { id: 'INV-2026-0039', buyer: 'NovaBuild Corp',            amount: 67200,  currency: 'USD', dueDate: '2026-08-15', status: 'funded'   as InvoiceStatus, grade: 'B', aiScore: 79 },
-  { id: 'INV-2026-0038', buyer: 'Nexus Partners Ltd',        amount: 55000,  currency: 'USD', dueDate: '2026-09-05', status: 'pending'  as InvoiceStatus, grade: '—', aiScore: 0  },
-]
+// Local invoice rows fetched from Canton ACS
+const mockInvoices: any[] = []
 
 const statusConfig: Record<InvoiceStatus, { label: string; icon: typeof CheckCircle; color: string }> = {
   funded:   { label: 'Funded',   icon: CheckCircle, color: 'text-green-400 bg-green-500/10 border-green-500/20' },
@@ -43,6 +38,7 @@ const today = new Date().toISOString().split('T')[0]
 
 export default function InvoicesPage() {
   const { party } = useCanton()
+  const [invoices, setInvoices] = useState<any[]>(mockInvoices)
   const [filter, setFilter] = useState<string>('all')
   const [drag, setDrag] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -53,7 +49,43 @@ export default function InvoicesPage() {
     currency: 'USD', issueDate: today, dueDate: '',
   })
 
-  const filtered = filter === 'all' ? mockInvoices : mockInvoices.filter(i => i.status === filter)
+  const filtered = filter === 'all' ? invoices : invoices.filter(i => i.status === filter)
+
+  useEffect(() => {
+    if (!party?.id) return
+
+    const load = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [party.id], template: 'invoice' }),
+        })
+        const data = await res.json()
+        if (data.ok) {
+          const rows = (data.contracts || []).map((c: any) => {
+            const p = c.payload || {}
+            const face = p.faceAmount && (p.faceAmount.value ?? p.faceAmount) ? Number(p.faceAmount.value ?? p.faceAmount) : 0
+            return {
+              id: c.contractId,
+              buyer: (p.debtorName?.value ?? p.debtorName) || 'Unknown',
+              amount: face,
+              currency: (p.currency?.value ?? p.currency) || 'USD',
+              dueDate: (p.dueDate?.value ?? p.dueDate) || '',
+              status: (p.status?.value ?? p.status) || (p.settled ? 'funded' : 'pending'),
+              grade: (p.riskGrade?.value ?? p.riskGrade) || '—',
+              aiScore: Number(p.aiScore?.value ?? p.aiScore ?? 0),
+            }
+          })
+          setInvoices(rows)
+        }
+      } catch (e) {
+        // ignore — keep empty state
+      }
+    }
+
+    load()
+  }, [party])
 
   const handleSubmit = async () => {
     if (!form.debtorName || !form.amount || !form.dueDate) return
