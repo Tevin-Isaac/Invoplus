@@ -6,6 +6,7 @@ export interface CantonParty {
   id: string
   displayName: string
   type: 'business' | 'financier'
+  source: 'provisioned' | 'seaport'  // how the party was connected
 }
 
 export interface LedgerStatus {
@@ -19,7 +20,10 @@ export interface LedgerStatus {
 interface CantonContextType {
   isConnected: boolean
   party: CantonParty | null
+  /** Provision a new Canton party via the platform M2M credentials */
   connect: (role?: 'business' | 'financier') => Promise<void>
+  /** Use an existing Seaport party ID directly */
+  connectWithPartyId: (partyId: string, displayName: string, role: 'business' | 'financier') => Promise<void>
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
@@ -48,40 +52,67 @@ export function CantonProvider({ children }: { children: ReactNode }) {
         setLedgerLoading(false)
       }
     }
-
     fetchStatus()
     const interval = setInterval(fetchStatus, 30_000)
     return () => clearInterval(interval)
   }, [])
 
+  /**
+   * Provision a brand-new Canton party via platform M2M credentials.
+   * Used when the user doesn't have an existing Seaport party.
+   */
   const connect = useCallback(async (role: 'business' | 'financier' = 'business') => {
     setIsConnecting(true)
     try {
-      // Provision a real Canton party on the DevNet
       const res = await fetch('/api/canton/provision-party', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          displayName: role === 'business' ? 'InvoPlus Business Demo' : 'InvoPlus Financier Demo',
+          displayName: role === 'business' ? 'InvoPlus Business' : 'InvoPlus Financier',
           role,
         }),
       })
       const data = await res.json()
 
       if (data.ok) {
-        setParty({ id: data.partyId, displayName: data.displayName, type: role })
+        setParty({ id: data.partyId, displayName: data.displayName, type: role, source: 'provisioned' })
         setIsConnected(true)
       } else {
-        // Fallback to demo party if provisioning fails
+        // Fallback to offline demo party so the UI still works
         setParty({
-          id: `demo_${role}::fallback`,
+          id: `demo_${role}::${Date.now()}`,
           displayName: role === 'business' ? 'Demo Business' : 'Demo Financier',
           type: role,
+          source: 'provisioned',
         })
         setIsConnected(true)
       }
     } catch {
-      setParty({ id: `demo_${role}::offline`, displayName: 'Demo Party (offline)', type: role })
+      setParty({
+        id: `demo_${role}::offline`,
+        displayName: 'Demo Party (offline)',
+        type: role,
+        source: 'provisioned',
+      })
+      setIsConnected(true)
+    } finally {
+      setIsConnecting(false)
+    }
+  }, [])
+
+  /**
+   * Connect using an existing Seaport party ID that the user pasted.
+   * The party has already been validated against the ledger before this is called.
+   * We store it exactly as-is so all contract submissions use the user's real identity.
+   */
+  const connectWithPartyId = useCallback(async (
+    partyId: string,
+    displayName: string,
+    role: 'business' | 'financier',
+  ) => {
+    setIsConnecting(true)
+    try {
+      setParty({ id: partyId, displayName, type: role, source: 'seaport' })
       setIsConnected(true)
     } finally {
       setIsConnecting(false)
@@ -95,7 +126,8 @@ export function CantonProvider({ children }: { children: ReactNode }) {
 
   return (
     <CantonContext.Provider value={{
-      isConnected, party, connect, disconnect, isConnecting, ledgerStatus, ledgerLoading,
+      isConnected, party, connect, connectWithPartyId, disconnect,
+      isConnecting, ledgerStatus, ledgerLoading,
     }}>
       {children}
     </CantonContext.Provider>

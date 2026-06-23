@@ -58,6 +58,9 @@ export default function SettingsPage() {
                   <p className="text-xs text-dark-muted mb-1">Display Name</p>
                   <div className="flex items-center gap-2 bg-dark-bg border border-dark-border rounded-xl px-3 py-2.5">
                     <span className="text-sm text-white flex-1">{party.displayName}</span>
+                    {(party as any).source === 'seaport' && (
+                      <span className="text-xs px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-400 border border-violet-500/20 shrink-0">Seaport</span>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -66,6 +69,14 @@ export default function SettingsPage() {
                     <span className="text-xs text-dark-muted font-mono flex-1 truncate">{party.id}</span>
                     <CopyButton text={party.id} />
                   </div>
+                </div>
+                <div>
+                  <p className="text-xs text-dark-muted mb-1">Connection Source</p>
+                  <p className="text-xs text-white px-3 py-2 bg-dark-bg border border-dark-border rounded-xl">
+                    {(party as any).source === 'seaport'
+                      ? 'Seaport IDE — your existing Canton wallet party'
+                      : 'Provisioned by InvoPlus platform on Canton DevNet'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-dark-muted mb-1">Role</p>
