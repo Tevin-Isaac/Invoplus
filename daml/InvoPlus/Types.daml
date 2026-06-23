@@ -1,0 +1,42 @@
+-- InvoPlus: Shared types and data structures for Canton invoice financing
+module InvoPlus.Types where
+
+import DA.Date (Date)
+
+-- Risk grade assigned by AI scoring engine
+data RiskGrade = Grade_A | Grade_B | Grade_C | Grade_D
+  deriving (Eq, Show, Ord)
+
+-- Lifecycle states of an invoice on the platform
+data InvoiceStatus
+  = Pending     -- uploaded, awaiting AI verification
+  | Verified    -- AI-scored, ready to list
+  | Auctioning  -- live sealed-bid auction in progress
+  | Funded      -- auction won, invoice financed
+  | Rejected    -- failed verification or fraud check
+  | Repaid      -- debtor paid, financier returned principal + yield
+  deriving (Eq, Show)
+
+-- Represents monetary amounts with explicit currency
+data Money = Money
+  with
+    amount   : Decimal
+    currency : Text    -- ISO 4217: "USD", "EUR", etc.
+  deriving (Eq, Show)
+
+-- Key auction parameters attached to each listing
+data AuctionTerms = AuctionTerms
+  with
+    minAdvanceRate : Decimal  -- floor: e.g. 0.80 = 80%
+    maxAnnualRate  : Decimal  -- ceiling on yield: e.g. 0.20 = 20% APR
+    durationHours  : Int      -- how long the auction runs
+  deriving (Eq, Show)
+
+-- Result of a won bid — stored in FundedInvoice
+data BidResult = BidResult
+  with
+    financier    : Party
+    advanceRate  : Decimal  -- e.g. 0.88 = 88% of face value disbursed
+    annualRate   : Decimal  -- agreed annual yield rate
+    fundedAmount : Decimal  -- actual cash sent to seller
+  deriving (Eq, Show)

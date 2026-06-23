@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 379 377">
+  <rect width="379" height="377" rx="24" fill="#16161A"/>
+  <circle cx="189" cy="160" r="80" fill="#1A1730" stroke="#22C55E" stroke-width="2"/>
+  <text x="189" y="178" font-family="sans-serif" font-size="52" text-anchor="middle">⚡</text>
+  <text x="189" y="272" font-family="sans-serif" font-size="16" font-weight="700" fill="white" text-anchor="middle">Atomic Settlement</text>
+  <text x="189" y="294" font-family="sans-serif" font-size="12" fill="#9898A6" text-anchor="middle">All parties settle simultaneously</text>
+  <text x="189" y="312" font-family="sans-serif" font-size="12" fill="#9898A6" text-anchor="middle">No partial fills. No failed trades.</text>
+  <rect x="129" y="328" width="121" height="28" rx="8" fill="#22C55E" fill-opacity="0.15"/>
+  <text x="189" y="347" font-family="sans-serif" font-size="12" fill="#22C55E" text-anchor="middle">3.2s avg · on Canton</text>
+</svg>

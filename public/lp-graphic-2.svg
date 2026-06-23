@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 731 700" style="background:#0D0D0F">
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D0D0F"/>
+      <stop offset="100%" stop-color="#16161A"/>
+    </linearGradient>
+    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8B6AFF"/>
+      <stop offset="100%" stop-color="#6D4AFF"/>
+    </linearGradient>
+    <linearGradient id="greenBar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+  <rect width="731" height="700" fill="url(#bg4)"/>
+
+  <!-- Title -->
+  <text x="365" y="48" font-family="sans-serif" font-size="20" font-weight="700" fill="white" text-anchor="middle">Invoice Financing vs. Traditional Credit</text>
+  <text x="365" y="68" font-family="sans-serif" font-size="12" fill="#9898A6" text-anchor="middle">InvoPlus Canton Network · Competitive sealed-bid outcomes</text>
+
+  <!-- Comparison bars -->
+  <!-- Traditional bank -->
+  <rect x="60" y="100" width="280" height="80" rx="12" fill="#16161A" stroke="#252530" stroke-width="1"/>
+  <text x="80" y="128" font-family="sans-serif" font-size="12" fill="#9898A6">Traditional Bank Loan</text>
+  <text x="80" y="150" font-family="sans-serif" font-size="22" font-weight="700" fill="#EF4444">12–18% APR</text>
+  <text x="80" y="168" font-family="sans-serif" font-size="10" fill="#9898A6">30–90 days approval · No privacy</text>
+
+  <!-- InvoPlus -->
+  <rect x="380" y="100" width="310" height="80" rx="12" fill="#1A1730" stroke="#6D4AFF" stroke-width="1.5"/>
+  <text x="400" y="128" font-family="sans-serif" font-size="12" fill="#9898A6">InvoPlus Sealed-Bid</text>
+  <text x="400" y="150" font-family="sans-serif" font-size="22" font-weight="700" fill="#22C55E">8–11% APR</text>
+  <text x="400" y="168" font-family="sans-serif" font-size="10" fill="#22C55E">3.2s settlement · Full privacy ✓</text>
+
+  <!-- Process timeline comparison -->
+  <text x="60" y="216" font-family="sans-serif" font-size="13" font-weight="600" fill="white">Time to Funding</text>
+
+  <!-- Traditional timeline -->
+  <text x="60" y="244" font-family="sans-serif" font-size="10" fill="#9898A6">Traditional</text>
+  <rect x="140" y="232" width="300" height="20" rx="4" fill="#252530"/>
+  <rect x="140" y="232" width="280" height="20" rx="4" fill="#EF4444" fill-opacity="0.4"/>
+  <text x="450" y="246" font-family="sans-serif" font-size="10" fill="#EF4444">45 days avg</text>
+
+  <!-- InvoPlus timeline -->
+  <text x="60" y="272" font-family="sans-serif" font-size="10" fill="#9898A6">InvoPlus</text>
+  <rect x="140" y="260" width="300" height="20" rx="4" fill="#252530"/>
+  <rect x="140" y="260" width="12" height="20" rx="4" fill="#22C55E"/>
+  <text x="162" y="274" font-family="sans-serif" font-size="10" fill="#22C55E">3.2s</text>
+
+  <!-- Chart: Advance rates by grade -->
+  <text x="60" y="320" font-family="sans-serif" font-size="13" font-weight="600" fill="white">Advance Rates by Invoice Grade</text>
+  <text x="60" y="336" font-family="sans-serif" font-size="10" fill="#9898A6">Based on 240 auctions settled on Canton DevNet</text>
+
+  <!-- Bar chart -->
+  <!-- Grade A -->
+  <rect x="80" y="550" width="80" height="-170" rx="6" fill="url(#barGrad)"/>
+  <rect x="80" y="380" width="80" height="170" rx="6" fill="url(#barGrad)"/>
+  <text x="120" y="368" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle" font-weight="700">91.2%</text>
+  <text x="120" y="572" font-family="sans-serif" font-size="11" fill="#9898A6" text-anchor="middle">Grade A</text>
+
+  <!-- Grade B -->
+  <rect x="200" y="420" width="80" height="130" rx="6" fill="url(#barGrad)" fill-opacity="0.8"/>
+  <text x="240" y="408" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle" font-weight="700">87.4%</text>
+  <text x="240" y="572" font-family="sans-serif" font-size="11" fill="#9898A6" text-anchor="middle">Grade B</text>
+
+  <!-- Grade C -->
+  <rect x="320" y="460" width="80" height="90" rx="6" fill="url(#barGrad)" fill-opacity="0.6"/>
+  <text x="360" y="448" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle" font-weight="700">82.1%</text>
+  <text x="360" y="572" font-family="sans-serif" font-size="11" fill="#9898A6" text-anchor="middle">Grade C</text>
+
+  <!-- Traditional bank (comparison) -->
+  <rect x="460" y="490" width="80" height="60" rx="6" fill="#EF4444" fill-opacity="0.5"/>
+  <text x="500" y="478" font-family="sans-serif" font-size="12" fill="#EF4444" text-anchor="middle" font-weight="700">~70%</text>
+  <text x="500" y="572" font-family="sans-serif" font-size="11" fill="#9898A6" text-anchor="middle">Bank (avg)</text>
+
+  <!-- Line base -->
+  <line x1="60" y1="550" x2="660" y2="550" stroke="#252530" stroke-width="1"/>
+
+  <!-- Legend -->
+  <rect x="560" y="380" width="14" height="14" rx="3" fill="url(#barGrad)"/>
+  <text x="580" y="392" font-family="sans-serif" font-size="10" fill="#9898A6">InvoPlus</text>
+  <rect x="560" y="404" width="14" height="14" rx="3" fill="#EF4444" fill-opacity="0.5"/>
+  <text x="580" y="416" font-family="sans-serif" font-size="10" fill="#9898A6">Traditional</text>
+
+  <!-- Key stats footer -->
+  <rect x="60" y="600" width="612" height="68" rx="12" fill="#16161A" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="160" y="624" font-family="sans-serif" font-size="10" fill="#9898A6" text-anchor="middle">Invoices Financed</text>
+  <text x="160" y="648" font-family="sans-serif" font-size="22" font-weight="700" fill="white" text-anchor="middle">$12.8M</text>
+  <line x1="280" y1="610" x2="280" y2="658" stroke="#252530" stroke-width="1"/>
+  <text x="380" y="624" font-family="sans-serif" font-size="10" fill="#9898A6" text-anchor="middle">Avg Advance Rate</text>
+  <text x="380" y="648" font-family="sans-serif" font-size="22" font-weight="700" fill="#6D4AFF" text-anchor="middle">88.4%</text>
+  <line x1="480" y1="610" x2="480" y2="658" stroke="#252530" stroke-width="1"/>
+  <text x="570" y="624" font-family="sans-serif" font-size="10" fill="#9898A6" text-anchor="middle">Fraud Prevented</text>
+  <text x="570" y="648" font-family="sans-serif" font-size="22" font-weight="700" fill="#22C55E" text-anchor="middle">$0</text>
+</svg>

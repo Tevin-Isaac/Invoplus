@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" style="background:#0D0D0F">
+  <defs>
+    <radialGradient id="g1" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#6D4AFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#6D4AFF" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="hexGrid" width="60" height="52" patternUnits="userSpaceOnUse">
+      <polygon points="30,2 58,17 58,47 30,62 2,47 2,17" fill="none" stroke="#252530" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+  <rect width="1024" height="1024" fill="#0D0D0F"/>
+  <rect width="1024" height="1024" fill="url(#hexGrid)"/>
+  <circle cx="512" cy="512" r="420" fill="url(#g1)"/>
+
+  <!-- Outer ring -->
+  <circle cx="512" cy="512" r="380" fill="none" stroke="#252530" stroke-width="1" stroke-dasharray="12 6"/>
+  <circle cx="512" cy="512" r="280" fill="none" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="8 4"/>
+  <circle cx="512" cy="512" r="180" fill="none" stroke="#6D4AFF" stroke-width="1.5" stroke-opacity="0.5"/>
+
+  <!-- Center: Canton logo/symbol -->
+  <circle cx="512" cy="512" r="90" fill="#1A1730" stroke="#6D4AFF" stroke-width="2"/>
+  <text x="512" y="495" font-family="sans-serif" font-size="36" text-anchor="middle">🏛️</text>
+  <text x="512" y="530" font-family="sans-serif" font-size="14" font-weight="700" fill="#6D4AFF" text-anchor="middle">CANTON</text>
+  <text x="512" y="546" font-family="sans-serif" font-size="10" fill="#9898A6" text-anchor="middle">NETWORK</text>
+
+  <!-- Orbit nodes -->
+  <!-- Node 1: Invoice (top) -->
+  <circle cx="512" cy="232" r="52" fill="#16161A" stroke="#22C55E" stroke-width="2"/>
+  <text x="512" y="224" font-family="sans-serif" font-size="26" text-anchor="middle">📄</text>
+  <text x="512" y="244" font-family="sans-serif" font-size="10" font-weight="700" fill="#22C55E" text-anchor="middle">INVOICE</text>
+  <text x="512" y="258" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">uploaded</text>
+
+  <!-- Node 2: AI (top right) -->
+  <circle cx="765" cy="335" r="52" fill="#16161A" stroke="#F59E0B" stroke-width="2"/>
+  <text x="765" y="327" font-family="sans-serif" font-size="26" text-anchor="middle">🤖</text>
+  <text x="765" y="347" font-family="sans-serif" font-size="10" font-weight="700" fill="#F59E0B" text-anchor="middle">AI SCORE</text>
+  <text x="765" y="361" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">87 / Grade A</text>
+
+  <!-- Node 3: Auction (right) -->
+  <circle cx="832" cy="512" r="52" fill="#16161A" stroke="#6D4AFF" stroke-width="2"/>
+  <text x="832" y="504" font-family="sans-serif" font-size="26" text-anchor="middle">🔒</text>
+  <text x="832" y="524" font-family="sans-serif" font-size="10" font-weight="700" fill="#6D4AFF" text-anchor="middle">AUCTION</text>
+  <text x="832" y="538" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">sealed bids</text>
+
+  <!-- Node 4: Settlement (bottom right) -->
+  <circle cx="765" cy="689" r="52" fill="#16161A" stroke="#6D4AFF" stroke-width="2"/>
+  <text x="765" y="681" font-family="sans-serif" font-size="26" text-anchor="middle">⚡</text>
+  <text x="765" y="701" font-family="sans-serif" font-size="10" font-weight="700" fill="#6D4AFF" text-anchor="middle">SETTLE</text>
+  <text x="765" y="715" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">3.2s atomic</text>
+
+  <!-- Node 5: Funded (bottom) -->
+  <circle cx="512" cy="792" r="52" fill="#16161A" stroke="#22C55E" stroke-width="2"/>
+  <text x="512" y="784" font-family="sans-serif" font-size="26" text-anchor="middle">💰</text>
+  <text x="512" y="804" font-family="sans-serif" font-size="10" font-weight="700" fill="#22C55E" text-anchor="middle">FUNDED</text>
+  <text x="512" y="818" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">$110,000</text>
+
+  <!-- Node 6: Registry (bottom left) -->
+  <circle cx="259" cy="689" r="52" fill="#16161A" stroke="#EF4444" stroke-width="2"/>
+  <text x="259" y="681" font-family="sans-serif" font-size="26" text-anchor="middle">🛡️</text>
+  <text x="259" y="701" font-family="sans-serif" font-size="10" font-weight="700" fill="#EF4444" text-anchor="middle">REGISTRY</text>
+  <text x="259" y="715" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">anti-fraud</text>
+
+  <!-- Node 7: Repaid (left) -->
+  <circle cx="192" cy="512" r="52" fill="#16161A" stroke="#9898A6" stroke-width="2"/>
+  <text x="192" y="504" font-family="sans-serif" font-size="26" text-anchor="middle">✅</text>
+  <text x="192" y="524" font-family="sans-serif" font-size="10" font-weight="700" fill="#9898A6" text-anchor="middle">REPAID</text>
+  <text x="192" y="538" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">full cycle</text>
+
+  <!-- Node 8: Seller (top left) -->
+  <circle cx="259" cy="335" r="52" fill="#16161A" stroke="#22C55E" stroke-width="2"/>
+  <text x="259" y="327" font-family="sans-serif" font-size="26" text-anchor="middle">🏢</text>
+  <text x="259" y="347" font-family="sans-serif" font-size="10" font-weight="700" fill="#22C55E" text-anchor="middle">SELLER</text>
+  <text x="259" y="361" font-family="sans-serif" font-size="9" fill="#9898A6" text-anchor="middle">Acme Corp</text>
+
+  <!-- Connection lines (drawn over background but behind nodes) -->
+  <!-- All connections to center -->
+  <line x1="512" y1="284" x2="512" y2="422" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="726" y1="363" x2="626" y2="446" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="780" y1="512" x2="602" y2="512" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="726" y1="661" x2="626" y2="578" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="512" y1="740" x2="512" y2="602" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="298" y1="661" x2="398" y2="578" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="244" y1="512" x2="422" y2="512" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+  <line x1="298" y1="363" x2="398" y2="446" stroke="#6D4AFF" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="6 3"/>
+
+  <!-- Rotating particles (static representation) -->
+  <circle cx="512" cy="132" r="6" fill="#6D4AFF"/>
+  <circle cx="736" cy="248" r="6" fill="#6D4AFF"/>
+  <circle cx="880" cy="440" r="6" fill="#6D4AFF"/>
+  <circle cx="820" cy="660" r="6" fill="#6D4AFF"/>
+  <circle cx="620" cy="840" r="6" fill="#6D4AFF"/>
+  <circle cx="380" cy="880" r="6" fill="#6D4AFF"/>
+  <circle cx="180" cy="720" r="6" fill="#6D4AFF"/>
+  <circle cx="130" cy="480" r="6" fill="#6D4AFF"/>
+
+  <!-- Center label -->
+  <text x="512" y="940" font-family="sans-serif" font-size="13" fill="#9898A6" text-anchor="middle">InvoPlus · Powered by Canton Network · Private · Atomic · Trustless</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 239 178">
+  <rect width="239" height="178" rx="16" fill="#16161A"/>
+  <circle cx="60" cy="89" r="36" fill="#1A1730" stroke="#6D4AFF" stroke-width="1.5"/>
+  <text x="60" y="100" font-family="sans-serif" font-size="26" text-anchor="middle">🔒</text>
+  <text x="130" y="70" font-family="sans-serif" font-size="13" font-weight="700" fill="white">Sealed Bids</text>
+  <text x="130" y="88" font-family="sans-serif" font-size="10" fill="#9898A6">Financiers cannot see</text>
+  <text x="130" y="102" font-family="sans-serif" font-size="10" fill="#9898A6">each other's offers</text>
+  <text x="130" y="122" font-family="sans-serif" font-size="10" fill="#6D4AFF">Canton sub-tx privacy</text>
+</svg>

@@ -1,0 +1,47 @@
+-- InvoPlus: Anti-fraud double-financing registry
+-- Ensures each invoice can only be financed once across the entire platform.
+-- The registry entry is created when an invoice is listed and archived when funded.
+module InvoPlus.Registry where
+
+-- The platform holds a registry entry for every listed invoice.
+-- Signatories: platform only — sellers cannot forge or remove entries.
+-- Observers: seller so they can see their own registrations.
+template RegistryEntry
+  with
+    platform       : Party
+    seller         : Party
+    invoiceHash    : Text   -- SHA-256 of (invoiceNumber + debtorTaxId + amount)
+    invoiceId      : Text   -- human-readable invoice number
+    debtorName     : Text
+    faceAmount     : Decimal
+    currency       : Text
+    registeredAt   : Time
+  where
+    signatory platform
+    observer seller
+
+    -- Platform removes the entry only when the invoice is fully repaid.
+    -- While this entry exists, no other listing with the same invoiceHash can be created.
+    choice DeregisterInvoice : ()
+      controller platform
+      do return ()
+
+-- The platform checks for an existing entry before accepting a new listing.
+-- This is enforced in the InvoiceContract.ListForAuction choice.
+template RegistryLookupRequest
+  with
+    requester    : Party
+    platform     : Party
+    invoiceHash  : Text
+  where
+    signatory requester
+    observer platform
+
+    choice ApproveListing : ()
+      -- Platform approves only when no matching RegistryEntry exists.
+      controller platform
+      do return ()
+
+    choice RejectDuplicate : ()
+      controller platform
+      do return ()

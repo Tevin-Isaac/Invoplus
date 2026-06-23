@@ -1,0 +1,76 @@
+-- InvoPlus: Daml Script for demo setup on Canton DevNet
+-- Run with: daml script --dar .daml/dist/invoplus-1.0.0.dar --script-name InvoPlus.Setup:setupDemo
+module InvoPlus.Setup where
+
+import DA.Time (time, addRelTime, seconds)
+import DA.Date (date, Month(..))
+import Daml.Script
+import InvoPlus.Types
+import InvoPlus.Invoice
+import InvoPlus.Registry
+
+-- Allocates demo parties and creates sample contracts on the DevNet sandbox.
+setupDemo : Script ()
+setupDemo = do
+  -- Allocate parties
+  platform  <- allocatePartyWithHint "InvoPlus-Platform"  (PartyIdHint "invplus_platform")
+  seller    <- allocatePartyWithHint "Acme-Corp"           (PartyIdHint "invplus_seller_acme")
+  financier <- allocatePartyWithHint "Capital-Partners"    (PartyIdHint "invplus_financier_cp")
+
+  let demoDate = date 2026 Jun 23
+  let dueDate  = date 2026 Sep 23  -- 90 days net
+
+  -- Seller uploads invoice
+  invoiceCid <- submit seller do
+    createCmd InvoiceContract with
+      seller      = seller
+      platform    = platform
+      invoiceId   = "INV-2026-0042"
+      debtorName  = "GlobalTech Solutions Ltd"
+      debtorTaxId = "GB123456789"
+      faceAmount  = 125000.0
+      currency    = "USD"
+      issueDate   = demoDate
+      dueDate     = dueDate
+      docHash     = "sha256:a3f8c2d1e4b9f7a6c5d3e2b1f8a7c6d5e4b3a2f1"
+      invoiceHash = "sha256:inv0042_globaltech_125000"
+      aiScore     = 0
+      riskGrade   = Grade_B
+      status      = Pending
+      uploadedAt  = time demoDate 9 0 0
+
+  -- Platform verifies with AI score
+  verifiedCid <- submit platform do
+    exerciseCmd invoiceCid VerifyInvoice with
+      score = 87
+      grade = Grade_A
+
+  -- Seller lists for auction (72 hours)
+  let auctionEnd = addRelTime (time demoDate 10 0 0) (seconds (72 * 3600))
+  (auctionCid, regCid) <- submit seller do
+    exerciseCmd verifiedCid ListForAuction with
+      terms = AuctionTerms with
+        minAdvanceRate = 0.82
+        maxAnnualRate  = 0.18
+        durationHours  = 72
+      auctionEnd = auctionEnd
+
+  -- Financier submits sealed bid (seller cannot see this)
+  (newAuctionCid, bidCid) <- submit financier do
+    exerciseCmd auctionCid SubmitBid with
+      financier   = financier
+      advanceRate = 0.88
+      annualRate  = 0.115
+
+  -- Platform settles auction
+  fundedCid <- submit platform do
+    exerciseCmd newAuctionCid SettleAuction with
+      winnerBidCid = bidCid
+      loserBidCids = []
+      regEntryCid  = regCid
+
+  debug "InvoPlus demo setup complete."
+  debug "FundedInvoice contract created:"
+  funded <- queryContractId platform fundedCid
+  debug funded
+  return ()

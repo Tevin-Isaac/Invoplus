@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <radialGradient id="avatarBg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#2D2A4A"/>
+      <stop offset="100%" stop-color="#1A1730"/>
+    </radialGradient>
+    <clipPath id="circle">
+      <circle cx="200" cy="200" r="200"/>
+    </clipPath>
+  </defs>
+  <circle cx="200" cy="200" r="200" fill="url(#avatarBg)"/>
+  <!-- Body/shoulders -->
+  <ellipse cx="200" cy="340" rx="110" ry="80" fill="#2D2A4A"/>
+  <!-- Neck -->
+  <rect x="180" y="230" width="40" height="50" rx="10" fill="#C9956E"/>
+  <!-- Head -->
+  <ellipse cx="200" cy="195" rx="70" ry="80" fill="#C9956E"/>
+  <!-- Hair -->
+  <ellipse cx="200" cy="140" rx="72" ry="55" fill="#2C1A0E"/>
+  <ellipse cx="140" cy="175" rx="26" ry="50" fill="#2C1A0E"/>
+  <ellipse cx="260" cy="175" rx="26" ry="50" fill="#2C1A0E"/>
+  <!-- Eyes -->
+  <ellipse cx="175" cy="200" rx="10" ry="11" fill="white"/>
+  <ellipse cx="225" cy="200" rx="10" ry="11" fill="white"/>
+  <circle cx="178" cy="202" r="6" fill="#2C1A0E"/>
+  <circle cx="228" cy="202" r="6" fill="#2C1A0E"/>
+  <circle cx="180" cy="200" r="2" fill="white"/>
+  <circle cx="230" cy="200" r="2" fill="white"/>
+  <!-- Eyebrows -->
+  <path d="M 162 188 Q 175 182 188 187" stroke="#2C1A0E" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 212 187 Q 225 182 238 188" stroke="#2C1A0E" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Nose -->
+  <path d="M 200 208 Q 193 220 200 226 Q 207 220 200 208" stroke="#B07E58" stroke-width="2" fill="none"/>
+  <!-- Smile -->
+  <path d="M 183 235 Q 200 248 217 235" stroke="#8B5A3C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Jacket/collar -->
+  <path d="M 90 400 L 130 290 L 200 310 L 270 290 L 310 400 Z" fill="#1A1730"/>
+  <path d="M 200 310 L 175 280 L 155 260 L 90 400" fill="#252545"/>
+  <path d="M 200 310 L 225 280 L 245 260 L 310 400" fill="#252545"/>
+  <!-- Tie/blouse detail -->
+  <path d="M 193 280 L 200 310 L 207 280 L 200 265 Z" fill="#6D4AFF"/>
+</svg>
