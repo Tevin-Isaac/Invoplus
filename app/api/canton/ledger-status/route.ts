@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getLedgerEnd, getPackages } from '@/lib/canton-server'
+import { getLedgerEnd, getPackages, getConnectedSynchronizers } from '@/lib/canton-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,11 +9,19 @@ export async function GET() {
       getLedgerEnd(),
       getPackages(),
     ])
+
+    let synchronizers: string[] = []
+    try {
+      const sync = await getConnectedSynchronizers()
+      synchronizers = (sync as any).connectedSynchronizers?.map((s: any) => s.synchronizerId) ?? []
+    } catch { /* optional */ }
+
     return NextResponse.json({
       ok: true,
       offset: ledgerEnd.offset,
       packageCount: packages.packageIds?.length ?? 0,
-      network: 'Canton DevNet',
+      synchronizers,
+      network: 'Canton DevNet (FiveNorth)',
       timestamp: new Date().toISOString(),
     })
   } catch (err) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createParty, createUser } from '@/lib/canton-server'
+import { allocateParty, createUser } from '@/lib/canton-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,19 +11,17 @@ export async function POST(req: Request) {
     }
 
     const hint = `invoplus_${role}_${Date.now()}`
-    const partyResult = await createParty(displayName, hint)
-    const partyId = partyResult.partyDetails?.party ?? partyResult.party
+    const partyResult = await allocateParty(displayName, hint)
+    const partyId = (partyResult as any).partyDetails?.party ?? (partyResult as any).party
 
     if (!partyId) {
-      return NextResponse.json({ ok: false, error: 'Party creation failed', raw: partyResult }, { status: 500 })
+      return NextResponse.json({ ok: false, error: 'Party allocation failed', raw: partyResult }, { status: 500 })
     }
 
-    const userId = `${hint}@invoplus`
+    // Try to create a user for this party (best-effort)
     try {
-      await createUser(userId, partyId)
-    } catch {
-      // user creation may fail if party already has one — continue
-    }
+      await createUser(`${hint}@invoplus`, partyId)
+    } catch { /* may already exist */ }
 
     return NextResponse.json({ ok: true, partyId, displayName, role })
   } catch (err) {
