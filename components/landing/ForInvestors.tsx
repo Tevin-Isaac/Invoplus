@@ -9,22 +9,20 @@ export function ForInvestors() {
           {/* Left: content */}
           <div>
             <div className="inline-block text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-3 py-1.5 rounded-full mb-6">
-              For Financiers &amp; Investors
+              For Businesses &amp; Freelancers
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
-              Deploy capital into{' '}
-              <span className="gradient-text">verified receivables</span>
+              Run your business, we handle invoicing
             </h2>
             <p className="text-lg text-gray-400 mb-8 leading-relaxed">
-              Access a curated pipeline of AI-scored invoices. Submit sealed bids without
-              revealing your strategy to competitors. Win deals on merit, not connections.
+              Send professional invoices, accept payments online, and manage cash flow from one dashboard.
             </p>
 
             <div className="space-y-6 mb-10">
               {[
-                { icon: Eye, title: 'Full AI Risk Transparency', desc: 'Every invoice comes with a detailed AI risk report — fraud score, buyer rating, payment prediction, and confidence level.' },
-                { icon: Layers, title: 'Portfolio Diversification', desc: 'Spread exposure across industries, geographies, invoice sizes, and risk grades. Portfolio analytics update in real time.' },
-                { icon: TrendingUp, title: 'Competitive Yield Discovery', desc: 'The sealed-bid format means you price based on your own risk model — not anchored to a competitor\'s visible offer.' },
+                { icon: Eye, title: 'Easy Client Management', desc: 'Store client profiles, payment terms, and contact info for fast invoicing.' },
+                { icon: Layers, title: 'Automatic Reconciliation', desc: 'Payments are matched to invoices automatically so your books stay clean.' },
+                { icon: TrendingUp, title: 'Grow Revenue', desc: 'Scheduled invoices and reminders improve cash flow and reduce late payments.' },
               ].map((item, i) => {
                 const Icon = item.icon
                 return (
@@ -43,7 +41,7 @@ export function ForInvestors() {
 
             <Link href="/dashboard"
               className="inline-flex items-center gap-2 bg-violet-500 hover:bg-violet-600 text-white font-semibold px-6 py-3.5 rounded-xl transition-colors group">
-              Start Investing
+              Start Invoicing
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>

@@ -15,12 +15,11 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 mb-4">
-              <Image src="/invoplus.png" alt="InvoPlus" width={32} height={32} className="rounded-lg" />
-              <span className="text-lg font-bold text-white">InvoPlus</span>
+            <Image src="/invoplus.png" alt="Invoplus" width={32} height={32} className="rounded-lg" />
+              <span className="text-lg font-bold text-white">Invoplus</span>
             </Link>
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-6">
-              The first private blind-auction invoice financing marketplace.
-              Built on Canton Network — privacy is native, not bolted on.
+            The easiest way to get paid faster. Create, send, and track invoices with confidence.
             </p>
             <div className="flex items-center gap-2 text-xs text-gray-600">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -47,11 +46,10 @@ export function Footer() {
 
         <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600">
-            © {new Date().getFullYear()} InvoPlus. Built on{' '}
-            <span className="text-violet-500">Canton Network</span>.
+            © {new Date().getFullYear()} Invoplus. All rights reserved.
           </p>
           <p className="text-xs text-gray-600">
-            Made for the Build on Canton Hackathon 2025
+            Design By Invoplus Team
           </p>
         </div>
       </div>

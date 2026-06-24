@@ -1,51 +1,49 @@
-# InvoPlus — Private Invoice Financing on Canton Network
+# Invoplus — Fast Invoice & Payment Platform
 
-**Build on Canton Hackathon** · Private DeFi & Capital Markets Track
+**Simple invoicing for freelancers and small businesses**
 
-InvoPlus is a two-sided marketplace where businesses sell outstanding invoices to financiers at a discount — entirely on Canton Network. Canton's sub-transaction privacy means financiers bid against each other without seeing competing offers. The anti-fraud registry prevents any invoice from being financed twice. Settlement is atomic.
+Invoplus makes it easy to create professional invoices, send them to clients, track payments, and manage cash flow — all in one beautiful dashboard. No complicated setup. No hidden fees. Just fast, reliable invoicing.
 
 ---
 
 ## The Problem
 
-Businesses with B2B invoices (e.g. a $125,000 invoice due in 90 days) often need cash now. Traditional invoice factoring goes through slow, opaque middlemen who charge 15–25%. Existing crypto DeFi protocols expose bid information publicly, enabling front-running and collusion.
+Freelancers and small business owners spend too much time chasing payments and managing invoices manually. Most invoicing tools are either too basic or overly complex. Clients don't pay on time. Cash flow becomes unpredictable.
 
-## What InvoPlus Does
+## What Invoplus Does
 
-1. **Seller uploads an invoice** → InvoiceContract created on Canton ledger
-2. **Platform verifies** → risk score computed (tenor, amount, currency, debtor profile) → score written permanently on-chain
-3. **Seller lists for auction** → Auction + RegistryEntry created atomically (anti-double-finance)
-4. **Financiers submit sealed bids** → SealedBid contract, seller cannot see it (Canton privacy)
-5. **Platform settles** → single atomic Canton transaction: all losing bids archived, FundedInvoice created, registry deregistered
-6. **Debtor pays → seller repays financier** → RepaymentRequest → RepaymentConfirmation (signed by both)
+1. **Create invoices in seconds** → Use beautiful templates or start from scratch
+2. **Send to clients instantly** → Email invoices or share payment links
+3. **Track payment status** → See when clients open invoices and when they pay
+4. **Automate reminders** → Late payment reminders and scheduled invoices
+5. **Manage cash flow** → Real-time dashboard with analytics and reporting
+6. **Accept multiple payments** → Card, bank transfer, and other payment methods
 
 ---
 
-## Why Canton Specifically
+## Key Features
 
-| Feature | How InvoPlus uses it |
+| Feature | Benefit |
 |---|---|
-| Sub-transaction privacy | SealedBid has `observer platform` only — seller is NOT an observer — enforced by the ledger, not by application logic |
-| Atomic multi-party transactions | SettleAuction archives all losing bids + creates FundedInvoice in ONE transaction — no partial state |
-| Daml smart contracts | All lifecycle logic lives in Daml — platform cannot alter outcomes, only exercise choices Daml allows |
-| Anti-fraud registry | RegistryEntry created at listing prevents double-financing — same invoice hash cannot exist twice |
-| Real-time ledger | WebSocket connection to Canton DevNet shows live block numbers in the UI |
+| Professional Templates | Create invoices that match your brand in seconds |
+| Instant Notifications | Get alerted when clients open invoices and when payments arrive |
+| Payment Tracking | See exactly which invoices are paid, pending, or overdue |
+| Client Portal | Clients can view invoices and pay directly in a simple portal |
+| Automated Workflows | Set and forget — late fees, reminders, and scheduled invoices |
+| Clear Reporting | Cash flow forecasts, aging reports, and payment analytics |
+| Security | Bank-level encryption and secure payment processing |
 
 ---
 
-## Risk Scoring Engine (No External API)
+## How Invoplus Works
 
-InvoPlus uses a deterministic scoring engine (`lib/risk-engine.ts`) — no external dependencies:
-
-- **Tenor** (days until due): shorter = lower risk
-- **Invoice amount**: very large concentrations penalised
-- **Currency**: major reserve currencies (USD/EUR/GBP) score higher
-- **Debtor name**: registered legal entities (Ltd, Corp, GmbH) score higher
-- **Invoice number format**: structured numbering indicates professionalism
-- **Days until due**: invoices already past due are heavily penalised
-
-Returns: score 0–100, grade A/B/C/D, recommended advance rate range, risk/positive factors.
-The score is written on-chain when the platform calls `VerifyInvoice` — immutable after that.
+1. Sign up and connect your payment account
+2. Create or upload invoice templates
+3. Add clients and invoice details (amount, due date, services)
+4. Send invoices via email or payment link
+5. Track payment status in real-time
+6. Get paid faster with automated reminders
+7. Export reports for accounting and bookkeeping
 
 ---
 

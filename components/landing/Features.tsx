@@ -3,38 +3,38 @@ import { Lock, Zap, Brain, ShieldCheck, BarChart3, Users } from 'lucide-react'
 const features = [
   {
     icon: Lock,
-    title: 'Sealed-Bid Privacy',
-    description: 'Built on Canton Network — the only blockchain where financiers can compete without seeing each other\'s offers. Privacy is native, not an add-on.',
+    title: 'Create Professional Invoices',
+    description: 'Beautiful, customizable invoice templates that match your brand and make you look professional.',
     highlight: true,
   },
   {
     icon: Zap,
-    title: 'Atomic Settlement',
-    description: 'Payment and invoice rights transfer in a single Canton transaction. No counterparty risk, no settlement failures, 3–10 second finality.',
+    title: 'Fast Payments',
+    description: 'Multiple payment methods and simple checkout for clients — get paid faster with less friction.',
     highlight: false,
   },
   {
     icon: Brain,
-    title: 'AI Risk Engine',
-    description: 'Instant OCR extraction, fraud detection, duplicate invoice checks, buyer payment prediction, and a plain-English confidence score on every invoice.',
+    title: 'Automated Workflows',
+    description: 'Automated reminders, late-fee handling, and scheduled invoices so you spend less time chasing payments.',
     highlight: false,
   },
   {
     icon: ShieldCheck,
-    title: 'Fraud Prevention',
-    description: 'Canton\'s ledger proves an invoice hasn\'t been double-financed — without revealing deal terms. The first cryptographic anti-fraud registry for invoice finance.',
+    title: 'Secure & Reliable',
+    description: 'Bank-level security, encrypted records, and reliable delivery for all invoice communications.',
     highlight: false,
   },
   {
     icon: BarChart3,
-    title: 'Real-Time Analytics',
-    description: 'Cash flow forecasting, invoice aging, funding performance, and portfolio analytics — updated as Canton transactions confirm.',
+    title: 'Reports & Analytics',
+    description: 'Track cash flow, outstanding invoices, and client payment behavior with clear dashboards.',
     highlight: false,
   },
   {
     icon: Users,
-    title: 'Competitive Funding',
-    description: 'Multiple financiers compete for your invoice. You always see the best market rate — not just the one lender your bank happens to work with.',
+    title: 'Client Portal',
+    description: 'Clients can view invoices, pay online, and download receipts from a simple portal.',
     highlight: false,
   },
 ]
@@ -48,11 +48,10 @@ export function Features() {
             Platform Features
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            Why InvoPlus is different
+            Built for freelances and small businesses
           </h2>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            Traditional invoice financing is bilateral, slow, and opaque.
-            InvoPlus is competitive, instant, and private.
+            Invoicing that just works: faster payments, easier bookkeeping, and clear customer experiences.
           </p>
         </div>
 

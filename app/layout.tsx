@@ -3,11 +3,11 @@ import './globals.css'
 import { CantonProvider } from '@/lib/canton'
 
 export const metadata: Metadata = {
-  title: 'InvoPlus — Private Invoice Financing on Canton',
-  description: 'The first private blind auction marketplace for invoice financing. Financiers compete to fund your invoices without seeing each other\'s bids. Built on Canton Network.',
+  title: 'Invoplus — Fast Invoice & Payment Platform',
+  description: 'Create professional invoices, send to clients, and get paid faster. Simple invoicing for freelancers and small businesses.',
   openGraph: {
-    title: 'InvoPlus',
-    description: 'Unlock business cash flow instantly with private invoice financing on Canton Network.',
+    title: 'Invoplus',
+    description: 'Get paid faster with professional invoicing, payment tracking, and automated reminders.',
     type: 'website',
   },
 }
@@ -15,6 +15,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link href="https://db.onlinewebfonts.com/c/04e6981992c0e2e7642af2074ebe3901?family=Helvetica+Now+Display+Bold" rel="stylesheet" />
+      </head>
       <body>
         <CantonProvider>
           {children}

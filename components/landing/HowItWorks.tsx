@@ -1,27 +1,27 @@
 const steps = [
   {
     number: '01',
-    title: 'Upload Your Invoice',
-    description: 'Drag and drop your invoice. Our AI reads it instantly — extracting amounts, due dates, buyer details, and generating a risk score. No manual entry.',
-    tag: 'AI-Powered OCR',
+    title: 'Create Your Invoice',
+    description: 'Fill in client details, services, and amounts or use one of our templates to generate a professional invoice in seconds.',
+    tag: 'Easy Templates',
   },
   {
     number: '02',
-    title: 'AI Scores & Verifies',
-    description: 'Fraud detection, duplicate checks, buyer risk analysis, and payment prediction — all in seconds. You get a plain-English risk report before any offer is made.',
-    tag: 'Risk Engine',
+    title: 'Send & Track',
+    description: 'Send invoices via email or share a payment link. Track when clients view invoices and get notified on activity.',
+    tag: 'Tracking',
   },
   {
     number: '03',
-    title: 'Financiers Compete in Private',
-    description: 'Invited financiers submit sealed bids on Canton Network. Each sees only their own offer — never competitors\'. You see all bids simultaneously.',
-    tag: 'Canton Privacy',
+    title: 'Get Paid Fast',
+    description: 'Clients pay with card, bank transfer, or other supported methods. Reconcile payments automatically in your dashboard.',
+    tag: 'Multiple Payments',
   },
   {
     number: '04',
-    title: 'Accept & Settle Atomically',
-    description: 'Accept the best offer. The payment and invoice rights transfer happen in a single atomic Canton transaction — no settlement risk, no delays.',
-    tag: 'Atomic Settlement',
+    title: 'Manage Cash Flow',
+    description: 'Use reporting, reminders, and scheduled invoices to keep cash flow predictable and reduce late payments.',
+    tag: 'Cash Flow',
   },
 ]
 
@@ -35,10 +35,10 @@ export function HowItWorks() {
             How It Works
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-            From invoice to funded in minutes
+            Get from invoice to payment faster
           </h2>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            A workflow designed for speed, privacy, and zero settlement risk.
+            A simple workflow to create, send, and collect payments reliably.
           </p>
         </div>
 

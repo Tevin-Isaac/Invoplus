@@ -1,0 +1,228 @@
+-- InvoPlus: Authentication and Authorization system
+-- Manages party credentials, API tokens, session tokens, and login/logout flows
+module InvoPlus.Auth where
+
+import DA.Time (Time)
+import DA.Date (Date)
+import Daml.Crypto (Hash)
+
+-- User login credentials — stored securely by platform
+-- Password hash computed server-side using bcrypt or similar
+template UserCredential
+  with
+    platform    : Party
+    userId      : Text          -- unique identifier (email or username)
+    userParty   : Party         -- the associated Canton party
+    passwordHash: Text          -- bcrypt hash (never plain text)
+    email       : Text
+    role        : Text          -- "seller" | "financier" | "admin"
+    status      : Text          -- "Active" | "Suspended" | "Deleted"
+    createdAt   : Time
+    lastLoginAt : Optional Time
+    mfaEnabled  : Bool          -- multi-factor authentication flag
+  where
+    signatory platform
+
+    -- Mark credential as suspended (blocks login)
+    choice SuspendCredential : ContractId UserCredential
+      controller platform
+      do
+        assertMsg "Can only suspend Active credentials" (status == "Active")
+        create this with status = "Suspended"
+
+    -- Restore suspended credential
+    choice RestoreCredential : ContractId UserCredential
+      controller platform
+      do
+        assertMsg "Can only restore Suspended credentials" (status == "Suspended")
+        create this with status = "Active"
+
+    -- Update password hash after verification
+    choice UpdatePassword : ContractId UserCredential
+      with newHash : Text
+      controller platform
+      do
+        assertMsg "Hash cannot be empty" (newHash /= "")
+        now <- getTime
+        create this with passwordHash = newHash; lastLoginAt = Some now
+
+    -- Record successful login
+    choice RecordLogin : ContractId UserCredential
+      controller platform
+      do
+        now <- getTime
+        create this with lastLoginAt = Some now
+
+-- Session token issued after successful authentication
+-- Used for HTTP request authorization
+template SessionToken
+  with
+    platform    : Party
+    userId      : Text
+    userParty   : Party
+    token       : Text          -- cryptographically random bearer token
+    tokenHash   : Text          -- SHA-256 hash of token (stored, not plaintext)
+    role        : Text
+    issuedAt    : Time
+    expiresAt   : Time          -- typically 24 hours later
+    isActive    : Bool
+    ipAddress   : Optional Text -- for audit trail
+    userAgent   : Optional Text -- for audit trail
+  where
+    signatory platform
+
+    -- Revoke token (logout)
+    choice RevokeToken : ContractId SessionToken
+      controller platform
+      do
+        create this with isActive = False
+
+    -- Refresh token (extend validity)
+    choice RefreshToken : ContractId SessionToken
+      with newExpiresAt : Time
+      controller platform
+      do
+        assertMsg "Can only refresh active tokens" (isActive)
+        create this with expiresAt = newExpiresAt
+
+-- API token for M2M (machine-to-machine) integrations
+-- Example: seller's mobile app calling /api/invoices
+template ApiToken
+  with
+    platform    : Party
+    clientId    : Text
+    clientSecret: Text          -- hashed, never stored plain
+    userParty   : Party
+    role        : Text
+    name        : Text          -- human-readable name (e.g. "Mobile App v1")
+    scopes      : [Text]        -- ["invoices:read", "invoices:write", "auctions:read"]
+    status      : Text          -- "Active" | "Revoked"
+    createdAt   : Time
+    lastUsedAt  : Optional Time
+    expiresAt   : Optional Time -- None = never expires
+  where
+    signatory platform
+
+    -- Revoke API token
+    choice RevokeApiToken : ContractId ApiToken
+      controller platform
+      do
+        create this with status = "Revoked"
+
+    -- Update last usage timestamp
+    choice RecordApiUsage : ContractId ApiToken
+      with now : Time
+      controller platform
+      do
+        create this with lastUsedAt = Some now
+
+-- MFA (Multi-Factor Authentication) setup for enhanced security
+template MfaSetup
+  with
+    platform     : Party
+    userId       : Text
+    userParty    : Party
+    mfaType      : Text         -- "TOTP" | "SMS" | "EMAIL"
+    secret       : Text         -- encrypted secret (TOTP) or phone/email
+    verified     : Bool
+    backupCodes  : [Text]       -- encrypted backup codes for TOTP
+    setupAt      : Time
+    verifiedAt   : Optional Time
+  where
+    signatory platform
+
+    -- Verify MFA setup (user enters first TOTP code)
+    choice VerifyMfaSetup : ContractId MfaSetup
+      controller platform
+      do
+        assertMsg "Cannot verify already verified MFA" (not verified)
+        now <- getTime
+        create this with verified = True; verifiedAt = Some now
+
+    -- Disable MFA
+    choice DisableMfa : ContractId MfaSetup
+      controller platform
+      do
+        create this with verified = False
+
+-- Login audit log — immutable record of all login attempts
+template LoginAuditLog
+  with
+    platform    : Party
+    userId      : Text
+    userParty   : Optional Party   -- None if login failed
+    success     : Bool
+    reason      : Text             -- "Success" | "InvalidPassword" | "UserNotFound" | "Suspended"
+    ipAddress   : Text
+    userAgent   : Text
+    attemptedAt : Time
+    mfaChallenged : Bool
+  where
+    signatory platform
+    -- Immutable log entry — no choices
+
+-- Password reset token issued when user requests password reset
+template PasswordResetToken
+  with
+    platform    : Party
+    userId      : Text
+    token       : Text
+    tokenHash   : Text
+    issuedAt    : Time
+    expiresAt   : Time             -- typically 15 minutes
+    used        : Bool
+    usedAt      : Optional Time
+  where
+    signatory platform
+
+    choice UseToken : ContractId PasswordResetToken
+      controller platform
+      do
+        assertMsg "Token must not be already used" (not used)
+        assertMsg "Token must not be expired" (expiresAt > issuedAt)
+        now <- getTime
+        create this with used = True; usedAt = Some now
+
+-- Permission set for fine-grained access control
+template Permission
+  with
+    platform    : Party
+    userParty   : Party
+    resource    : Text         -- "invoice" | "auction" | "repayment"
+    action      : Text         -- "create" | "read" | "update" | "delete" | "settle"
+    granted     : Bool
+    grantedAt   : Time
+    grantedBy   : Party        -- admin who granted
+    expiresAt   : Optional Time -- temporal permission
+  where
+    signatory platform
+    observer userParty
+
+-- OAuth2 provider integration (optional, for third-party login)
+template OAuthProvider
+  with
+    platform     : Party
+    providerName : Text        -- "Google" | "Microsoft" | "GitHub"
+    clientId     : Text
+    clientSecret : Text
+    redirectUrl  : Text
+    scope        : [Text]
+    active       : Bool
+    configuredAt : Time
+  where
+    signatory platform
+
+-- OAuth2 user mapping (links external OAuth account to InvoPlus account)
+template OAuthUserMapping
+  with
+    platform     : Party
+    userId       : Text
+    userParty    : Party
+    providerName : Text
+    externalId   : Text
+    email        : Text
+    linkedAt     : Time
+    lastUsedAt   : Optional Time
+  where
+    signatory platform
+    observer userParty

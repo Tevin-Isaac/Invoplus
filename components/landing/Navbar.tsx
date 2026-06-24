@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils'
 
 const links = [
   { label: 'Home', href: '/' },
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Invoices', href: '/dashboard/invoices' },
-  { label: 'Marketplace', href: '/dashboard/marketplace' },
-  { label: 'Offers', href: '/dashboard/offers' },
+  { label: 'Features', href: '/#features' },
+  { label: 'How it Works', href: '/#how-it-works' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'About', href: '/about' },
 ]
 
 export function Navbar() {
@@ -30,7 +30,7 @@ export function Navbar() {
     )}>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link href="/" className="text-xl font-bold text-white">InvoPlus</Link>
+          <Link href="/" className="text-xl font-bold text-white">Invoplus</Link>
 
           <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-300">
             {links.map((link) => (

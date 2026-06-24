@@ -12,21 +12,20 @@ export function CTA() {
 
           <div className="relative">
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-              Stop waiting 90 days to get paid
+              Create your first invoice in seconds
             </h2>
             <p className="text-lg text-white/80 mb-10 max-w-xl mx-auto">
-              Upload your first invoice today. Get competing offers from verified
-              financiers. Receive funds in minutes — not months.
+              Start invoicing today and accept payments online. Fast setup, beautiful templates, and instant notifications.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/dashboard"
                 className="flex items-center gap-2 bg-white text-violet-600 font-semibold px-8 py-4 rounded-2xl hover:bg-violet-50 transition-colors group">
-                Get Funded Now
+                Create Invoice
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <Link href="/dashboard"
+              <Link href="/pricing"
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold px-8 py-4 rounded-2xl transition-colors">
-                View Investor Opportunities
+                See Pricing
               </Link>
             </div>
             <p className="text-white/50 text-sm mt-6">
