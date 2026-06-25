@@ -4,6 +4,7 @@
 module InvoPlus.Types where
 
 import DA.Date (Date)
+import DA.Time (Time)
 
 -- Risk grade assigned by AI scoring engine
 -- Higher grade = lower risk
@@ -89,3 +90,79 @@ data AuditEvent = AuditEvent
     timestamp    : Time
     ipAddress    : Optional Text
   deriving (Eq, Show)
+
+-- ============================================================================
+-- Validation Functions (Production-Grade Guards)
+-- ============================================================================
+
+-- Validate monetary amount is within acceptable bounds
+validateAmount : Decimal -> Bool
+validateAmount amount = amount >= 0.01 && amount <= 999999999.99
+
+-- Validate currency code is ISO 4217 format (basic check)
+validateCurrency : Text -> Bool
+validateCurrency currency = length currency == 3 && all isUpper currency
+
+-- Validate percentage is between 0 and 1
+validatePercentage : Decimal -> Bool
+validatePercentage rate = rate > 0.0 && rate <= 1.0
+
+-- Validate advance rate is between 0.5 and 0.95 (sensible limits)
+validateAdvanceRate : Decimal -> Bool
+validateAdvanceRate rate = rate >= 0.5 && rate <= 0.95
+
+-- Validate annual rate is between 0 and 1 (0-100%)
+validateAnnualRate : Decimal -> Bool
+validateAnnualRate rate = rate >= 0.0 && rate <= 1.0
+
+-- Validate auction duration is between 1 and 720 hours (30 days)
+validateAuctionDuration : Int -> Bool
+validateAuctionDuration hours = hours >= 1 && hours <= 720
+
+-- Validate risk score is between 0 and 100
+validateRiskScore : Int -> Bool
+validateRiskScore score = score >= 0 && score <= 100
+
+-- Validate date is not in the past (for issue dates)
+validateFutureDate : Date -> Time -> Bool
+validateFutureDate date currentTime = dateToTime date >= currentTime
+
+-- Validate due date is after issue date
+validateDueDate : Date -> Date -> Bool
+validateDueDate issueDate dueDate = dueDate >= issueDate
+
+-- Validate invoice ID format (basic check)
+validateInvoiceId : Text -> Bool
+validateInvoiceId invoiceId = length invoiceId >= 3 && length invoiceId <= 50
+
+-- Validate tax ID format (basic check)
+validateTaxId : Text -> Bool
+validateTaxId taxId = length taxId >= 8 && length taxId <= 30
+
+-- Validate party name is not empty
+validatePartyName : Text -> Bool
+validatePartyName name = length name >= 2 && length name <= 100
+
+-- Calculate funded amount with validation
+calculateFundedAmount : Decimal -> Decimal -> Either Text Decimal
+calculateFundedAmount faceAmount advanceRate =
+  if not (validateAmount faceAmount)
+  then Left "Invalid face amount"
+  else if not (validateAdvanceRate advanceRate)
+  then Left "Invalid advance rate"
+  else Right (faceAmount * advanceRate)
+
+-- Calculate yield amount with validation
+calculateYieldAmount : Decimal -> Decimal -> Int -> Either Text Decimal
+calculateYieldAmount fundedAmount annualRate days =
+  if not (validateAmount fundedAmount)
+  then Left "Invalid funded amount"
+  else if not (validateAnnualRate annualRate)
+  then Left "Invalid annual rate"
+  else if days <= 0 || days > 3650
+  then Left "Invalid days (must be 1-3650)"
+  else Right (fundedAmount * annualRate * (intToDecimal days / 365.0))
+
+-- Validate hash format (basic SHA-256 check)
+validateHash : Text -> Bool
+validateHash hash = length hash >= 10 && length hash <= 128

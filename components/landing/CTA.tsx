@@ -1,7 +1,32 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, X } from 'lucide-react'
+import { useCanton } from '@/lib/canton'
+import { WalletConnect } from '@/components/wallet-connect'
 
 export function CTA() {
+  const { isConnected, connectWithWallet } = useCanton()
+  const [showWalletDialog, setShowWalletDialog] = useState(false)
+
+  const handleCreateInvoice = () => {
+    if (isConnected) {
+      window.location.href = '/dashboard/invoices'
+    } else {
+      setShowWalletDialog(true)
+    }
+  }
+
+  const handleWalletConnect = async (provider: any) => {
+    await connectWithWallet(provider)
+    setShowWalletDialog(false)
+    // Redirect to invoices page after successful connection
+    setTimeout(() => {
+      window.location.href = '/dashboard/invoices'
+    }, 500)
+  }
+
   return (
     <section className="py-24 lg:py-32 bg-white">
       <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
@@ -18,11 +43,12 @@ export function CTA() {
               Start invoicing today and accept payments online. Fast setup, beautiful templates, and instant notifications.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/dashboard"
+              <button
+                onClick={handleCreateInvoice}
                 className="flex items-center gap-2 bg-white text-violet-600 font-semibold px-8 py-4 rounded-2xl hover:bg-violet-50 transition-colors group">
-                Create Invoice
+                {isConnected ? 'Create Invoice' : 'Connect Wallet'}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
+              </button>
               <Link href="/pricing"
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold px-8 py-4 rounded-2xl transition-colors">
                 See Pricing
@@ -33,6 +59,31 @@ export function CTA() {
             </p>
           </div>
         </div>
+
+        {/* Wallet Connection Dialog */}
+        {showWalletDialog && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">Connect Canton Wallet</h3>
+                  <p className="text-xs text-slate-600 mt-0.5">Select a CIP-103 compliant wallet to get started</p>
+                </div>
+                <button 
+                  onClick={() => setShowWalletDialog(false)}
+                  className="text-slate-600 hover:text-slate-900"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <WalletConnect 
+                onConnect={handleWalletConnect}
+                onDisconnect={() => setShowWalletDialog(false)}
+                isConnected={isConnected}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

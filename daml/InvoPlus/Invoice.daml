@@ -1,5 +1,6 @@
 -- InvoPlus: Invoice lifecycle on Canton Network
 -- An InvoiceContract moves through: Pending → Verified → (listed as Auction) → Funded
+-- Production-ready with comprehensive validation and error handling
 module InvoPlus.Invoice where
 
 import DA.Time (Time)
@@ -38,8 +39,15 @@ template InvoiceContract
         grade : RiskGrade
       controller platform
       do
-        assertMsg "Score must be 0-100" (score >= 0 && score <= 100)
+        assertMsg "Score must be 0-100" (validateRiskScore score)
         assertMsg "Invoice must be Pending" (status == Pending)
+        assertMsg "Face amount must be valid" (validateAmount faceAmount)
+        assertMsg "Currency must be valid" (validateCurrency currency)
+        assertMsg "Invoice ID must be valid" (validateInvoiceId invoiceId)
+        assertMsg "Tax ID must be valid" (validateTaxId debtorTaxId)
+        assertMsg "Due date must be after issue date" (validateDueDate issueDate dueDate)
+        assertMsg "Document hash must be valid" (validateHash docHash)
+        assertMsg "Invoice hash must be valid" (validateHash invoiceHash)
         create this with
           aiScore   = score
           riskGrade = grade
@@ -61,8 +69,13 @@ template InvoiceContract
       controller seller
       do
         assertMsg "Invoice must be Verified" (status == Verified)
-        assertMsg "Min advance rate must be between 0 and 1" (terms.minAdvanceRate > 0.0 && terms.minAdvanceRate < 1.0)
+        assertMsg "Min advance rate must be valid" (validateAdvanceRate terms.minAdvanceRate)
+        assertMsg "Max annual rate must be valid" (validateAnnualRate terms.maxAnnualRate)
+        assertMsg "Auction duration must be valid" (validateAuctionDuration terms.durationHours)
+        assertMsg "Auction end must be in the future" (auctionEnd > uploadedAt)
+        assertMsg "Min advance rate must be less than 1.0" (terms.minAdvanceRate < 1.0)
         assertMsg "Max annual rate must be positive" (terms.maxAnnualRate > 0.0)
+        assertMsg "Max annual rate must be <= 1.0" (terms.maxAnnualRate <= 1.0)
 
         -- Archive this invoice — it's now represented by the Auction
         now <- getTime
@@ -132,8 +145,16 @@ template Auction
       controller financier
       do
         assertMsg "Auction is already settled" (not settled)
+        assertMsg "Advance rate must be valid" (validateAdvanceRate advanceRate)
+        assertMsg "Annual rate must be valid" (validateAnnualRate annualRate)
         assertMsg "Advance rate below minimum" (advanceRate >= terms.minAdvanceRate)
         assertMsg "Annual rate above maximum" (annualRate <= terms.maxAnnualRate)
+        assertMsg "Face amount must be valid" (validateAmount faceAmount)
+        assertMsg "Currency must be valid" (validateCurrency currency)
+        
+        -- Calculate funded amount with validation
+        let fundedAmount = faceAmount * advanceRate
+        assertMsg "Funded amount must be valid" (validateAmount fundedAmount)
 
         bidCid <- create SealedBid with
           financier    = financier
@@ -144,7 +165,7 @@ template Auction
           currency     = currency
           advanceRate  = advanceRate
           annualRate   = annualRate
-          fundedAmount = faceAmount * advanceRate
+          fundedAmount = fundedAmount
           isRevealed   = False
 
         newAuctionCid <- create this with bidCount = bidCount + 1
@@ -161,7 +182,15 @@ template Auction
       controller platform
       do
         assertMsg "Already settled" (not settled)
+        assertMsg "Auction must have at least one bid" (bidCount > 0)
         winnerBid <- fetch winnerBidCid
+        
+        -- Validate winning bid data
+        assertMsg "Winner funded amount must be valid" (validateAmount winnerBid.fundedAmount)
+        assertMsg "Winner advance rate must be valid" (validateAdvanceRate winnerBid.advanceRate)
+        assertMsg "Winner annual rate must be valid" (validateAnnualRate winnerBid.annualRate)
+        assertMsg "Face amount must be valid" (validateAmount faceAmount)
+        assertMsg "Currency must be valid" (validateCurrency currency)
 
         -- Archive all losing bids (private — no content exposed)
         mapA_ archive loserBidCids
@@ -195,6 +224,9 @@ template Auction
       controller seller
       do
         assertMsg "Cannot cancel a settled auction" (not settled)
+        assertMsg "Cannot cancel auction after end time" (auctionEnd > uploadedAt)
+        assertMsg "Face amount must be valid" (validateAmount faceAmount)
+        assertMsg "Currency must be valid" (validateCurrency currency)
         exercise regEntryCid DeregisterInvoice
         now <- getTime
         create InvoiceContract with

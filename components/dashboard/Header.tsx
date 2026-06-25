@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Shield } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
+import { WalletConnect } from '@/components/wallet-connect'
 
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -18,7 +19,7 @@ function CopyBtn({ text }: { text: string }) {
 }
 
 export function Header({ title }: { title: string }) {
-  const { isConnected, party, connect, connectWithPartyId, disconnect, isConnecting, ledgerStatus } = useCanton()
+  const { isConnected, party, connect, connectWithPartyId, connectWithWallet, disconnect, isConnecting, ledgerStatus } = useCanton()
   const [modal, setModal] = useState<'closed' | 'choose' | 'paste'>('closed')
 
   // "paste party ID" form state
@@ -124,6 +125,21 @@ export function Header({ title }: { title: string }) {
             </div>
 
             <div className="space-y-3">
+              {/* CIP-103 Wallet Connection */}
+              <div className="flex items-center justify-center mb-2">
+                <WalletConnect 
+                  onConnect={connectWithWallet}
+                  onDisconnect={disconnect}
+                  isConnected={isConnected}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-dark-border" />
+                <span className="text-xs text-dark-muted">or use traditional methods</span>
+                <div className="flex-1 h-px bg-dark-border" />
+              </div>
+
               {/* Use existing Seaport party */}
               <button
                 onClick={() => setModal('paste')}

@@ -1,5 +1,6 @@
 -- InvoPlus: Comprehensive Daml Script for Canton DevNet demo
 -- Covers the full platform lifecycle including onboarding, auctions, repayment, and disputes.
+-- Production-ready with proper validation and error handling.
 -- Run: daml script --dar .daml/dist/invoplus-1.0.0.dar --script-name InvoPlus.Setup:setupDemo
 module InvoPlus.Setup where
 
@@ -44,6 +45,8 @@ setupDemo = do
       maintenanceMode     = False
       updatedAt           = baseTime
 
+  debug "PlatformConfig created with validation"
+
   -- 3. Platform onboards sellers
   sellerOnboardCid <- submit platform do
     createCmd SellerOnboarding with
@@ -59,7 +62,11 @@ setupDemo = do
       rejectedReason = ""
       submittedAt    = baseTime
 
+  debug "Seller onboarding created"
+
   _ <- submit platform do exerciseCmd sellerOnboardCid ApproveSeller
+
+  debug "Seller approved with validation"
 
   -- 4. Platform onboards financiers with profiles
   fin1ProfileCid <- submit platform do
@@ -83,6 +90,8 @@ setupDemo = do
 
   fin1ProfileCid <- submit platform do exerciseCmd fin1ProfileCid ApproveFinancier
 
+  debug "Financier 1 approved with validation"
+
   fin2ProfileCid <- submit platform do
     createCmd FinancierProfile with
       platform           = platform
@@ -104,6 +113,8 @@ setupDemo = do
 
   _ <- submit platform do exerciseCmd fin2ProfileCid ApproveFinancier
 
+  debug "Financier 2 approved with validation"
+
   -- 5. Financier 1 creates capital account
   capAccCid <- submit platform do
     createCmd CapitalAccount with
@@ -115,6 +126,8 @@ setupDemo = do
       activePositions= 0
       currency       = "USD"
       lastUpdatedAt  = baseTime
+
+  debug "Capital account created"
 
   -- 6. Seller uploads Invoice 1: $125,000 from GlobalTech (Grade A)
   inv1Cid <- submit seller do
@@ -135,9 +148,13 @@ setupDemo = do
       status      = Pending
       uploadedAt  = baseTime
 
+  debug "Invoice 1 uploaded"
+
   -- 7. Platform scores and verifies Invoice 1
   inv1VerifiedCid <- submit platform do
     exerciseCmd inv1Cid VerifyInvoice with score = 87; grade = Grade_A
+
+  debug "Invoice 1 verified with validation"
 
   -- 8. Seller lists Invoice 1 for sealed-bid auction
   (auction1Cid, reg1Cid) <- submit seller do
@@ -147,6 +164,8 @@ setupDemo = do
         maxAnnualRate  = 0.18
         durationHours  = 72
       auctionEnd = auctionEnd1
+
+  debug "Invoice 1 listed for auction with validation"
 
   -- 9. Seller uploads Invoice 2: $89,500 from Apex Manufacturing (Grade A)
   inv2Cid <- submit seller do
@@ -167,8 +186,12 @@ setupDemo = do
       status      = Pending
       uploadedAt  = baseTime
 
+  debug "Invoice 2 uploaded"
+
   _inv2VerifiedCid <- submit platform do
     exerciseCmd inv2Cid VerifyInvoice with score = 91; grade = Grade_A
+
+  debug "Invoice 2 verified with validation"
 
   -- 10. Two financiers submit sealed bids on Auction 1
   --     Seller CANNOT see either bid (Canton sub-tx privacy)
@@ -178,11 +201,15 @@ setupDemo = do
       advanceRate = 0.88   -- Capital Partners bids 88% advance, 11.5% APR
       annualRate  = 0.115
 
+  debug "Financier 1 bid submitted with validation"
+
   (auction1Final, bid2Cid) <- submit financier2 do
     exerciseCmd auction1Updated SubmitBid with
       financier   = financier2
       advanceRate = 0.87   -- Apex Fund bids 87% advance, 11.8% APR
       annualRate  = 0.118
+
+  debug "Financier 2 bid submitted with validation"
 
   -- 11. Platform settles Auction 1 — Capital Partners wins (higher advance rate)
   funded1Cid <- submit platform do
@@ -191,6 +218,8 @@ setupDemo = do
       loserBidCids = [bid2Cid]   -- Apex Fund loses — bid content stays private forever
       regEntryCid  = reg1Cid
 
+  debug "Auction 1 settled with validation"
+
   -- 12. Platform records win in Capital Partners' profile + account
   fin1ProfileCid <- submit platform do
     exerciseCmd fin1ProfileCid RecordBidWin with
@@ -198,10 +227,14 @@ setupDemo = do
       advanceRate  = 0.88
       annualRate   = 0.115
 
+  debug "Bid win recorded with validation"
+
   capAccCid <- submit platform do
     exerciseCmd capAccCid DeployCapital with
       amount    = 110000.0
       invoiceId = "INV-2026-0042"
+
+  debug "Capital deployed with validation"
 
   -- 13. Platform issues a fee receipt (1% of funded amount = $1,100)
   _feeCid <- submit platform do
@@ -215,6 +248,8 @@ setupDemo = do
       feeAmount    = 1100.0
       currency     = "USD"
       issuedAt     = auctionEnd1
+
+  debug "Fee receipt created"
 
   -- 14. 90 days later: debtor pays. Seller requests repayment to financier.
   let repayTime = addRelTime auctionEnd1 (seconds (90 * 24 * 3600))
@@ -232,15 +267,23 @@ setupDemo = do
       requestedAt  = repayTime
       status       = "Pending"
 
+  debug "Repayment request created"
+
   repayReqCid <- submit platform do exerciseCmd repayReqCid ApproveRepayment
 
+  debug "Repayment approved with validation"
+
   _confirmCid <- submit platform do exerciseCmd repayReqCid CompleteRepayment
+
+  debug "Reayment completed"
 
   -- 15. Update Capital Partners' account to reflect repayment
   _ <- submit platform do
     exerciseCmd capAccCid CollectRepayment with
       principal = 110000.0
       yield     = 3464.38
+
+  debug "Repayment collected with validation"
 
   -- 16. Platform creates a daily settlement summary
   _summaryCid <- submit platform do

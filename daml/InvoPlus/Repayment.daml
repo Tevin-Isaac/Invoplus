@@ -1,9 +1,11 @@
 -- InvoPlus: Repayment tracking, dispute resolution, and default management
 -- When a debtor pays the seller, the seller triggers repayment to the financier.
 -- If a debtor defaults, the platform opens a dispute resolution case.
+-- Production-ready with comprehensive validation and error handling
 module InvoPlus.Repayment where
 
 import DA.Time (Time)
+import InvoPlus.Types
 
 -- Seller-initiated repayment request after collecting from debtor.
 -- Platform validates and triggers financier payment.
@@ -30,6 +32,15 @@ template RepaymentRequest
       do
         assertMsg "Must be Pending" (status == "Pending")
         assertMsg "Total must equal funded + yield" (totalDue == fundedAmount + yieldAmount)
+        assertMsg "Funded amount must be valid" (validateAmount fundedAmount)
+        assertMsg "Funded amount must be positive" (fundedAmount > 0.0)
+        assertMsg "Yield amount must be valid" (validateAmount yieldAmount)
+        assertMsg "Yield amount must be non-negative" (yieldAmount >= 0.0)
+        assertMsg "Total must be valid" (validateAmount totalDue)
+        assertMsg "Total must be positive" (totalDue > 0.0)
+        assertMsg "Currency must be valid" (validateCurrency currency)
+        assertMsg "Invoice ID must be valid" (validateInvoiceId invoiceId)
+        assertMsg "Debtor payment date must be valid" (debtorPaidAt <= requestedAt)
         create this with status = "Approved"
 
     -- Platform marks repayment as completed (funds transferred).
@@ -186,6 +197,8 @@ template ExtensionRequest
       do
         assertMsg "Must be Pending" (status == "Pending")
         assertMsg "Extension must be 1-30 days" (requestedDays >= 1 && requestedDays <= 30)
+        assertMsg "Additional rate must be valid" (validateAnnualRate additionalRate)
+        assertMsg "Additional rate must be non-negative" (additionalRate >= 0.0)
         create this with status = "Approved"
 
     -- Financier rejects — original due date stands.

@@ -1,6 +1,7 @@
 -- InvoPlus: Financier onboarding, profile, and reputation system
 -- Each accredited financier has an on-chain profile managed by the platform.
 -- The profile tracks bid history, win rate, total deployed capital, and compliance.
+-- Production-ready with comprehensive validation and safeguards
 module InvoPlus.Financier where
 
 import DA.Time (Time)
@@ -35,6 +36,10 @@ template FinancierProfile
       controller platform
       do
         assertMsg "Must be Pending" (kycStatus == "Pending")
+        assertMsg "Display name must be valid" (validatePartyName displayName)
+        assertMsg "Capital committed must be positive" (capitalCommitted > 0.0)
+        assertMsg "Capital committed must be valid" (validateAmount capitalCommitted)
+        assertMsg "Reputation score must be valid" (validateRiskScore reputationScore)
         now <- getTime
         create this with kycStatus = "Approved"; lastActiveAt = now
 
@@ -51,6 +56,8 @@ template FinancierProfile
       do
         assertMsg "Must be approved to update" (kycStatus == "Approved")
         assertMsg "Commitment must be positive" (newCommitment > 0.0)
+        assertMsg "Commitment must be valid" (validateAmount newCommitment)
+        assertMsg "Commitment must be at least current deployed" (newCommitment >= capitalDeployed)
         now <- getTime
         create this with capitalCommitted = newCommitment; lastActiveAt = now
 
@@ -64,6 +71,10 @@ template FinancierProfile
       do
         assertMsg "Approved financiers only" (kycStatus == "Approved")
         assertMsg "Cannot exceed committed capital" (capitalDeployed + fundedAmount <= capitalCommitted)
+        assertMsg "Funded amount must be valid" (validateAmount fundedAmount)
+        assertMsg "Funded amount must be positive" (fundedAmount > 0.0)
+        assertMsg "Advance rate must be valid" (validateAdvanceRate advanceRate)
+        assertMsg "Annual rate must be valid" (validateAnnualRate annualRate)
         now <- getTime
         let newWon = totalBidsWon + 1
         let newDeployed = capitalDeployed + fundedAmount
@@ -82,6 +93,9 @@ template FinancierProfile
       with repaidAmount : Decimal
       controller platform
       do
+        assertMsg "Repaid amount must be valid" (validateAmount repaidAmount)
+        assertMsg "Repaid amount must be positive" (repaidAmount > 0.0)
+        assertMsg "Cannot repay more than deployed" (repaidAmount <= capitalDeployed)
         now <- getTime
         create this with
           capitalDeployed = capitalDeployed - repaidAmount

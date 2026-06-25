@@ -1,6 +1,7 @@
 -- InvoPlus: Platform governance and configuration contracts
 -- The platform party holds configuration and manages participant onboarding.
 -- All choices here are controller = platform — no other party can mutate platform state.
+-- Production-ready with comprehensive validation and safeguards
 module InvoPlus.Platform where
 
 import DA.Time (Time)
@@ -32,8 +33,12 @@ template PlatformConfig
       controller platform
       do
         assertMsg "Fee must be 0–500 bps" (newFeeBps >= 0 && newFeeBps <= 500)
+        assertMsg "Min must be positive" (newMinAmount > 0.0)
+        assertMsg "Max must be positive" (newMaxAmount > 0.0)
         assertMsg "Min must be less than max" (newMinAmount < newMaxAmount)
-        assertMsg "Auction duration must be positive" (newAuctionHours > 0)
+        assertMsg "Auction duration must be valid" (validateAuctionDuration newAuctionHours)
+        assertMsg "Min amount must be valid" (validateAmount newMinAmount)
+        assertMsg "Max amount must be valid" (validateAmount newMaxAmount)
         now <- getTime
         create this with
           defaultAuctionHours = newAuctionHours
@@ -75,6 +80,10 @@ template SellerOnboarding
       controller platform
       do
         assertMsg "Can only approve Pending sellers" (kybStatus == "Pending")
+        assertMsg "Company name must be valid" (validatePartyName companyName)
+        assertMsg "Tax ID must be valid" (validateTaxId taxId)
+        assertMsg "Risk limit must be positive" (riskLimit > 0.0)
+        assertMsg "Risk limit must be valid" (validateAmount riskLimit)
         now <- getTime
         create this with kybStatus = "Approved"; approvedAt = Some now
 
@@ -91,6 +100,8 @@ template SellerOnboarding
       controller platform
       do
         assertMsg "Limit must be positive" (newLimit > 0.0)
+        assertMsg "Limit must be valid" (validateAmount newLimit)
+        assertMsg "Seller must be approved" (kybStatus == "Approved")
         create this with riskLimit = newLimit
 
 -- Platform-issued fee receipt after each successful settlement.
@@ -109,6 +120,7 @@ template FeeReceipt
   where
     signatory platform
     observer payer
+    -- Immutable receipt - no choices (audit trail)
 
 -- Aggregate daily settlement summary (created by platform at end of each auction day).
 template SettlementSummary

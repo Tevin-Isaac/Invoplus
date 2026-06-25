@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRightCircle, Zap, LockKeyhole, Fingerprint, Menu, X } from 'lucide-react'
+import { useCanton } from '@/lib/canton'
+import { WalletConnect } from '@/components/wallet-connect'
 
 // Logo SVG Component - Just the icon
 function Logo() {
@@ -19,8 +21,19 @@ function Logo() {
 // Navbar Component
 function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { isConnected, connectWithWallet } = useCanton()
 
   const navLinks = ['Features', 'Pricing', 'Blog']
+
+  const handleGetStarted = () => {
+    if (isConnected) {
+      window.location.href = '/dashboard'
+    } else {
+      // Trigger wallet connection dialog
+      const walletButton = document.querySelector('[data-wallet-connect-trigger]') as HTMLButtonElement
+      walletButton?.click()
+    }
+  }
 
   return (
     <>
@@ -48,11 +61,20 @@ function Navbar() {
         {/* Desktop CTA Button */}
         <div className="hidden md:flex items-center gap-3">
           <button
+            onClick={handleGetStarted}
             className="text-sm font-semibold px-6 py-2.5 rounded-full transition-all hover:shadow-lg active:scale-95"
             style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
           >
-            Get Started
+            {isConnected ? 'Go to Dashboard' : 'Get Started'}
           </button>
+          {/* Hidden WalletConnect trigger */}
+          <div className="hidden">
+            <WalletConnect 
+              onConnect={connectWithWallet}
+              onDisconnect={() => window.location.href = '/'}
+              isConnected={isConnected}
+            />
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
@@ -151,6 +173,7 @@ function Navbar() {
               {/* CTA Button */}
               <div>
                 <button
+                  onClick={handleGetStarted}
                   className="w-full py-3.5 rounded-full font-semibold"
                   style={{
                     backgroundColor: 'var(--color-accent)',
@@ -158,7 +181,7 @@ function Navbar() {
                     fontSize: '0.95rem',
                   }}
                 >
-                  Get Started
+                  {isConnected ? 'Go to Dashboard' : 'Get Started'}
                 </button>
               </div>
             </motion.div>
@@ -171,6 +194,9 @@ function Navbar() {
 
 // Hero Section
 function HeroContent() {
+  const { isConnected, connectWithWallet } = useCanton()
+  const [showWalletDialog, setShowWalletDialog] = useState(false)
+
   const fadeUp = {
     hidden: { opacity: 0, y: 28 },
     visible: (i: number) => ({
@@ -182,6 +208,23 @@ function HeroContent() {
         ease: [0.22, 1, 0.36, 1],
       },
     }),
+  }
+
+  const handleStartFree = () => {
+    if (isConnected) {
+      window.location.href = '/dashboard'
+    } else {
+      setShowWalletDialog(true)
+    }
+  }
+
+  const handleWalletConnect = async (provider: any) => {
+    await connectWithWallet(provider)
+    setShowWalletDialog(false)
+    // Redirect to dashboard after successful connection
+    setTimeout(() => {
+      window.location.href = '/dashboard'
+    }, 500)
   }
 
   return (
@@ -279,6 +322,7 @@ function HeroContent() {
             className="flex items-center justify-center"
           >
             <motion.button
+              onClick={handleStartFree}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               className="flex items-center justify-between gap-8 px-6 py-[17px] rounded-full font-semibold transition-all"
@@ -297,10 +341,35 @@ function HeroContent() {
                 e.currentTarget.style.filter = 'brightness(1)'
               }}
             >
-              Start Free
+              {isConnected ? 'Go to Dashboard' : 'Start Free'}
               <ArrowRightCircle size={20} />
             </motion.button>
           </motion.div>
+
+          {/* Wallet Connection Dialog */}
+          {showWalletDialog && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">Connect Canton Wallet</h3>
+                    <p className="text-xs text-slate-600 mt-0.5">Select a CIP-103 compliant wallet to get started</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowWalletDialog(false)}
+                    className="text-slate-600 hover:text-slate-900"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <WalletConnect 
+                  onConnect={handleWalletConnect}
+                  onDisconnect={() => setShowWalletDialog(false)}
+                  isConnected={isConnected}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>
