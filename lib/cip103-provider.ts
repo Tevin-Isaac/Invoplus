@@ -209,7 +209,7 @@ class Cip103Provider implements Provider {
           throw this.createError(ErrorCode.METHOD_NOT_FOUND, `Method not found: ${method}`)
       }
     } catch (error) {
-      if (error instanceof ProviderRpcError) {
+      if (error && typeof error === 'object' && 'code' in error) {
         throw error
       }
       throw this.createError(ErrorCode.INTERNAL_ERROR, `Internal error: ${error}`)
