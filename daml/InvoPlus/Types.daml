@@ -70,14 +70,6 @@ data VerificationResult = VerificationResult
     verifiedAt       : Time
   deriving (Eq, Show)
 
--- Repayment status tracking
-data RepaymentStatus = 
-  = Pending      -- awaiting debtor payment
-  | PartialPaid  -- partial payment received
-  | FullyPaid    -- full repayment completed
-  | Disputed     -- payment contested
-  | Defaulted    -- past due
-  deriving (Eq, Show)
 
 -- Audit event for compliance tracking
 data AuditEvent = AuditEvent

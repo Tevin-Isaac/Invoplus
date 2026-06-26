@@ -3,8 +3,6 @@
 module InvoPlus.Auth where
 
 import DA.Time (Time)
-import DA.Date (Date)
-import Daml.Crypto (Hash)
 
 -- User login credentials — stored securely by platform
 -- Password hash computed server-side using bcrypt or similar
