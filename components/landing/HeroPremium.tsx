@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRightCircle, Zap, LockKeyhole, Fingerprint, Menu, X } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { WalletConnect } from '@/components/wallet-connect'
+import { Logo as BrandLogo } from '@/components/brand/Logo'
 
 // Logo SVG Component - Just the icon
 function Logo() {
@@ -40,8 +41,7 @@ function Navbar() {
       {/* Desktop Navbar */}
       <nav className="relative z-10 mx-auto max-w-5xl px-5 sm:px-8 py-4 sm:py-5 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Logo />
-          <span className="font-semibold text-lg" style={{ color: 'var(--color-text)' }}>Invoplus</span>
+          <BrandLogo size={30} textClassName="text-lg" tone="light" />
         </div>
 
         {/* Desktop Links */}
@@ -123,8 +123,7 @@ function Navbar() {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                  <Logo />
-                  <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Invoplus</span>
+                  <BrandLogo size={28} textClassName="text-base" tone="light" />
                 </div>
                 <motion.button
                   whileTap={{ scale: 0.9 }}

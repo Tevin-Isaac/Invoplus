@@ -1,5 +1,5 @@
-import Image from 'next/image'
 import Link from 'next/link'
+import { Logo } from '@/components/brand/Logo'
 
 const links = {
   Product: ['How It Works', 'For Businesses', 'For Investors', 'Pricing', 'Changelog'],
@@ -14,9 +14,8 @@ export function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 mb-12">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2.5 mb-4">
-            <Image src="/invoplus.png" alt="Invoplus" width={32} height={32} className="rounded-lg" />
-              <span className="text-lg font-bold text-white">Invoplus</span>
+            <Link href="/" className="inline-flex items-center mb-4">
+              <Logo size={32} textClassName="text-lg" />
             </Link>
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-6">
             The easiest way to get paid faster. Create, send, and track invoices with confidence.
