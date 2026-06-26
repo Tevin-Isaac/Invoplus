@@ -339,7 +339,7 @@ export default function InvoicesPage() {
           </div>
           <div className="divide-y divide-dark-border">
             {filtered.map(inv => {
-              const sc = statusConfig[inv.status]
+              const sc = statusConfig[inv.status as keyof typeof statusConfig]
               const Icon = sc.icon
               return (
                 <div key={inv.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-5 py-4 items-center hover:bg-white/[0.02] transition-colors">
