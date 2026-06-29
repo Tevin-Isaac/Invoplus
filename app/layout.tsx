@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { CantonProvider } from '@/lib/canton'
+import { AuthProvider } from '@/lib/auth-context'
 
 export const metadata: Metadata = {
   title: 'Invoplus — Fast Invoice & Payment Platform',
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <CantonProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </CantonProvider>
       </body>
     </html>
