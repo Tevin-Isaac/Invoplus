@@ -102,7 +102,7 @@ export default function PortfolioPage() {
                     <Icon className={cn('w-4 h-4', s.gold ? 'text-amber-300' : 'text-violet-400')} />
                   </div>
                 </div>
-                <p className={cn('text-2xl font-bold', s.gold ? 'text-amber-300' : 'text-white')}>{loading ? '—' : s.value}</p>
+                <p className={cn('text-2xl font-bold font-data', s.gold ? 'text-amber-300' : 'text-white')}>{loading ? '—' : s.value}</p>
               </div>
             )
           })}
@@ -173,12 +173,12 @@ export default function PortfolioPage() {
                       </div>
                       <div>
                         <p className="text-xs text-dark-muted">Annual Rate</p>
-                        <p className="text-sm font-semibold text-amber-300">{(pos.annualRate * 100).toFixed(1)}%</p>
+                        <p className="text-sm font-semibold text-amber-300 font-data">{(pos.annualRate * 100).toFixed(1)}%</p>
                       </div>
                       {pos.status === 'active' && (
                         <div>
                           <p className="text-xs text-dark-muted">Return at Repayment</p>
-                          <p className="text-sm font-semibold text-amber-300">{money(pos.returnAtRepayment, pos.currency)}</p>
+                          <p className="text-sm font-semibold text-amber-300 font-data">{money(pos.returnAtRepayment, pos.currency)}</p>
                         </div>
                       )}
                       <span className={cn('text-xs px-2 py-1 rounded-md font-medium',

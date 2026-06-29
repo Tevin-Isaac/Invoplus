@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!session?.userId) redirect('/login')
   }
   return (
-    <div className="flex h-screen bg-dark-bg text-white overflow-hidden">
+    <div className="flex h-screen dashboard-shell text-white overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {children}

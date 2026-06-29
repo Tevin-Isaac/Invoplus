@@ -142,7 +142,7 @@ export default function AnalyticsPage() {
           {kpis.map(k => (
             <div key={k.label} className={cn('bg-dark-card border border-dark-border rounded-2xl p-5 border-t-2', k.gold ? 'border-t-amber-400/70' : 'border-t-violet-500/50')}>
               <p className="text-xs text-dark-muted mb-1">{k.label}</p>
-              <p className={cn('text-3xl font-bold', k.gold ? 'text-amber-300' : 'text-white')}>{k.value}</p>
+              <p className={cn('text-3xl font-bold font-data', k.gold ? 'text-amber-300' : 'text-white')}>{k.value}</p>
               <p className="text-xs text-dark-muted mt-1">{k.sub}</p>
             </div>
           ))}
@@ -225,7 +225,7 @@ export default function AnalyticsPage() {
             {performance.map(s => (
               <div key={s.label} className={cn('p-4 rounded-xl bg-dark-bg border', s.gold ? 'border-amber-400/30' : 'border-dark-border')}>
                 <p className="text-xs text-dark-muted mb-1">{s.label}</p>
-                <p className={cn('text-lg font-bold', s.gold ? 'text-amber-300' : 'text-white')}>{s.value}</p>
+                <p className={cn('text-lg font-bold font-data', s.gold ? 'text-amber-300' : 'text-white')}>{s.value}</p>
                 <p className="text-xs text-dark-muted mt-1">{s.note}</p>
               </div>
             ))}

@@ -63,7 +63,7 @@ export function Header({ title }: { title: string }) {
   return (
     <>
       <header className="h-16 border-b border-dark-border bg-dark-bg/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0">
-        <h1 className="text-lg font-semibold text-white">{title}</h1>
+        <h1 className="text-lg font-semibold text-white font-display">{title}</h1>
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 bg-dark-card border border-dark-border rounded-xl px-3 py-2 text-sm text-dark-muted w-52">
@@ -71,10 +71,22 @@ export function Header({ title }: { title: string }) {
             <span>Search invoices...</span>
           </div>
 
-          {ledgerStatus?.ok && (
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              Block {ledgerStatus.offset?.toLocaleString()}
+          {ledgerStatus?.ok ? (
+            <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-lg bg-dark-card border border-dark-border">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-data text-[11px] tracking-wider text-emerald-400/90">DEVNET</span>
+              </span>
+              <span className="w-px h-3 bg-dark-border" />
+              <span className="font-data text-[11px] text-dark-muted">block <span className="text-white">{ledgerStatus.offset?.toLocaleString()}</span></span>
+              {ledgerStatus.packageCount != null && (
+                <span className="font-data text-[11px] text-dark-muted">pkgs <span className="text-amber-300">{ledgerStatus.packageCount}</span></span>
+              )}
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-card border border-dark-border">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <span className="font-data text-[11px] text-dark-muted">DEVNET offline</span>
             </div>
           )}
 
@@ -84,19 +96,17 @@ export function Header({ title }: { title: string }) {
           </button>
 
           {isConnected && party ? (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={disconnect}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-violet-500/10 border border-violet-500/30 text-violet-300 hover:bg-violet-500/20 transition-all"
-                title="Click to disconnect"
-              >
-                <Wallet className="w-4 h-4" />
-                <span className="flex items-center gap-1.5 max-w-[140px] truncate">
-                  {party.displayName}
-                  <ChevronDown className="w-3 h-3 shrink-0" />
-                </span>
-              </button>
-            </div>
+            <button
+              onClick={disconnect}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-violet-500/10 border border-violet-500/30 text-violet-300 hover:bg-violet-500/20 transition-all"
+              title="Click to disconnect"
+            >
+              <Wallet className="w-4 h-4" />
+              <span className="flex items-center gap-1.5 max-w-[140px] truncate">
+                {party.displayName}
+                <ChevronDown className="w-3 h-3 shrink-0" />
+              </span>
+            </button>
           ) : (
             <button
               onClick={openModal}
