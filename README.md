@@ -88,6 +88,7 @@ lib/
   canton-server.ts  Server-side Canton ledger access
   canton.tsx        Client connection context (wallet / party)
   auth.ts           Canton-backed auth (UserCredential, SessionToken)
+  cip103-provider.ts  CIP-103 Canton wallet provider
   risk-engine.ts    Deterministic invoice scoring
 daml/
   InvoPlus/         Daml modules (Invoice, Registry, Platform, Auth, ...)
@@ -166,7 +167,7 @@ This is an active hackathon build. Honest snapshot:
 
 ## Acknowledgements
 
-Built on [Canton](https://www.canton.network/) and deployed via [Seaport](https://app.devnet.seaport.to). Created for `[hackathon name]` by the Invoplus team.
+Built on [Canton](https://www.canton.network/) and deployed via [Seaport](https://app.devnet.seaport.to). Built at the Canton Hackathon by Encode Club.
 
 ---
 
