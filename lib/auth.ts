@@ -2,6 +2,7 @@ import { hash } from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import { NextRequest } from 'next/server'
+import { cookies } from 'next/headers'
 import { submitAndWait, queryACS, allocateParty } from '@/lib/canton-server'
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -335,4 +336,18 @@ export async function suspendUser(userId: string): Promise<boolean> {
 
 export async function resumeUser(userId: string): Promise<boolean> {
   return setCredentialState(userId, 'RestoreCredential')
+}
+
+
+// ─── Cookie-based auth (httpOnly token) ──────────────────────────────────────
+export function authRequired(): boolean {
+  return process.env.AUTH_REQUIRED === 'true'
+}
+
+export function verifyAuthCookie(): { userId: string; email: string; role: string; party?: string } | null {
+  const token = cookies().get('invoplus_token')?.value
+  if (!token) return null
+  const decoded = verifyJWT(token)
+  if (!decoded || !decoded.userId) return null
+  return { userId: decoded.userId, email: decoded.email, role: decoded.role, party: decoded.party }
 }
