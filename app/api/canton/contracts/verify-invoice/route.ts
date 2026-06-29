@@ -11,6 +11,7 @@
  */
 import { NextResponse } from 'next/server'
 import { submitAndWait } from '@/lib/canton-server'
+import { verifyAuthCookie, authRequired } from '@/lib/auth'
 import { scoreInvoice } from '@/lib/risk-engine'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,9 @@ const GRADE_MAP: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 }
 
 export async function POST(req: Request) {
   try {
+    if (authRequired() && !verifyAuthCookie()) {
+      return NextResponse.json({ ok: false, error: 'Authentication required' }, { status: 401 })
+    }
     const {
       platformPartyId,
       invoiceContractId,

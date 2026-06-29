@@ -6,10 +6,12 @@ import { usePathname } from 'next/navigation'
 import { Fraunces } from 'next/font/google'
 import {
   LayoutDashboard, FileText, Store, Tag, BarChart3,
-  Settings, Menu, X, TrendingUp
+  Settings, Menu, X, TrendingUp, LogOut
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
+import { useAuth } from '@/lib/auth-context'
+import { useRouter } from 'next/navigation'
 
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['600'], display: 'swap' })
 
@@ -27,6 +29,9 @@ export function Sidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { ledgerStatus, ledgerLoading } = useCanton()
+  const { user, logout } = useAuth()
+  const router = useRouter()
+  const handleLogout = async () => { await logout(); router.push('/login') }
 
   return (
     <>
