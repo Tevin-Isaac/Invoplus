@@ -1,89 +1,44 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, X } from 'lucide-react'
-import { useCanton } from '@/lib/canton'
-import { WalletConnect } from '@/components/wallet-connect'
+import { ArrowRight } from 'lucide-react'
 
 export function CTA() {
-  const { isConnected, connectWithWallet } = useCanton()
-  const [showWalletDialog, setShowWalletDialog] = useState(false)
-
-  const handleCreateInvoice = () => {
-    if (isConnected) {
-      window.location.href = '/dashboard/invoices'
-    } else {
-      setShowWalletDialog(true)
-    }
-  }
-
-  const handleWalletConnect = async (provider: any) => {
-    await connectWithWallet(provider)
-    setShowWalletDialog(false)
-    // Redirect to invoices page after successful connection
-    setTimeout(() => {
-      window.location.href = '/dashboard/invoices'
-    }, 500)
-  }
-
   return (
-    <section className="py-24 lg:py-32 bg-white">
-      <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
-        <div className="bg-violet-500 rounded-3xl p-12 lg:p-16 relative overflow-hidden">
+    <section className="py-24 lg:py-32 bg-slate-950 border-t border-slate-800">
+      <div className="max-w-4xl mx-auto px-6 lg:px-10 text-center">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-2xl p-12 lg:p-16 border border-slate-800 relative overflow-hidden">
           {/* BG decoration */}
-          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 translate-y-1/2 -translate-x-1/2" />
+          <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-violet-500/5 -translate-y-1/2 translate-x-1/2 blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-violet-500/5 translate-y-1/2 -translate-x-1/2 blur-3xl" />
 
           <div className="relative">
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
-              Create your first invoice in seconds
+              Ready to grow your business?
             </h2>
-            <p className="text-lg text-white/80 mb-10 max-w-xl mx-auto">
-              Start invoicing today and accept payments online. Fast setup, beautiful templates, and instant notifications.
+            <p className="text-lg text-slate-400 mb-10 max-w-xl mx-auto">
+              Join thousands of businesses using Invoplus to create invoices, get funded, and grow their cash flow.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={handleCreateInvoice}
-                className="flex items-center gap-2 bg-white text-violet-600 font-semibold px-8 py-4 rounded-2xl hover:bg-violet-50 transition-colors group">
-                {isConnected ? 'Create Invoice' : 'Connect Wallet'}
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-8 py-4 rounded-lg transition-colors group"
+              >
+                Get Started Free
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-              <Link href="/pricing"
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold px-8 py-4 rounded-2xl transition-colors">
-                See Pricing
               </Link>
+              <a
+                href="#features"
+                className="flex items-center gap-2 border border-slate-700 hover:border-slate-600 text-white font-semibold px-8 py-4 rounded-lg transition-colors"
+              >
+                View Features
+              </a>
             </div>
-            <p className="text-white/50 text-sm mt-6">
-              No credit check required · Free to upload · Cancel anytime
+            <p className="text-slate-500 text-sm mt-6">
+              No credit card required · 30-day free trial · Cancel anytime
             </p>
           </div>
         </div>
-
-        {/* Wallet Connection Dialog */}
-        {showWalletDialog && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900">Connect Canton Wallet</h3>
-                  <p className="text-xs text-slate-600 mt-0.5">Select a CIP-103 compliant wallet to get started</p>
-                </div>
-                <button 
-                  onClick={() => setShowWalletDialog(false)}
-                  className="text-slate-600 hover:text-slate-900"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <WalletConnect 
-                onConnect={handleWalletConnect}
-                onDisconnect={() => setShowWalletDialog(false)}
-                isConnected={isConnected}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </section>
   )

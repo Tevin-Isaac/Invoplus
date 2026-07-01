@@ -8,9 +8,10 @@ interface LogoProps {
   textClassName?: string
   className?: string
   tone?: 'dark' | 'light'
+  showText?: boolean
 }
 
-export function Logo({ size = 32, textClassName = 'text-xl', className, tone = 'dark' }: LogoProps) {
+export function Logo({ size = 32, textClassName = 'text-xl', className, tone = 'dark', showText = true }: LogoProps) {
   const invoColor = tone === 'dark' ? '#8B5CF6' : '#6D28D9'
   const plusColor = tone === 'dark' ? '#FBBF24' : '#B45309'
   return (
@@ -22,9 +23,11 @@ export function Logo({ size = 32, textClassName = 'text-xl', className, tone = '
         <rect x="29" y="44" width="28" height="12" rx="3" fill="#F59E0B" />
         <rect x="36" y="30" width="28" height="12" rx="3" fill="#D97706" />
       </svg>
-      <span className={cn('font-semibold leading-none', fraunces.className, textClassName)}>
-        <span style={{ color: invoColor }}>Invo</span><span style={{ color: plusColor }}>plus</span>
-      </span>
+      {showText && (
+        <span className={cn('font-semibold leading-none', fraunces.className, textClassName)}>
+          <span style={{ color: invoColor }}>Invo</span><span style={{ color: plusColor }}>plus</span>
+        </span>
+      )}
     </span>
   )
 }

@@ -5,6 +5,11 @@ import { CantonProvider } from '@/lib/canton'
 export const metadata: Metadata = {
   title: 'Invoplus — Fast Invoice & Payment Platform',
   description: 'Create professional invoices, send to clients, and get paid faster. Simple invoicing for freelancers and small businesses.',
+  icons: {
+    icon: '/invoplus.png',
+    shortcut: '/invoplus.png',
+    apple: '/invoplus.png',
+  },
   openGraph: {
     title: 'Invoplus',
     description: 'Get paid faster with professional invoicing, payment tracking, and automated reminders.',
@@ -14,9 +19,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <link href="https://db.onlinewebfonts.com/c/04e6981992c0e2e7642af2074ebe3901?family=Helvetica+Now+Display+Bold" rel="stylesheet" />
+        <meta name="color-scheme" content="light dark" />
       </head>
       <body>
         <CantonProvider>

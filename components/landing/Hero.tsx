@@ -1,82 +1,129 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, ShieldCheck, Zap, Lock } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Menu, X, Moon, Sun } from 'lucide-react'
+import { Logo } from '@/components/brand/Logo'
+
+const navLinks = [
+  { label: 'platform', href: '#platform' },
+  { label: 'features', href: '#features' },
+  { label: 'company', href: '#company' },
+  { label: 'support', href: '#support' },
+]
 
 export function Hero() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
+    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    setTheme(stored || preferred)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    window.localStorage.setItem('invoplus-theme', theme)
+  }, [theme])
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-20">
-      {/* Background decoration */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-violet-50 blur-3xl opacity-60" />
-        <div className="absolute top-20 right-20 w-64 h-64 rounded-full bg-violet-100 blur-3xl opacity-40" />
-      </div>
+    <section className="relative h-screen w-full overflow-hidden bg-slate-950 text-white">
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+      >
+        <source src="/invoice.mp4" type="video/mp4" />
+      </video>
 
-      <div className="relative max-w-7xl mx-auto px-6 lg:px-8 text-center">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-100 text-violet-600 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-          <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-          Create Invoice Now · Fast Payments
-        </div>
+      <div className="absolute inset-0 bg-slate-950/60" />
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent to-slate-950" />
 
-        {/* Headline */}
-        <h1 className="text-5xl lg:text-7xl font-bold text-gray-900 leading-tight tracking-tight mb-6">
-          Payments For Everyone
-        </h1>
+      <nav className="absolute top-0 left-0 right-0 z-20 px-6 md:px-10 pt-6 flex items-center justify-between gap-4">
+        <Link href="/" className="flex items-center gap-3 bg-slate-900/90 backdrop-blur rounded-full px-4 py-3 border border-white/10">
+          <Logo size={28} showText={false} />
+          <span className="sr-only">Invoplus</span>
+        </Link>
 
-        {/* Sub-headline */}
-        <p className="text-xl lg:text-2xl text-gray-500 max-w-3xl mx-auto leading-relaxed mb-4">
-          Simplify how you get paid. Create, send, and track invoices in seconds.
-          Built for freelancers, small businesses, and teams who want reliable cash flow.
-        </p>
-        <p className="text-base text-gray-400 max-w-2xl mx-auto mb-12">
-          Start invoicing with beautiful, professional templates and painless payment collection.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <Link href="/dashboard"
-            className="flex items-center gap-2 bg-violet-500 hover:bg-violet-600 text-white font-semibold text-base px-8 py-4 rounded-2xl transition-all hover:shadow-lg hover:shadow-violet-200 group">
-            Start Today
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-          <Link href="/#how-it-works"
-            className="flex items-center gap-2 bg-white border-2 border-gray-200 hover:border-violet-200 text-gray-700 hover:text-violet-600 font-semibold text-base px-8 py-4 rounded-2xl transition-all">
-            How It Works
-          </Link>
-        </div>
-
-        {/* Trust badges */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-gray-500">
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-violet-500" />
-            <span>Professional invoices</span>
-          </div>
-          <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-300" />
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-violet-500" />
-            <span>Fast payments</span>
-          </div>
-          <div className="hidden sm:block w-1 h-1 rounded-full bg-gray-300" />
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-violet-500" />
-            <span>Clear reporting</span>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-8 max-w-4xl mx-auto">
-          {[
-            { value: '50K+', label: 'Invoices Sent' },
-            { value: '24h',   label: 'Avg Time to Paid' },
-            { value: '99.8%',  label: 'Delivery Rate' },
-            { value: '25K+',   label: 'Happy Customers' },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <div className="text-3xl lg:text-4xl font-bold text-gray-900 mb-1">{s.value}</div>
-              <div className="text-sm text-gray-400">{s.label}</div>
-            </div>
+        <div className="hidden md:flex items-center gap-1 bg-slate-900/90 backdrop-blur rounded-full px-3 py-2">
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full"
+            >
+              {link.label}
+            </a>
           ))}
+        </div>
+
+        <div className="hidden md:flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="bg-white/10 text-white hover:bg-white/20 rounded-full p-3 transition"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <Link
+            href="/dashboard"
+            className="bg-white text-black text-sm font-semibold rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors"
+          >
+            get started
+          </Link>
+        </div>
+
+        <button
+          className="md:hidden text-white"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Open mobile menu"
+        >
+          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </nav>
+
+      {mobileMenuOpen && (
+        <div className="absolute top-20 left-0 right-0 z-10 bg-slate-950/95 backdrop-blur border-b border-white/10 px-6 py-4 space-y-3 md:hidden">
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="block text-neutral-300 hover:text-white transition-colors text-sm font-medium px-4 py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {link.label}
+            </a>
+          ))}
+          <button
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-full flex items-center justify-center gap-2 bg-white/10 text-white hover:bg-white/20 rounded-full px-4 py-3 transition"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? 'light mode' : 'dark mode'}
+          </button>
+          <Link
+            href="/dashboard"
+            className="block w-full text-center bg-white text-black text-sm font-semibold rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            get started
+          </Link>
+        </div>
+      )}
+
+      <div className="relative h-full w-full">
+        <h1 className="absolute left-6 md:left-10 top-[28%] max-w-2xl text-4xl md:text-6xl font-semibold text-white">Secure your cash flow</h1>
+
+        <p className="absolute left-6 md:left-10 top-[42%] max-w-lg text-lg md:text-xl text-white/85">Manage invoices, access funding, and keep cash moving — simple, secure, and fast.</p>
+
+        <div className="absolute left-6 md:left-10 top-[54%] flex items-center gap-3">
+          <Link href="/dashboard" className="bg-white text-black text-sm font-semibold rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors">Get started</Link>
+          <Link href="#platform" className="text-white/90 text-sm font-medium hover:underline">Learn how it works</Link>
         </div>
       </div>
     </section>

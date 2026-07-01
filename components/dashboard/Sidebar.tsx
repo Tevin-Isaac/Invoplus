@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Fraunces } from 'next/font/google'
+import { Logo } from '@/components/brand/Logo'
 import {
   LayoutDashboard, FileText, Store, Tag, BarChart3,
   Settings, Menu, X, TrendingUp
@@ -11,7 +11,6 @@ import {
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 
-const fraunces = Fraunces({ subsets: ['latin'], weight: ['600'], display: 'swap' })
 
 const navItems = [
   { href: '/dashboard',             icon: LayoutDashboard, label: 'Overview' },
@@ -48,19 +47,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="px-6 py-6 border-b border-dark-border">
           <Link href="/" className="flex items-center gap-3">
-            <svg width="38" height="38" viewBox="0 0 96 96" aria-hidden="true" className="shrink-0">
-              <rect x="8" y="8" width="80" height="80" rx="20" fill="#6D28D9" />
-              <rect x="14" y="14" width="68" height="68" rx="15" fill="none" stroke="#F59E0B" strokeWidth="2" />
-              <rect x="22" y="58" width="28" height="12" rx="3" fill="#FCD34D" />
-              <rect x="29" y="44" width="28" height="12" rx="3" fill="#F59E0B" />
-              <rect x="36" y="30" width="28" height="12" rx="3" fill="#D97706" />
-            </svg>
-            <div className="flex flex-col leading-none">
-              <span className={cn('text-xl font-semibold', fraunces.className)}>
-                <span style={{ color: '#8B5CF6' }}>Invo</span><span style={{ color: '#FBBF24' }}>plus</span>
-              </span>
-              <span className="text-xs text-dark-muted mt-1.5">Canton Network</span>
-            </div>
+            <Logo size={38} textClassName="text-xl font-semibold" />
           </Link>
         </div>
 

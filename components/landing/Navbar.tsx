@@ -2,20 +2,32 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/brand/Logo'
 
 const links = [
-  { label: 'Home', href: '/' },
+  { label: 'Platform', href: '/#platform' },
   { label: 'Features', href: '/#features' },
-  { label: 'How it Works', href: '/#how-it-works' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'About', href: '/about' },
+  { label: 'Company', href: '/#company' },
+  { label: 'Support', href: '/#support' },
 ]
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
+    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    setTheme(stored || preferred)
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    window.localStorage.setItem('invoplus-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -26,44 +38,61 @@ export function Navbar() {
   return (
     <header className={cn(
       'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-      scrolled ? 'bg-slate-950/95 backdrop-blur-xl border-b border-slate-800' : 'bg-transparent'
+      scrolled 
+        ? 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800' 
+        : 'bg-transparent'
     )}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link href="/" className="text-xl font-bold text-white">Invoplus</Link>
+          <Link href="/" className="flex items-center gap-2.5">
+            <Logo size={28} showText={false} />
+          </Link>
 
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-slate-300">
+          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
             {links.map((link) => (
-              <Link key={link.href} href={link.href} className="transition hover:text-white">
+              <Link key={link.href} href={link.href} className="text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition">
                 {link.label}
               </Link>
             ))}
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
-            <Link href="/dashboard" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-violet-300 hover:bg-white/10">
-              Dashboard
-            </Link>
-            <Link href="/dashboard" className="rounded-2xl bg-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400">
-              Open App
+            <button
+              type="button"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="bg-slate-200/50 dark:bg-white/10 text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-white/20 rounded-full p-2.5 transition"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <Link href="/dashboard" className="rounded-full border border-slate-200 dark:border-white/10 bg-white/5 dark:bg-white/5 px-4 py-2 text-sm text-slate-950 dark:text-white transition hover:bg-slate-100 dark:hover:bg-white/10">
+              Get Started
             </Link>
           </div>
 
-          <button className="lg:hidden p-2 text-white" onClick={() => setMobileOpen(!mobileOpen)}>
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <button className="lg:hidden p-2 text-slate-950 dark:text-white" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="lg:hidden bg-slate-950 border-t border-slate-800 px-6 py-4 space-y-3">
+        <div className="lg:hidden bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 px-6 py-4 space-y-3">
           {links.map((link) => (
-            <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)} className="block rounded-2xl px-4 py-3 text-sm text-slate-200 hover:bg-white/5">
+            <Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)} className="block text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition py-2">
               {link.label}
             </Link>
           ))}
-          <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block rounded-2xl bg-violet-500 px-5 py-3 text-center text-sm font-semibold text-white">
-            Open App
+          <button
+            type="button"
+            onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); setMobileOpen(false) }}
+            className="w-full flex items-center justify-center gap-2 bg-slate-200/50 dark:bg-white/10 text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-white/20 rounded-full px-4 py-2.5 transition"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? 'Light' : 'Dark'} Mode
+          </button>
+          <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block w-full text-center rounded-full bg-slate-950 dark:bg-white text-white dark:text-slate-950 text-sm font-semibold px-6 py-3 hover:opacity-90 transition">
+            Get Started
           </Link>
         </div>
       )}

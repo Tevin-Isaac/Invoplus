@@ -1,56 +1,36 @@
 import Link from 'next/link'
 import { Logo } from '@/components/brand/Logo'
 
-const links = {
-  Product: ['How It Works', 'For Businesses', 'For Investors', 'Pricing', 'Changelog'],
-  Company:  ['About', 'Blog', 'Careers', 'Press', 'Contact'],
-  Legal:    ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Security'],
-}
-
 export function Footer() {
+  const year = new Date().getFullYear()
+
   return (
-    <footer className="bg-gray-950 border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 mb-12">
-          {/* Brand */}
-          <div className="lg:col-span-2">
-            <Link href="/" className="inline-flex items-center mb-4">
-              <Logo size={32} textClassName="text-lg" />
-            </Link>
-            <p className="text-sm text-gray-500 leading-relaxed max-w-xs mb-6">
-            The easiest way to get paid faster. Create, send, and track invoices with confidence.
-            </p>
-            <div className="flex items-center gap-2 text-xs text-gray-600">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              All systems operational
-            </div>
-          </div>
-
-          {/* Links */}
-          {Object.entries(links).map(([group, items]) => (
-            <div key={group}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">{group}</p>
-              <ul className="space-y-3">
-                {items.map(item => (
-                  <li key={item}>
-                    <Link href="#" className="text-sm text-gray-500 hover:text-white transition-colors">
-                      {item}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+    <footer className="border-t border-slate-200/20 bg-slate-50 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <Logo size={28} showText={false} />
+          <span className="sr-only">Invoplus</span>
         </div>
 
-        <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-gray-600">
-            © {new Date().getFullYear()} Invoplus. All rights reserved.
-          </p>
-          <p className="text-xs text-gray-600">
-            Design By Invoplus Team
-          </p>
+        <div className="flex flex-wrap items-center gap-5 text-sm text-slate-500 dark:text-slate-400">
+          <Link href="#platform" className="hover:text-slate-900 dark:hover:text-white transition-colors">platform</Link>
+          <Link href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">features</Link>
+          <Link href="#company" className="hover:text-slate-900 dark:hover:text-white transition-colors">company</Link>
+          <Link href="#support" className="hover:text-slate-900 dark:hover:text-white transition-colors">support</Link>
+          <a
+            href="https://x.com/invoplus"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Follow Invoplus on X"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:border-violet-500 hover:text-violet-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
+              <path d="M18.9 2H22l-6.6 7.6L23.3 22h-5.9l-4.7-6.2L7.3 22H4.2l7-8.1L.7 2h6.1l4.3 5.7L18.9 2Z" />
+            </svg>
+          </a>
         </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">© {year} invoplus. All rights reserved.</p>
       </div>
     </footer>
   )

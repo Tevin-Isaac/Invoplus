@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Shield } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Shield, Moon, Sun } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
 import { WalletConnect } from '@/components/wallet-connect'
@@ -27,6 +27,20 @@ export function Header({ title }: { title: string }) {
   const [role, setRole] = useState<'business' | 'financier'>('business')
   const [validating, setValidating] = useState(false)
   const [validateResult, setValidateResult] = useState<{ ok: boolean; displayName?: string; error?: string } | null>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
+    const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    const initialTheme = storedTheme || preferredTheme
+    setTheme(initialTheme)
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark')
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    window.localStorage.setItem('invoplus-theme', theme)
+  }, [theme])
 
   const openModal = () => { setModal('choose'); setValidateResult(null); setPasteId('') }
 
@@ -81,6 +95,15 @@ export function Header({ title }: { title: string }) {
           <button className="relative w-9 h-9 rounded-xl bg-dark-card border border-dark-border flex items-center justify-center hover:border-violet-500/30 transition-colors">
             <Bell className="w-4 h-4 text-dark-muted" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-500" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-9 h-9 rounded-xl bg-dark-card border border-dark-border flex items-center justify-center hover:border-violet-500/30 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-dark-muted" /> : <Moon className="w-4 h-4 text-dark-muted" />}
           </button>
 
           {isConnected && party ? (
