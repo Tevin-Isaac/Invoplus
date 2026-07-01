@@ -19,10 +19,10 @@ export default function HomePage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {[
-                { title: 'Instant invoice creation', text: 'Generate polished invoices and send them to customers in seconds.' },
-                { title: 'Automated collections', text: 'Set reminders, track payment status, and keep every invoice moving.' },
+                { title: 'Instant invoice creation', text: 'Generate polished invoices and submit them to the Canton Network in seconds.' },
+                { title: 'Real-time status tracking', text: 'Track invoice lifecycle from pending to verified, bidding, and funded.' },
                 { title: 'Risk-aware financing', text: 'Access financing confidently with transparent invoice scoring.' },
-                { title: 'Audit-grade security', text: 'Every payment and funding event is recorded with strong controls.' },
+                { title: 'Audit-grade security', text: 'Every payment and funding event is recorded on Canton blockchain.' },
               ].map((item) => (
                 <div key={item.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
                   <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{item.title}</h3>
@@ -50,7 +50,7 @@ export default function HomePage() {
               {[
                 { number: '01', title: 'Payment tracking', description: 'See where every invoice sits, who owes you, and when payments arrive with real-time updates.', icon: BarChart3 },
                 { number: '02', title: 'Transparent funding', description: 'Know funding costs before you commit and close cash gaps with confidence and clarity.', icon: DollarSign },
-                { number: '03', title: 'Secure customer portal', description: 'Clients can view invoices, pay online, and download receipts from one centralized place.', icon: Lock },
+                { number: '03', title: 'Risk-based scoring', description: 'AI-powered risk assessment with grades A-D, analyzing tenor, amount, currency, and debtor profile.', icon: Lock },
               ].map((item, index) => (
                 <div 
                   key={item.title} 

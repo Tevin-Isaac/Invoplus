@@ -15,11 +15,20 @@ const navLinks = [
 export function Hero() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+  const [currentVideo, setCurrentVideo] = useState(0)
+  const videos = ['/cashflow.mp4', '/invoice.mp4']
 
   useEffect(() => {
     const stored = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
     const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     setTheme(stored || preferred)
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentVideo(prev => (prev + 1) % videos.length)
+    }, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -30,13 +39,14 @@ export function Hero() {
   return (
     <section className="relative h-screen w-full overflow-hidden bg-slate-950 text-white">
       <video
+        key={videos[currentVideo]}
         className="absolute inset-0 w-full h-full object-cover"
         autoPlay
         loop
         muted
         playsInline
       >
-        <source src="/invoice.mp4" type="video/mp4" />
+        <source src={videos[currentVideo]} type="video/mp4" />
       </video>
 
       <div className="absolute inset-0 bg-slate-950/60" />
