@@ -52,39 +52,30 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false }: 
     setSelectedWallet(walletId)
 
     try {
-      // Import the CIP-103 provider dynamically
       const { Cip103Provider } = await import('@/lib/cip103-provider')
-      
+
       const wallet = wallets.find(w => w.id === walletId)
       if (!wallet) {
         throw new Error('Wallet not found')
       }
 
-      // Create provider instance
       const provider = new Cip103Provider(wallet.url)
-
-      // Attempt connection
       const result = await provider.connect()
-      
-      // Check if this is an async flow with userUrl
+
       if ('userUrl' in result) {
-        // Redirect to wallet for authentication
         window.location.href = result.userUrl
         return
       }
 
-      // If sync connection succeeded
       if (result.isConnected) {
-        // Set up network configuration from environment
         const networkId = process.env.NEXT_PUBLIC_CANTON_NETWORK_ID || 'canton:da-devnet'
         const ledgerApi = process.env.NEXT_PUBLIC_CANTON_LEDGER_URL
-        
+
         provider.setNetwork({
           networkId,
           ledgerApi,
         })
 
-        // Set up a demo account (in production, this would come from the wallet)
         provider.setAccounts([
           {
             primary: true,
@@ -98,20 +89,16 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false }: 
           },
         ])
 
-        // Set up session
         provider.setSession({
           accessToken: 'demo_access_token',
           userId: `user_${Date.now()}`,
         })
 
-        // Call the onConnect callback
         onConnect?.(provider)
-        
         setIsOpen(false)
       }
     } catch (error) {
       console.error('Wallet connection failed:', error)
-      // Show error to user (could add toast notification here)
     } finally {
       setIsConnecting(false)
       setSelectedWallet(null)
@@ -126,7 +113,7 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false }: 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant={isConnected ? "outline" : "default"}>
+        <Button variant={isConnected ? 'outline' : 'default'}>
           <Wallet className="mr-2 h-4 w-4" />
           {isConnected ? 'Wallet Connected' : 'Connect Wallet'}
         </Button>
@@ -135,35 +122,35 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false }: 
         <DialogHeader>
           <DialogTitle>Connect Canton Wallet</DialogTitle>
           <DialogDescription>
-            {isConnected 
+            {isConnected
               ? 'Your wallet is connected. You can disconnect or switch to a different wallet.'
               : 'Select a CIP-103 compliant wallet to connect to the Canton Network.'
             }
           </DialogDescription>
         </DialogHeader>
-        
+
         {!isConnected ? (
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-3 py-2">
             {wallets.map((wallet) => (
               <button
                 key={wallet.id}
                 onClick={() => handleConnect(wallet.id)}
                 disabled={isConnecting}
-                className="flex items-center gap-4 p-4 border rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
               >
                 <span className="text-2xl">{wallet.icon}</span>
-                <div className="text-left flex-1">
-                  <div className="font-medium">{wallet.name}</div>
-                  <div className="text-sm text-muted-foreground">{wallet.description}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-slate-950 dark:text-white">{wallet.name}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">{wallet.description}</div>
                 </div>
                 {isConnecting && selectedWallet === wallet.id && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-600 dark:text-slate-300" />
                 )}
               </button>
             ))}
           </div>
         ) : (
-          <div className="py-4">
+          <div className="py-2">
             <Button
               onClick={handleDisconnect}
               variant="destructive"

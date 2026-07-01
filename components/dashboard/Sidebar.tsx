@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/brand/Logo'
@@ -27,37 +27,57 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const { ledgerStatus, ledgerLoading } = useCanton()
   const { user, logout } = useAuth()
   const router = useRouter()
   const handleLogout = async () => { await logout(); router.push('/login') }
 
+  useEffect(() => {
+    const stored = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
+    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    setTheme(stored || preferred)
+    const onStorage = () => {
+      const next = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
+      if (next) setTheme(next)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <>
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden bg-dark-card border border-dark-border p-2.5 rounded-xl"
+        className="fixed top-4 left-4 z-50 lg:hidden rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-900"
         aria-label="Toggle menu"
       >
-        {mobileOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
+        {mobileOpen ? <X className="w-5 h-5 text-slate-950 dark:text-white" /> : <Menu className="w-5 h-5 text-slate-950 dark:text-white" />}
       </button>
 
       <aside className={cn(
         'fixed lg:relative inset-y-0 left-0 z-40',
         'w-64 h-screen flex flex-col shrink-0',
-        'bg-dark-bg border-r border-dark-border',
+        'border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950',
         'transform transition-transform duration-300',
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
-        {/* Logo */}
-        <div className="px-6 py-6 border-b border-dark-border">
+        <div className="px-6 py-6 border-b border-slate-200 dark:border-slate-800">
           <Link href="/" className="flex items-center gap-3">
-            <Logo size={38} textClassName="text-xl font-semibold" />
+            <Logo size={38} textClassName="text-xl font-semibold" tone={theme === 'dark' ? 'dark' : 'light'} />
           </Link>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <p className="text-xs font-semibold text-dark-muted uppercase tracking-widest px-3 mb-3">Menu</p>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest px-3 mb-3 dark:text-slate-400">Menu</p>
           {navItems.map(item => {
             const Icon = item.icon
             const active = pathname === item.href
@@ -69,27 +89,27 @@ export function Sidebar() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                   active
-                    ? 'bg-violet-500/15 text-white border border-violet-500/30'
-                    : 'text-dark-muted hover:text-white hover:bg-white/5'
+                    ? 'bg-slate-100 text-slate-950 border border-slate-200 dark:bg-white/10 dark:text-white dark:border-slate-700'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5'
                 )}
               >
-                <Icon className={cn('w-4 h-4', active ? 'text-violet-400' : 'text-current')} />
+                <Icon className="w-4 h-4 text-current" />
                 {item.label}
               </Link>
             )
           })}
         </nav>
 
-        <div className="p-4 border-t border-dark-border">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5 px-3 py-2">
             <span className={cn(
               'w-2 h-2 rounded-full',
-              ledgerLoading ? 'bg-yellow-400 animate-pulse' :
-              ledgerStatus?.ok ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              ledgerLoading ? 'bg-slate-400 animate-pulse' :
+              ledgerStatus?.ok ? 'bg-slate-500 animate-pulse' : 'bg-slate-600'
             )} />
             <div className="min-w-0">
-              <p className="text-xs font-medium text-white">Canton Network</p>
-              <p className="text-xs text-dark-muted truncate">
+              <p className="text-xs font-medium text-slate-950 dark:text-white">Canton Network</p>
+              <p className="text-xs text-slate-500 truncate dark:text-slate-400">
                 {ledgerLoading
                   ? 'Connecting…'
                   : ledgerStatus?.ok

@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 const val = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 const num = (x: any) => Number(val(x) ?? 0) || 0
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const gradeColor: Record<string, string> = { A: '#22C55E', B: '#6D4AFF', C: '#9898A6', D: '#F59E0B' }
+const gradeColor: Record<string, string> = { A: '#64748b', B: '#475569', C: '#94a3b8', D: '#cbd5e1' }
 const fmtUSD = (n: number) => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${Math.round(n)}`
 
 const CustomTooltip = ({ active, payload, label }: any) => {

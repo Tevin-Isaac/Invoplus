@@ -100,33 +100,30 @@ export default function DashboardPage() {
   }, [party])
 
   const stats = [
-    { label: party?.type === 'financier' ? 'Open bids' : 'Outstanding invoices', value: party ? String(party.type === 'financier' ? counts.bids : counts.invoices) : '—', icon: FileText, accent: 'violet' },
-    { label: 'Funded positions', value: party ? String(counts.funded) : '—', icon: TrendingUp, accent: 'gold' },
-    { label: party?.type === 'financier' ? 'Visible auctions' : 'Active auctions', value: party ? String(counts.auctions) : '—', icon: Lock, accent: 'violet' },
-    { label: 'Ledger packages', value: status?.packageCount != null ? String(status.packageCount) : '—', icon: Shield, accent: 'gold' },
+    { label: party?.type === 'financier' ? 'Open bids' : 'Outstanding invoices', value: party ? String(party.type === 'financier' ? counts.bids : counts.invoices) : '—', icon: FileText },
+    { label: 'Funded positions', value: party ? String(counts.funded) : '—', icon: TrendingUp },
+    { label: party?.type === 'financier' ? 'Visible auctions' : 'Active auctions', value: party ? String(counts.auctions) : '—', icon: Lock },
+    { label: 'Ledger packages', value: status?.packageCount != null ? String(status.packageCount) : '—', icon: Shield },
   ]
 
   return (
-    <div className="flex flex-col h-full overflow-hidden text-white">
+    <div className="flex flex-col h-full overflow-hidden">
       <Header title="Dashboard" />
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
-        <div className={cn(
-          'flex items-center justify-between rounded-3xl border p-5',
-          status?.ok ? 'border-emerald-500/20 bg-emerald-500/5' : ledgerLoading ? 'border-amber-500/20 bg-amber-500/5' : 'border-rose-500/20 bg-rose-500/5'
-        )}>
+        <div className="flex items-center justify-between rounded-3xl border border-dark-border bg-dark-card p-5">
           <div className="flex items-center gap-3">
-            <span className={cn('w-2.5 h-2.5 rounded-full', status?.ok ? 'bg-emerald-400 animate-pulse' : ledgerLoading ? 'bg-amber-400 animate-pulse' : 'bg-rose-400')} />
+            <span className={cn('w-2.5 h-2.5 rounded-full', status?.ok ? 'bg-slate-500 animate-pulse' : ledgerLoading ? 'bg-slate-400 animate-pulse' : 'bg-slate-600')} />
             <div>
               <p className="text-sm font-semibold text-white">Canton DevNet {status?.ok ? '· Connected' : ledgerLoading ? '· Connecting…' : '· Offline'}</p>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-dark-muted">
                 {status?.ok ? `Block ${status.offset?.toLocaleString()} · ${status.packageCount} packages · ${status.network ?? 'Canton Network'}` : ledgerLoading ? 'Establishing connection…' : 'Unable to reach Canton backend'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {status?.timestamp && <p className="text-xs text-slate-300 hidden md:block">Updated {new Date(status.timestamp).toLocaleTimeString()}</p>}
-            <button onClick={fetchFresh} disabled={refreshing} className="p-1.5 rounded-lg bg-white/5 text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60">
+            {status?.timestamp && <p className="text-xs text-dark-muted hidden md:block">Updated {new Date(status.timestamp).toLocaleTimeString()}</p>}
+            <button onClick={fetchFresh} disabled={refreshing} className="p-1.5 rounded-lg bg-white/5 text-dark-muted transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60">
               <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
             </button>
           </div>
@@ -135,58 +132,52 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon
-            const gold = stat.accent === 'gold'
             return (
-              <div key={stat.label} className={cn(
-                'rounded-3xl border border-slate-800 bg-slate-900 p-5 border-t-2',
-                gold ? 'border-t-amber-400/70' : 'border-t-violet-500/50'
-              )}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className={cn('flex items-center gap-2', gold ? 'text-amber-400' : 'text-slate-400')}>
-                    <Icon className="h-4 w-4" />
-                    <span className="text-xs uppercase tracking-[0.24em]">{stat.label}</span>
-                  </div>
+              <div key={stat.label} className="rounded-3xl border border-dark-border bg-dark-card p-5">
+                <div className="flex items-center gap-2 text-dark-muted">
+                  <Icon className="h-4 w-4" />
+                  <span className="text-xs uppercase tracking-[0.24em]">{stat.label}</span>
                 </div>
-                <p className={cn('mt-5 text-3xl font-semibold font-data', gold ? 'text-amber-300' : 'text-white')}>{stat.value}</p>
+                <p className="mt-5 text-3xl font-semibold font-data text-white">{stat.value}</p>
               </div>
             )
           })}
         </div>
 
         {fetchError && (
-          <div className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-100">{fetchError}</div>
+          <div className="rounded-3xl border border-dark-border bg-dark-card p-4 text-sm text-white">{fetchError}</div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {[
-            { icon: Lock, title: 'Sealed bid privacy', desc: 'Seller and financier privacy is enforced by Canton contract observers and signatories.', bg: 'bg-violet-500/10 border-violet-500/20' },
-            { icon: Shield, title: 'Anti-fraud registry', desc: 'Every listed invoice is registered for one-time financing protection.', bg: 'bg-amber-500/10 border-amber-500/25' },
-            { icon: Zap, title: 'Atomic settlement', desc: 'Auction settlement and funding happen in a single Canton transaction.', bg: 'bg-sky-500/10 border-sky-500/20' },
+            { icon: Lock, title: 'Sealed bid privacy', desc: 'Seller and financier privacy is enforced by Canton contract observers and signatories.' },
+            { icon: Shield, title: 'Anti-fraud registry', desc: 'Every listed invoice is registered for one-time financing protection.' },
+            { icon: Zap, title: 'Atomic settlement', desc: 'Auction settlement and funding happen in a single Canton transaction.' },
           ].map((card) => {
             const Icon = card.icon
             return (
-              <div key={card.title} className={cn('rounded-3xl border p-5', card.bg)}>
+              <div key={card.title} className="rounded-3xl border border-dark-border bg-dark-card p-5">
                 <div className="flex items-center gap-3 mb-3">
                   <Icon className="h-5 w-5 text-white" />
                   <p className="font-semibold text-white">{card.title}</p>
                 </div>
-                <p className="text-sm text-slate-300">{card.desc}</p>
+                <p className="text-sm text-dark-muted">{card.desc}</p>
               </div>
             )
           })}
         </div>
 
-        <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden">
-          <div className="flex flex-col gap-3 border-b border-slate-800 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="bg-dark-card rounded-3xl border border-dark-border overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-dark-border p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-amber-300">Live contract feed</p>
+              <p className="text-sm uppercase tracking-[0.24em] text-dark-muted">Live contract feed</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Real contract data from Canton</h2>
             </div>
-            <Link href="/dashboard/invoices" className="rounded-2xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400">Explore all invoices</Link>
+            <Link href="/dashboard/invoices" className="rounded-2xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Explore all invoices</Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
-              <thead className="bg-slate-950 text-slate-400">
+            <table className="min-w-full divide-y divide-dark-border text-left text-sm">
+              <thead className="bg-dark-bg text-dark-muted">
                 <tr>
                   <th className="px-5 py-4">Invoice</th>
                   <th className="px-5 py-4">Buyer</th>
@@ -195,19 +186,19 @@ export default function DashboardPage() {
                   <th className="px-5 py-4">Grade</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 bg-slate-950">
+              <tbody className="divide-y divide-dark-border bg-dark-bg">
                 {loadingContracts ? (
-                  <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400">Loading backend contracts…</td></tr>
+                  <tr><td colSpan={5} className="px-5 py-8 text-center text-dark-muted">Loading backend contracts…</td></tr>
                 ) : recentContracts.length === 0 ? (
-                  <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400">{party ? 'No contract rows are visible for your connected party yet.' : 'Connect a party to load contract data from Canton.'}</td></tr>
+                  <tr><td colSpan={5} className="px-5 py-8 text-center text-dark-muted">{party ? 'No contract rows are visible for your connected party yet.' : 'Connect a party to load contract data from Canton.'}</td></tr>
                 ) : (
                   recentContracts.map((contract) => (
                     <tr key={contract.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-5 py-4 font-medium text-white">{contract.invoiceId || contract.id.slice(0, 12)}</td>
-                      <td className="px-5 py-4 text-slate-300">{contract.buyer}</td>
-                      <td className="px-5 py-4 font-semibold text-amber-300 font-data">{contract.amount}</td>
-                      <td className="px-5 py-4 text-slate-300">{contract.dueDate}</td>
-                      <td className="px-5 py-4 text-slate-300">{contract.grade}</td>
+                      <td className="px-5 py-4 text-dark-muted">{contract.buyer}</td>
+                      <td className="px-5 py-4 font-semibold font-data text-white">{contract.amount}</td>
+                      <td className="px-5 py-4 text-dark-muted">{contract.dueDate}</td>
+                      <td className="px-5 py-4 text-dark-muted">{contract.grade}</td>
                     </tr>
                   ))
                 )}
@@ -218,18 +209,15 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: 'Submit Invoice', href: '/dashboard/invoices', icon: FileText, color: 'violet' },
-            { label: 'Browse Auctions', href: '/dashboard/marketplace', icon: Lock, color: 'violet' },
-            { label: 'My Offers', href: '/dashboard/offers', icon: TrendingUp, color: 'gold' },
-            { label: 'View Portfolio', href: '/dashboard/portfolio', icon: DollarSign, color: 'gold' },
+            { label: 'Submit Invoice', href: '/dashboard/invoices', icon: FileText },
+            { label: 'Browse Auctions', href: '/dashboard/marketplace', icon: Lock },
+            { label: 'My Offers', href: '/dashboard/offers', icon: TrendingUp },
+            { label: 'View Portfolio', href: '/dashboard/portfolio', icon: DollarSign },
           ].map((action) => {
             const Icon = action.icon
             return (
-              <Link key={action.label} href={action.href} className={cn(
-                'flex items-center gap-3 rounded-3xl border border-slate-800 bg-slate-900 p-4 transition',
-                action.color === 'gold' ? 'hover:border-amber-400/40 hover:bg-amber-500/5' : 'hover:border-violet-500/30 hover:bg-violet-500/5'
-              )}>
-                <div className={cn('flex h-10 w-10 items-center justify-center rounded-2xl', action.color === 'gold' ? 'bg-amber-500/10 text-amber-300' : 'bg-violet-500/10 text-violet-300')}>
+              <Link key={action.label} href={action.href} className="flex items-center gap-3 rounded-3xl border border-dark-border bg-dark-card p-4 transition hover:bg-white/5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-white">
                   <Icon className="h-4 w-4" />
                 </div>
                 <span className="font-medium text-white">{action.label}</span>
