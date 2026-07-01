@@ -15,11 +15,15 @@
  */
 import { NextResponse } from 'next/server'
 import { submitAndWait, queryACS } from '@/lib/canton-server'
+import { verifyAuthCookie, authRequired } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   try {
+    if (authRequired() && !verifyAuthCookie()) {
+      return NextResponse.json({ ok: false, error: 'Authentication required' }, { status: 401 })
+    }
     const {
       platformPartyId,
       sellerPartyId,

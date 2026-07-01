@@ -107,7 +107,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-950 text-white">
+    <div className="flex flex-col h-full overflow-hidden text-white">
       <Header title="Dashboard" />
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                     <span className="text-xs uppercase tracking-[0.24em]">{stat.label}</span>
                   </div>
                 </div>
-                <p className={cn('mt-5 text-3xl font-semibold', gold ? 'text-amber-300' : 'text-white')}>{stat.value}</p>
+                <p className={cn('mt-5 text-3xl font-semibold font-data', gold ? 'text-amber-300' : 'text-white')}>{stat.value}</p>
               </div>
             )
           })}
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                     <tr key={contract.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-5 py-4 font-medium text-white">{contract.invoiceId || contract.id.slice(0, 12)}</td>
                       <td className="px-5 py-4 text-slate-300">{contract.buyer}</td>
-                      <td className="px-5 py-4 font-semibold text-amber-300">{contract.amount}</td>
+                      <td className="px-5 py-4 font-semibold text-amber-300 font-data">{contract.amount}</td>
                       <td className="px-5 py-4 text-slate-300">{contract.dueDate}</td>
                       <td className="px-5 py-4 text-slate-300">{contract.grade}</td>
                     </tr>
