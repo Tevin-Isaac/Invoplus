@@ -27,12 +27,8 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-<<<<<<< HEAD
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
-  const { ledgerStatus, ledgerLoading } = useCanton()
-=======
   const { ledgerStatus, ledgerLoading, party } = useCanton()
->>>>>>> 781c84a (feat(dashboard): redesign overview, invoices, and marketplace with panel aesthetic, wire marketplace to live data, fix wallet modal styling)
   const { user, logout } = useAuth()
   const router = useRouter()
   const handleLogout = async () => { await logout(); router.push('/login') }

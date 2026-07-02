@@ -136,21 +136,12 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false }: 
                 key={wallet.id}
                 onClick={() => handleConnect(wallet.id)}
                 disabled={isConnecting}
-<<<<<<< HEAD
-                className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
-              >
-                <span className="text-2xl">{wallet.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-slate-950 dark:text-white">{wallet.name}</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400">{wallet.description}</div>
-=======
                 className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-[#0B0814] text-white hover:border-violet-500/40 hover:bg-violet-500/[0.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="text-2xl">{wallet.icon}</span>
                 <div className="text-left flex-1">
                   <div className="font-medium text-white">{wallet.name}</div>
                   <div className="text-sm text-slate-400">{wallet.description}</div>
->>>>>>> 781c84a (feat(dashboard): redesign overview, invoices, and marketplace with panel aesthetic, wire marketplace to live data, fix wallet modal styling)
                 </div>
                 {isConnecting && selectedWallet === wallet.id && (
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-600 dark:text-slate-300" />
