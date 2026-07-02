@@ -1,38 +1,50 @@
 -- InvoPlus: Invoice lifecycle on Canton Network
 -- An InvoiceContract moves through: Pending → Verified → (listed as Auction) → Funded
--- Production-ready with comprehensive validation and error handling
+--
+-- Authorization design (why signatories are what they are):
+--   * InvoiceContract: seller signs; platform co-signs once verified. This lets
+--     ListForAuction (seller-controlled) carry BOTH authorities, which is required
+--     to create the platform-signed RegistryEntry and the dual-signed Auction.
+--   * Auction: seller + platform sign, so SettleAuction can act with both.
+--   * FundedInvoice: seller + financier sign. Financier authority is obtained by
+--     exercising SettleWin ON the winning SealedBid (financier is its signatory),
+--     with seller+platform as choice actors — all three authorities meet there.
+--   * Losing bids are archived via RejectBid in SEPARATE platform transactions,
+--     never inside SettleAuction, so their contents are not witnessed by the seller.
 module InvoPlus.Invoice where
 
 import DA.Time (Time)
 import DA.Date (Date)
 import InvoPlus.Types
 import InvoPlus.Registry (RegistryEntry(..))
+import InvoPlus.Repayment (RepaymentRequest(..), DefaultNotice(..))
 
--- Uploaded by the seller, co-signed by platform after verification.
--- Canton's sub-transaction privacy means financiers never see unverified invoices.
+-- Uploaded by the seller; platform becomes co-signatory after verification.
 template InvoiceContract
   with
     seller       : Party
     platform     : Party
     invoiceId    : Text      -- unique invoice number (e.g. "INV-2024-0042")
     debtorName   : Text      -- the company that owes money
-    debtorTaxId  : Text      -- for double-financing hash
+    debtorTaxId  : Text      -- part of the registry identity
     faceAmount   : Decimal   -- total invoice value
     currency     : Text
     issueDate    : Date
     dueDate      : Date      -- when debtor must pay
-    docHash      : Text      -- SHA-256 of the invoice PDF bytes
-    invoiceHash  : Text      -- SHA-256 of (invoiceId + debtorTaxId + faceAmount)
+    docHash      : Text      -- hash of the invoice document (computed off-ledger)
+    invoiceHash  : Text      -- registry identity: hash of (invoiceId + debtorTaxId + faceAmount)
     aiScore      : Int       -- 0-100, set by platform after verification
     riskGrade    : RiskGrade
     status       : InvoiceStatus
     uploadedAt   : Time
   where
     signatory seller
+    signatory (if status == Pending then [] else [platform])
     observer platform
 
-    -- Platform AI engine verifies the invoice and sets score/grade.
-    -- Only platform can call this; seller cannot self-verify.
+    -- Platform verifies the invoice and sets score/grade.
+    -- Creating the Verified version adds platform as co-signatory:
+    -- authority here = seller (signatory) + platform (controller).
     choice VerifyInvoice : ContractId InvoiceContract
       with
         score : Int
@@ -61,24 +73,25 @@ template InvoiceContract
         create this with status = Rejected
 
     -- Seller lists a verified invoice for sealed-bid auction.
-    -- Creates an Auction contract and a RegistryEntry in one atomic transaction.
+    -- Creates the Auction and the RegistryEntry in one atomic transaction.
+    -- Double financing is blocked by the RegistryEntry contract key:
+    -- a second listing with the same invoiceHash fails on duplicate key.
     choice ListForAuction : (ContractId Auction, ContractId RegistryEntry)
       with
         terms       : AuctionTerms
         auctionEnd  : Time
       controller seller
       do
+        now <- getTime
         assertMsg "Invoice must be Verified" (status == Verified)
         assertMsg "Min advance rate must be valid" (validateAdvanceRate terms.minAdvanceRate)
         assertMsg "Max annual rate must be valid" (validateAnnualRate terms.maxAnnualRate)
         assertMsg "Auction duration must be valid" (validateAuctionDuration terms.durationHours)
-        assertMsg "Auction end must be in the future" (auctionEnd > uploadedAt)
+        assertMsg "Auction end must be in the future" (auctionEnd > now)
         assertMsg "Min advance rate must be less than 1.0" (terms.minAdvanceRate < 1.0)
         assertMsg "Max annual rate must be positive" (terms.maxAnnualRate > 0.0)
         assertMsg "Max annual rate must be <= 1.0" (terms.maxAnnualRate <= 1.0)
 
-        -- Archive this invoice — it's now represented by the Auction
-        now <- getTime
         auctionCid <- create Auction with
           seller       = seller
           platform     = platform
@@ -96,7 +109,8 @@ template InvoiceContract
           settled      = False
           listedAt     = now
 
-        -- Anti-fraud: register this invoice so it can't be listed again
+        -- Anti-fraud: the contract key on (platform, invoiceHash) makes this
+        -- create FAIL if an entry for the same invoice already exists.
         regCid <- create RegistryEntry with
           platform      = platform
           seller        = seller
@@ -111,9 +125,10 @@ template InvoiceContract
 
 -- ─── Auction ────────────────────────────────────────────────────────────────
 
--- Live auction contract. Canton privacy ensures financiers see only what they
--- need: amount, grade, score — NOT each other's bids (those are SealedBid contracts
--- visible only to platform + the bidder who created them).
+-- Live auction contract, signed by seller and platform.
+-- Financiers see amount, grade, score — never each other's bids.
+-- NOTE: financiers are not observers; bid submissions must be sent with
+-- readAs = [platform] so the financier's command can see this contract.
 template Auction
   with
     seller      : Party
@@ -132,11 +147,10 @@ template Auction
     settled     : Bool
     listedAt    : Time
   where
-    signatory seller
-    observer platform
+    signatory seller, platform
 
     -- Any financier can submit a sealed bid.
-    -- The bid is visible only to platform + that financier (Canton sub-tx privacy).
+    -- The bid is visible only to platform + that financier.
     choice SubmitBid : (ContractId Auction, ContractId SealedBid)
       with
         financier   : Party
@@ -151,8 +165,7 @@ template Auction
         assertMsg "Annual rate above maximum" (annualRate <= terms.maxAnnualRate)
         assertMsg "Face amount must be valid" (validateAmount faceAmount)
         assertMsg "Currency must be valid" (validateCurrency currency)
-        
-        -- Calculate funded amount with validation
+
         let fundedAmount = faceAmount * advanceRate
         assertMsg "Funded amount must be valid" (validateAmount fundedAmount)
 
@@ -172,50 +185,26 @@ template Auction
 
         return (newAuctionCid, bidCid)
 
-    -- Platform closes the auction and selects the winning bid.
-    -- All losing bids are archived — their contents stay private forever.
+    -- Platform closes the auction with the winning bid.
+    -- IMPORTANT: losing bids must be rejected (RejectBid) in SEPARATE
+    -- transactions BEFORE settling, so the seller never witnesses their
+    -- contents. Settlement here reveals only the winner, by design.
     choice SettleAuction : ContractId FundedInvoice
       with
-        winnerBidCid  : ContractId SealedBid
-        loserBidCids  : [ContractId SealedBid]
-        regEntryCid   : ContractId RegistryEntry
+        winnerBidCid : ContractId SealedBid
       controller platform
       do
         assertMsg "Already settled" (not settled)
         assertMsg "Auction must have at least one bid" (bidCount > 0)
-        winnerBid <- fetch winnerBidCid
-        
-        -- Validate winning bid data
-        assertMsg "Winner funded amount must be valid" (validateAmount winnerBid.fundedAmount)
-        assertMsg "Winner advance rate must be valid" (validateAdvanceRate winnerBid.advanceRate)
-        assertMsg "Winner annual rate must be valid" (validateAnnualRate winnerBid.annualRate)
-        assertMsg "Face amount must be valid" (validateAmount faceAmount)
-        assertMsg "Currency must be valid" (validateCurrency currency)
-
-        -- Archive all losing bids (private — no content exposed)
-        mapA_ archive loserBidCids
-
-        -- Archive the winning bid
-        archive winnerBidCid
-
-        -- Remove registry entry — invoice lifecycle complete on funding side
-        -- (re-registered when repaid)
-        exercise regEntryCid DeregisterInvoice
-
-        create FundedInvoice with
-          seller       = seller
-          financier    = winnerBid.financier
-          platform     = platform
-          invoiceId    = invoiceId
-          debtorName   = debtorName
-          faceAmount   = faceAmount
-          fundedAmount = winnerBid.fundedAmount
-          advanceRate  = winnerBid.advanceRate
-          annualRate   = winnerBid.annualRate
-          currency     = currency
-          dueDate      = dueDate
-          settledAt    = auctionEnd
-          invoiceHash  = invoiceHash
+        now <- getTime
+        -- Financier authority is provided by the bid itself: SettleWin is a
+        -- choice on the financier-signed SealedBid, with seller+platform as
+        -- actors. Inside it, all three authorities meet, which is exactly
+        -- what the dual-signed FundedInvoice requires.
+        exercise winnerBidCid SettleWin with
+          debtorName' = debtorName
+          dueDate'    = dueDate
+          settledAt'  = now
 
     -- Seller cancels the auction before it ends (e.g. no good bids).
     choice CancelAuction : ContractId InvoiceContract
@@ -223,12 +212,10 @@ template Auction
         regEntryCid : ContractId RegistryEntry
       controller seller
       do
-        assertMsg "Cannot cancel a settled auction" (not settled)
-        assertMsg "Cannot cancel auction after end time" (auctionEnd > uploadedAt)
-        assertMsg "Face amount must be valid" (validateAmount faceAmount)
-        assertMsg "Currency must be valid" (validateCurrency currency)
-        exercise regEntryCid DeregisterInvoice
         now <- getTime
+        assertMsg "Cannot cancel a settled auction" (not settled)
+        assertMsg "Cannot cancel auction after end time" (auctionEnd > now)
+        exercise regEntryCid DeregisterInvoice
         create InvoiceContract with
           seller       = seller
           platform     = platform
@@ -237,7 +224,7 @@ template Auction
           debtorTaxId  = ""
           faceAmount   = faceAmount
           currency     = currency
-          issueDate    = dueDate   -- approximate
+          issueDate    = dueDate   -- approximate: original issue date not carried
           dueDate      = dueDate
           docHash      = ""
           invoiceHash  = invoiceHash
@@ -249,8 +236,7 @@ template Auction
 -- ─── SealedBid ──────────────────────────────────────────────────────────────
 
 -- A financier's bid on an auction.
--- Signatories: financier (they commit) + platform (platform enforces rules).
--- Seller is NOT an observer — they cannot see bid amounts while sealed.
+-- Seller is NOT an observer while sealed — they cannot see bid amounts.
 -- This is the core Canton privacy primitive for InvoPlus.
 template SealedBid
   with
@@ -263,22 +249,57 @@ template SealedBid
     advanceRate  : Decimal
     annualRate   : Decimal
     fundedAmount : Decimal  -- faceAmount * advanceRate
-    isRevealed   : Bool     -- True after platform reveals for settlement
+    isRevealed   : Bool
   where
     signatory financier
-    observer platform
-    -- seller intentionally NOT in observers while isRevealed = False
+    observer [platform] <> (if isRevealed then [seller] else [])
 
-    -- Platform reveals a bid during settlement (adds seller as observer).
+    -- Platform reveals a bid to the seller (e.g. the winner, for transparency).
+    -- The recreated contract genuinely adds seller as an observer.
     choice RevealBid : ContractId SealedBid
       controller platform
       do
         create this with isRevealed = True
 
+    -- Platform archives a losing bid. Exercised in its own transaction so the
+    -- bid's contents are witnessed only by financier + platform, never seller.
+    choice RejectBid : ()
+      controller platform
+      do return ()
+
     -- Financier withdraws their bid before the auction ends.
     choice WithdrawBid : ()
       controller financier
       do return ()
+
+    -- Settlement step: consumes the winning bid and creates the FundedInvoice.
+    -- Actors seller+platform plus signatory financier = all three authorities,
+    -- which the dual-signed FundedInvoice requires. Called only from
+    -- Auction.SettleAuction.
+    choice SettleWin : ContractId FundedInvoice
+      with
+        debtorName' : Text
+        dueDate'    : Date
+        settledAt'  : Time
+      controller seller, platform
+      do
+        assertMsg "Winner funded amount must be valid" (validateAmount fundedAmount)
+        assertMsg "Winner advance rate must be valid" (validateAdvanceRate advanceRate)
+        assertMsg "Winner annual rate must be valid" (validateAnnualRate annualRate)
+        create FundedInvoice with
+          seller       = seller
+          financier    = financier
+          platform     = platform
+          invoiceId    = invoiceId
+          debtorName   = debtorName'
+          faceAmount   = faceAmount
+          fundedAmount = fundedAmount
+          advanceRate  = advanceRate
+          annualRate   = annualRate
+          currency     = currency
+          dueDate      = dueDate'
+          settledAt    = settledAt'
+          invoiceHash  = invoiceHash
 
 -- ─── FundedInvoice ──────────────────────────────────────────────────────────
 
@@ -303,13 +324,41 @@ template FundedInvoice
     signatory seller, financier
     observer platform
 
-    -- When the debtor pays the seller, seller triggers repayment to financier.
-    -- In practice this would trigger Canton Coin transfer; mocked here.
-    choice RepayFinancier : ()
+    -- When the debtor pays the seller, the seller opens a repayment request:
+    -- principal (fundedAmount) plus yield (face minus funded) to the financier.
+    choice RepayFinancier : ContractId RepaymentRequest
+      with
+        debtorPaidAt : Time
       controller seller
-      do return ()
+      do
+        now <- getTime
+        let yieldAmount = faceAmount - fundedAmount
+        create RepaymentRequest with
+          seller       = seller
+          financier    = financier
+          platform     = platform
+          invoiceId    = invoiceId
+          fundedAmount = fundedAmount
+          yieldAmount  = yieldAmount
+          totalDue     = faceAmount
+          currency     = currency
+          debtorPaidAt = debtorPaidAt
+          requestedAt  = now
+          status       = "Pending"
 
-    -- Platform can mark an invoice as defaulted for dispute resolution.
-    choice MarkDefault : ()
+    -- Platform marks the invoice defaulted, opening formal default handling.
+    choice MarkDefault : ContractId DefaultNotice
       controller platform
-      do return ()
+      do
+        now <- getTime
+        create DefaultNotice with
+          platform     = platform
+          seller       = seller
+          financier    = financier
+          invoiceId    = invoiceId
+          faceAmount   = faceAmount
+          fundedAmount = fundedAmount
+          currency     = currency
+          dueDate      = show dueDate
+          issuedAt     = now
+          recoveryRef  = ""

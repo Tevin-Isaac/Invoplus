@@ -195,7 +195,7 @@ setupDemo = do
 
   -- 10. Two financiers submit sealed bids on Auction 1
   --     Seller CANNOT see either bid (Canton sub-tx privacy)
-  (auction1Updated, bid1Cid) <- submit financier do
+  (auction1Updated, bid1Cid) <- submitMulti [financier] [platform] do
     exerciseCmd auction1Cid SubmitBid with
       financier   = financier
       advanceRate = 0.88   -- Capital Partners bids 88% advance, 11.5% APR
@@ -203,7 +203,7 @@ setupDemo = do
 
   debug "Financier 1 bid submitted with validation"
 
-  (auction1Final, bid2Cid) <- submit financier2 do
+  (auction1Final, bid2Cid) <- submitMulti [financier2] [platform] do
     exerciseCmd auction1Updated SubmitBid with
       financier   = financier2
       advanceRate = 0.87   -- Apex Fund bids 87% advance, 11.8% APR
@@ -212,11 +212,14 @@ setupDemo = do
   debug "Financier 2 bid submitted with validation"
 
   -- 11. Platform settles Auction 1 — Capital Partners wins (higher advance rate)
+  -- Losing bid rejected in its OWN transaction so the seller never
+  -- witnesses its contents — privacy preserved forever.
+  _ <- submit platform do
+    exerciseCmd bid2Cid RejectBid
+
   funded1Cid <- submit platform do
     exerciseCmd auction1Final SettleAuction with
       winnerBidCid = bid1Cid     -- Capital Partners
-      loserBidCids = [bid2Cid]   -- Apex Fund loses — bid content stays private forever
-      regEntryCid  = reg1Cid
 
   debug "Auction 1 settled with validation"
 
