@@ -2,34 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { DollarSign, FileText, TrendingUp, CheckCircle, AlertCircle, Zap, Shield, Lock, RefreshCw } from 'lucide-react'
+import { FileText, TrendingUp, Lock, Shield, RefreshCw, ArrowUpRight } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
 interface LedgerStats { ok: boolean; offset?: number; packageCount?: number; network?: string; timestamp?: string }
-interface ContractRow { id: string; invoiceId: string; buyer: string; amount: string; dueDate: string; grade: string; status: string }
 
-function getPayloadValue(payload: any, key: string) {
+const pv = (payload: any, key: string) => {
   if (!payload) return ''
-  const value = payload[key]
-  if (value === undefined || value === null) return ''
-  if (typeof value === 'object' && 'value' in value) return value.value
-  return value
+  const v = payload[key]
+  if (v === undefined || v === null) return ''
+  return typeof v === 'object' && 'value' in v ? v.value : v
 }
-
-function formatInvoiceContract(contract: any): ContractRow {
-  const payload = contract.payload || {}
-  return {
-    id: contract.contractId,
-    invoiceId: getPayloadValue(payload, 'invoiceId') || '',
-    buyer: getPayloadValue(payload, 'debtorName') || getPayloadValue(payload, 'debtor') || 'Unknown',
-    amount: getPayloadValue(payload, 'faceAmount') ? String(getPayloadValue(payload, 'faceAmount')) : 'N/A',
-    dueDate: getPayloadValue(payload, 'dueDate') || 'N/A',
-    grade: getPayloadValue(payload, 'riskGrade') || getPayloadValue(payload, 'status') || 'N/A',
-    status: payload.settled ? 'funded' : payload.bidCount !== undefined ? 'bidding' : 'pending',
-  }
-}
+const num = (x: any) => Number(x ?? 0) || 0
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 async function fetchContracts(partyId: string, template: string) {
   const res = await fetch('/api/canton/contracts/list', {
@@ -42,75 +30,118 @@ async function fetchContracts(partyId: string, template: string) {
   return data.ok ? data.contracts : []
 }
 
+function MiniBars({ values, from, to }: { values: number[]; from: string; to: string }) {
+  if (!values.length) return null
+  const max = Math.max(...values, 1)
+  return (
+    <div className="flex h-9 items-end gap-1">
+      {values.map((v, i) => (
+        <span key={i} className="w-1.5 rounded-sm" style={{
+          height: `${Math.max((v / max) * 100, 8)}%`,
+          background: `linear-gradient(180deg, ${from}, ${to})`,
+          opacity: 0.55 + (i / values.length) * 0.45,
+        }} />
+      ))}
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { ledgerStatus, ledgerLoading, party } = useCanton()
   const [refreshing, setRefreshing] = useState(false)
   const [localStatus, setLocalStatus] = useState<LedgerStats | null>(null)
-  const [counts, setCounts] = useState({ invoices: 0, auctions: 0, bids: 0, funded: 0 })
-  const [recentContracts, setRecentContracts] = useState<ContractRow[]>([])
-  const [loadingContracts, setLoadingContracts] = useState(false)
+  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; bids: any[]; funded: any[] }>({ invoices: [], auctions: [], bids: [], funded: [] })
+  const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
-
-  const fetchFresh = async () => {
-    setRefreshing(true)
-    try {
-      const res = await fetch('/api/canton/ledger-status')
-      const data = await res.json()
-      setLocalStatus(data)
-    } catch { /* ignore */ } finally {
-      setRefreshing(false)
-    }
-  }
 
   const status = localStatus ?? ledgerStatus
 
+  const refresh = async () => {
+    setRefreshing(true)
+    try {
+      const res = await fetch('/api/canton/ledger-status')
+      setLocalStatus(await res.json())
+    } catch { /* ignore */ } finally { setRefreshing(false) }
+  }
+
   useEffect(() => {
-    if (!party?.id) {
-      setCounts({ invoices: 0, auctions: 0, bids: 0, funded: 0 })
-      setRecentContracts([])
-      return
-    }
-    const loadContracts = async () => {
-      setLoadingContracts(true)
-      setFetchError(null)
+    if (!party?.id) { setData({ invoices: [], auctions: [], bids: [], funded: [] }); return }
+    const load = async () => {
+      setLoading(true); setFetchError(null)
       try {
-        const [invoiceContracts, auctionContracts, bidContracts, fundedContracts] = await Promise.all([
+        const [invoices, auctions, bids, funded] = await Promise.all([
           fetchContracts(party.id, 'invoice'),
           fetchContracts(party.id, 'auction'),
           fetchContracts(party.id, 'bid'),
           fetchContracts(party.id, 'funded'),
         ])
-        setCounts({
-          invoices: invoiceContracts.length,
-          auctions: auctionContracts.length,
-          bids: bidContracts.length,
-          funded: fundedContracts.length,
-        })
-        const rows = party.type === 'financier'
-          ? [...bidContracts, ...fundedContracts].slice(0, 6)
-          : [...invoiceContracts, ...auctionContracts].slice(0, 6)
-        setRecentContracts(rows.map(formatInvoiceContract))
-      } catch (error) {
-        setFetchError(error instanceof Error ? error.message : 'Unable to load contract data')
-      } finally {
-        setLoadingContracts(false)
-      }
+        setData({ invoices, auctions, bids, funded })
+      } catch (e) {
+        setFetchError(e instanceof Error ? e.message : 'Unable to load contract data')
+      } finally { setLoading(false) }
     }
-    loadContracts()
+    load()
   }, [party])
 
+  const { invoices, auctions, bids, funded } = data
+
+  // Monthly funded series for the big chart + mini bars, from real settledAt
+  const monthly = (() => {
+    const m = new Map<number, { label: string; amount: number }>()
+    funded.forEach((c: any) => {
+      const t = pv(c.payload, 'settledAt'); if (!t) return
+      const d = new Date(t); if (isNaN(d.getTime())) return
+      const k = d.getFullYear() * 12 + d.getMonth()
+      const e = m.get(k) || { label: `${MONTHS[d.getMonth()]}`, amount: 0 }
+      e.amount += num(pv(c.payload, 'fundedAmount'))
+      m.set(k, e)
+    })
+    return Array.from(m.entries()).sort((a, b) => a[0] - b[0]).map(([, v]) => v)
+  })()
+
+  const totalFunded = funded.reduce((s: number, c: any) => s + num(pv(c.payload, 'fundedAmount')), 0)
+  const isFin = party?.type === 'financier'
+
   const stats = [
+<<<<<<< HEAD
     { label: party?.type === 'financier' ? 'Open bids' : 'Outstanding invoices', value: party ? String(party.type === 'financier' ? counts.bids : counts.invoices) : '—', icon: FileText },
     { label: 'Funded positions', value: party ? String(counts.funded) : '—', icon: TrendingUp },
     { label: party?.type === 'financier' ? 'Visible auctions' : 'Active auctions', value: party ? String(counts.auctions) : '—', icon: Lock },
     { label: 'Ledger packages', value: status?.packageCount != null ? String(status.packageCount) : '—', icon: Shield },
+=======
+    {
+      label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
+      sub: `${funded.length} positions`, from: '#FCD34D', to: '#B45309', accent: 'text-amber-300',
+      bars: monthly.map(m => m.amount),
+    },
+    {
+      label: isFin ? 'Open bids' : 'Invoices', big: String(isFin ? bids.length : invoices.length),
+      sub: isFin ? 'sealed on ledger' : 'uploaded', from: '#A78BFA', to: '#5B21B6', accent: 'text-violet-300',
+      bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
+    },
+    {
+      label: 'Active auctions', big: String(auctions.filter((c: any) => !pv(c.payload, 'settled')).length),
+      sub: 'sealed-bid live', from: '#6EE7B7', to: '#047857', accent: 'text-emerald-300',
+      bars: auctions.slice(0, 8).map((c: any) => num(pv(c.payload, 'bidCount')) + 1),
+    },
+>>>>>>> 781c84a (feat(dashboard): redesign overview, invoices, and marketplace with panel aesthetic, wire marketplace to live data, fix wallet modal styling)
   ]
+
+  const activity = [...funded.map((c: any) => ({
+    id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Funded', note: pv(c.payload, 'debtorName') || 'settled',
+    amount: num(pv(c.payload, 'fundedAmount')), tone: 'text-amber-300', chip: 'F',
+  })), ...invoices.map((c: any) => ({
+    id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Invoice', note: pv(c.payload, 'debtorName') || 'uploaded',
+    amount: num(pv(c.payload, 'faceAmount')), tone: 'text-slate-200', chip: 'I',
+  }))].slice(0, 7)
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header title="Dashboard" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
 
+<<<<<<< HEAD
         <div className="flex items-center justify-between rounded-3xl border border-dark-border bg-dark-card p-5">
           <div className="flex items-center gap-3">
             <span className={cn('w-2.5 h-2.5 rounded-full', status?.ok ? 'bg-slate-500 animate-pulse' : ledgerLoading ? 'bg-slate-400 animate-pulse' : 'bg-slate-600')} />
@@ -219,13 +250,160 @@ export default function DashboardPage() {
               <Link key={action.label} href={action.href} className="flex items-center gap-3 rounded-3xl border border-dark-border bg-dark-card p-4 transition hover:bg-white/5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-white">
                   <Icon className="h-4 w-4" />
+=======
+          {/* ══ Main column ══ */}
+          <div className="space-y-5 min-w-0">
+
+            {/* Stat cards with mini bars */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {stats.map(s => (
+                <div key={s.label} className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={cn('font-data text-3xl font-bold', s.accent)}>{loading ? '—' : s.big}</p>
+                      <p className="mt-1 text-xs text-slate-500">{s.sub}</p>
+                    </div>
+                    <span className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 font-data text-[10px] uppercase tracking-[0.16em] text-slate-400">{s.label}</span>
+                  </div>
+                  <div className="mt-4">
+                    {s.bars.length ? <MiniBars values={s.bars} from={s.from} to={s.to} /> : (
+                      <p className="font-data text-[10px] text-slate-600">no ledger data yet</p>
+                    )}
+                  </div>
                 </div>
-                <span className="font-medium text-white">{action.label}</span>
-              </Link>
-            )
-          })}
+              ))}
+            </div>
+
+            {/* Big funding chart */}
+            <div className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-6 shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="font-display text-lg font-semibold text-white">Funding volume</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">disbursed to sellers, by settlement month</p>
+>>>>>>> 781c84a (feat(dashboard): redesign overview, invoices, and marketplace with panel aesthetic, wire marketplace to live data, fix wallet modal styling)
+                </div>
+                <span className="font-data rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-300">USD</span>
+              </div>
+              {monthly.length ? (
+                <ResponsiveContainer width="100%" height={230}>
+                  <AreaChart data={monthly}>
+                    <defs>
+                      <linearGradient id="fundGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#F59E0B" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#221B38" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: '#6B6486', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6B6486', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v / 1000}K`} />
+                    <Tooltip contentStyle={{ background: '#181226', border: '1px solid #2C2344', borderRadius: 12, fontSize: 12 }} labelStyle={{ color: '#9c93bd' }} />
+                    <Area type="monotone" dataKey="amount" stroke="#FBBF24" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#FBBF24', r: 3 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[230px] flex-col items-center justify-center gap-2 text-center">
+                  <TrendingUp className="h-5 w-5 text-slate-600" />
+                  <p className="max-w-[260px] text-xs text-slate-500">{party ? 'Settle an auction on Canton and the funding curve draws itself here.' : 'Connect a party to chart live funding volume.'}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Guarantees */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {[
+                { icon: Lock, title: 'Sealed bids', desc: 'Only the bidder and platform can see a bid — Canton observers, not app code.', chip: 'bg-violet-500/15 text-violet-300' },
+                { icon: Shield, title: 'No double financing', desc: 'A ledger key makes financing the same invoice twice fail at the protocol.', chip: 'bg-amber-500/15 text-amber-300' },
+                { icon: FileText, title: 'Atomic settlement', desc: 'Winner, funding, and transfer commit in one transaction.', chip: 'bg-emerald-500/15 text-emerald-300' },
+              ].map(c => {
+                const Icon = c.icon
+                return (
+                  <div key={c.title} className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-5">
+                    <div className="flex items-center gap-3">
+                      <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', c.chip)}><Icon className="h-4 w-4" /></span>
+                      <p className="font-display font-semibold text-white">{c.title}</p>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-400">{c.desc}</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ══ Right column ══ */}
+          <div className="space-y-5">
+
+            {/* Ledger card */}
+            <div className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between">
+                <p className="font-data text-[11px] uppercase tracking-[0.24em] text-violet-300">Canton DevNet</p>
+                <button onClick={refresh} disabled={refreshing} className="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-60">
+                  <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+                </button>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <span className={cn('h-2.5 w-2.5 rounded-full', status?.ok ? 'bg-emerald-400 animate-pulse' : ledgerLoading ? 'bg-amber-400 animate-pulse' : 'bg-red-400')} />
+                <p className="font-data text-xl text-white">
+                  {status?.ok ? <>#{status.offset?.toLocaleString()}</> : ledgerLoading ? 'connecting…' : 'offline'}
+                </p>
+              </div>
+              {status?.ok && (
+                <p className="mt-2 font-data text-[11px] text-slate-500">{status.packageCount} packages · live</p>
+              )}
+            </div>
+
+            {/* Activity list */}
+            <div className="rounded-3xl border border-white/[0.07] bg-[#120E1F] shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+              <div className="flex items-center justify-between border-b border-white/[0.06] p-5">
+                <h3 className="font-display font-semibold text-white">Activity</h3>
+                <Link href="/dashboard/invoices" className="flex items-center gap-1 text-xs text-violet-300 hover:text-violet-200">
+                  all <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </div>
+              {loading ? (
+                <p className="p-5 text-sm text-slate-500">Loading…</p>
+              ) : activity.length === 0 ? (
+                <p className="p-5 text-sm text-slate-500">{party ? 'No contracts yet — activity lands here as you list and fund.' : 'Connect a party to see ledger activity.'}</p>
+              ) : (
+                <div className="divide-y divide-white/[0.05]">
+                  {activity.map(a => (
+                    <div key={a.id} className="flex items-center gap-3 px-5 py-3.5">
+                      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-data text-xs',
+                        a.chip === 'F' ? 'bg-amber-500/15 text-amber-300' : 'bg-violet-500/15 text-violet-300')}>{a.chip}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-white">{a.name}</p>
+                        <p className="truncate text-xs text-slate-500">{a.note}</p>
+                      </div>
+                      <p className={cn('font-data text-sm font-bold', a.tone)}>{a.amount ? `$${a.amount >= 1000 ? (a.amount / 1000).toFixed(1) + 'K' : Math.round(a.amount)}` : ''}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick actions */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Submit', href: '/dashboard/invoices', icon: FileText },
+                { label: 'Auctions', href: '/dashboard/marketplace', icon: Lock },
+                { label: 'Offers', href: '/dashboard/offers', icon: TrendingUp },
+                { label: 'Portfolio', href: '/dashboard/portfolio', icon: Shield },
+              ].map(a => {
+                const Icon = a.icon
+                return (
+                  <Link key={a.label} href={a.href} className="group flex flex-col items-center gap-2 rounded-2xl border border-white/[0.07] bg-[#120E1F] py-4 transition-all hover:-translate-y-0.5 hover:border-violet-500/40">
+                    <Icon className="h-4 w-4 text-violet-300 transition-colors group-hover:text-amber-300" />
+                    <span className="text-xs font-medium text-slate-300">{a.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="mx-6 mb-4 rounded-2xl border border-rose-500/25 bg-rose-500/10 p-3 text-sm text-rose-100">{fetchError}</div>
+      )}
     </div>
   )
 }

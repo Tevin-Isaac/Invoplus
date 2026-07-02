@@ -27,8 +27,12 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+<<<<<<< HEAD
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const { ledgerStatus, ledgerLoading } = useCanton()
+=======
+  const { ledgerStatus, ledgerLoading, party } = useCanton()
+>>>>>>> 781c84a (feat(dashboard): redesign overview, invoices, and marketplace with panel aesthetic, wire marketplace to live data, fix wallet modal styling)
   const { user, logout } = useAuth()
   const router = useRouter()
   const handleLogout = async () => { await logout(); router.push('/login') }
@@ -75,6 +79,18 @@ export function Sidebar() {
             <Logo size={38} textClassName="text-xl font-semibold" tone={theme === 'dark' ? 'dark' : 'light'} />
           </Link>
         </div>
+
+        {/* profile-block */}
+        <div className="px-4 pt-5">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-800 font-display text-xl font-semibold text-white">
+              {(user?.email?.[0] ?? party?.displayName?.[0] ?? 'I').toUpperCase()}
+            </div>
+            <p className="mt-3 truncate text-sm font-semibold text-white">{user?.email?.split('@')[0] ?? party?.displayName ?? 'Not connected'}</p>
+            <p className="mt-0.5 font-data text-[10px] uppercase tracking-[0.2em] text-amber-300/90">{user?.role ?? party?.type ?? 'guest'}</p>
+          </div>
+        </div>
+
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest px-3 mb-3 dark:text-slate-400">Menu</p>

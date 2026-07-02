@@ -87,6 +87,7 @@ html.dark ::selection { background: rgba(248, 250, 252, 0.16); color: #f8fafc; }
   letter-spacing: -0.01em;
 }
 
+<<<<<<< HEAD
 /* Dashboard — unified slate palette, light + dark */
 .dashboard-shell {
   background-color: var(--dashboard-bg);
@@ -209,4 +210,29 @@ html.dark .dashboard-shell .bg-slate-900 {
 
 .dashboard-shell .hover\:text-white:hover {
   color: var(--dashboard-text) !important;
+=======
+
+/* Dashboard aesthetic */
+.font-data { font-family: var(--font-data); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.font-display { font-family: var(--font-display); }
+
+.dashboard-shell {
+  background-color: #070510;
+  background-image:
+    radial-gradient(1000px 560px at 110% -12%, rgba(124,92,255,0.14), transparent 55%),
+    radial-gradient(760px 520px at -12% 112%, rgba(245,158,11,0.08), transparent 55%);
+}
+
+.dashboard-shell .bg-dark-card,
+.dashboard-shell .bg-slate-900,
+.dashboard-shell .bg-slate-950 {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 44%);
+  border-color: rgba(255,255,255,0.10) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(0,0,0,0.45);
+  transition: border-color .18s ease, transform .18s ease;
+}
+.dashboard-shell .bg-dark-card:hover,
+.dashboard-shell .bg-slate-900:hover {
+  border-color: rgba(124,92,255,0.40) !important;
+>>>>>>> 781c84a (feat(dashboard): redesign overview, invoices, and marketplace with panel aesthetic, wire marketplace to live data, fix wallet modal styling)
 }
