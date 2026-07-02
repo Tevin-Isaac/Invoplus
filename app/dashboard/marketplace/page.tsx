@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { Lock, Timer, TrendingUp, Shield, ChevronRight, Eye, EyeOff, CheckCircle, Zap, Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Lock, Timer, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 
@@ -10,104 +10,26 @@ interface Auction {
   id: string
   invoiceId: string
   buyer: string
-  industry: string
   amount: number
   currency: string
   dueDate: string
   grade: string
   riskScore: number
-  timeLeft: string
   bidsReceived: number
   myBid: number | null
   status: string
-  expectedYield: string
   auctionContractId: string
 }
 
-const demoAuctions: Auction[] = [
-  {
-    id: 'AUC-0042',
-    invoiceId: 'INV-2026-0042',
-    buyer: 'GlobalTech Solutions Ltd',
-    industry: 'Technology',
-    amount: 125000,
-    currency: 'USD',
-    dueDate: '2026-09-23',
-    grade: 'A',
-    riskScore: 87,
-    timeLeft: '18h 32m',
-    bidsReceived: 3,
-    myBid: null,
-    status: 'open',
-    expectedYield: '10.5–12.8%',
-    auctionContractId: 'demo::auction-0042',
-  },
-  {
-    id: 'AUC-0041',
-    invoiceId: 'INV-2026-0041',
-    buyer: 'Apex Manufacturing Ltd',
-    industry: 'Manufacturing',
-    amount: 89500,
-    currency: 'USD',
-    dueDate: '2026-08-15',
-    grade: 'A',
-    riskScore: 91,
-    timeLeft: '6h 10m',
-    bidsReceived: 2,
-    myBid: 88,
-    status: 'open',
-    expectedYield: '9.8–11.2%',
-    auctionContractId: 'demo::auction-0041',
-  },
-  {
-    id: 'AUC-0040',
-    invoiceId: 'INV-2026-0040',
-    buyer: 'Summit Retail Group',
-    industry: 'Retail',
-    amount: 234000,
-    currency: 'USD',
-    dueDate: '2026-10-05',
-    grade: 'B',
-    riskScore: 74,
-    timeLeft: '2d 4h',
-    bidsReceived: 5,
-    myBid: null,
-    status: 'open',
-    expectedYield: '12.1–14.6%',
-    auctionContractId: 'demo::auction-0040',
-  },
-  {
-    id: 'AUC-0039',
-    invoiceId: 'INV-2026-0039',
-    buyer: 'NovaBuild Corp',
-    industry: 'Construction',
-    amount: 67200,
-    currency: 'USD',
-    dueDate: '2026-09-01',
-    grade: 'B',
-    riskScore: 79,
-    timeLeft: '1d 12h',
-    bidsReceived: 1,
-    myBid: null,
-    status: 'open',
-    expectedYield: '11.0–13.5%',
-    auctionContractId: 'demo::auction-0039',
-  },
-]
+interface BidResult { ok: boolean; message?: string; transactionId?: string; error?: string }
 
-const gradeColors: Record<string, string> = {
-  A: 'text-green-400 bg-green-500/10 border-green-500/20',
-  B: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
-  C: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-  D: 'text-red-400 bg-red-500/10 border-red-500/20',
-}
+const panel = 'rounded-3xl border border-white/[0.07] bg-[#120E1F] shadow-[0_10px_35px_rgba(0,0,0,0.45)]'
 
-interface BidResult {
-  ok: boolean
-  message?: string
-  privacyNote?: string
-  transactionId?: string
-  error?: string
+const gradeStyle: Record<string, string> = {
+  A: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
+  B: 'border-violet-500/30 bg-violet-500/15 text-violet-300',
+  C: 'border-slate-500/30 bg-slate-500/15 text-slate-300',
+  D: 'border-amber-500/30 bg-amber-500/15 text-amber-300',
 }
 
 function BidModal({ auction, onClose, onBidPlaced }: {
@@ -141,9 +63,7 @@ function BidModal({ auction, onClose, onBidPlaced }: {
       })
       const data = await res.json()
       setResult(data)
-      if (data.ok) {
-        onBidPlaced(auction.id, advance)
-      }
+      if (data.ok) onBidPlaced(auction.id, advance)
     } catch (e) {
       setResult({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
     } finally {
@@ -153,119 +73,79 @@ function BidModal({ auction, onClose, onBidPlaced }: {
 
   if (result?.ok) {
     return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-dark-card border border-dark-border rounded-3xl p-8 max-w-sm w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-violet-500/20 flex items-center justify-center mx-auto mb-5">
-            <CheckCircle className="w-8 h-8 text-violet-400" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+        <div className={cn(panel, 'w-full max-w-sm p-8 text-center')}>
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20">
+            <CheckCircle className="h-8 w-8 text-violet-300" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">Sealed Bid Submitted</h3>
-          <p className="text-sm text-dark-muted mb-4">{result.message}</p>
-          <div className="bg-dark-border/50 rounded-xl p-4 mb-5 text-left space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-dark-muted">Advance Rate</span>
-              <span className="text-white font-semibold">{advance}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-dark-muted">Annual Rate</span>
-              <span className="text-white font-semibold">{annualRate}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-dark-muted">Net to Seller</span>
-              <span className="text-white font-semibold">${netAmount.toLocaleString()}</span>
-            </div>
+          <h3 className="font-display mb-2 text-xl font-bold text-white">Sealed Bid Submitted</h3>
+          <p className="mb-4 text-sm text-slate-400">{result.message ?? 'Your bid is a private contract, visible only to you and the platform.'}</p>
+          <div className="mb-5 space-y-2 rounded-2xl border border-white/[0.07] bg-[#0B0814] p-4 text-left text-sm">
+            <div className="flex justify-between"><span className="text-slate-500">Advance Rate</span><span className="font-data font-semibold text-white">{advance}%</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Annual Rate</span><span className="font-data font-semibold text-white">{annualRate}%</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Net to Seller</span><span className="font-data font-semibold text-amber-300">${netAmount.toLocaleString()}</span></div>
             {result.transactionId && (
-              <div className="flex justify-between">
-                <span className="text-dark-muted">Canton Tx</span>
-                <span className="text-violet-400 font-mono text-xs truncate max-w-[140px]">{result.transactionId}</span>
-              </div>
+              <div className="flex justify-between"><span className="text-slate-500">Canton Tx</span><span className="font-data max-w-[140px] truncate text-xs text-violet-300">{result.transactionId}</span></div>
             )}
           </div>
-          <p className="text-xs text-dark-muted mb-4 italic">{result.privacyNote}</p>
-          <div className="flex items-center gap-2 text-xs text-green-400 justify-center mb-5">
-            <Zap className="w-3.5 h-3.5" />
-            SealedBid contract created on Canton Network
-          </div>
-          <button onClick={onClose} className="w-full bg-violet-500 hover:bg-violet-600 text-white font-semibold py-3 rounded-xl transition-colors">
-            Done
-          </button>
+          <button onClick={onClose} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400">Done</button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-dark-card border border-dark-border rounded-3xl p-6 max-w-md w-full">
-        <div className="flex items-start justify-between mb-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className={cn(panel, 'w-full max-w-md p-6')}>
+        <div className="mb-5 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Lock className="w-4 h-4 text-violet-400" />
-              <span className="text-xs font-semibold text-violet-400">Sealed Bid — Private Canton Contract</span>
-            </div>
-            <h3 className="text-lg font-bold text-white">{auction.buyer}</h3>
-            <p className="text-sm text-dark-muted">{auction.invoiceId} · ${auction.amount.toLocaleString()} {auction.currency}</p>
+            <p className="font-data text-[11px] uppercase tracking-[0.24em] text-violet-300">Sealed bid</p>
+            <h3 className="font-display mt-1 text-lg font-semibold text-white">{auction.invoiceId || auction.id}</h3>
+            <p className="text-xs text-slate-500">{auction.buyer} · <span className="font-data text-amber-300">${auction.amount.toLocaleString()}</span></p>
           </div>
-          <button onClick={onClose} className="text-dark-muted hover:text-white transition-colors text-lg">✕</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
         </div>
-
-        <div className="flex items-start gap-2.5 bg-violet-500/10 border border-violet-500/20 rounded-xl p-3 mb-5">
-          <EyeOff className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-violet-300">
-            Your bid becomes a private Canton contract. Other financiers cannot see your offer. Seller sees all bids simultaneously at close.
-            {!party && ' Connect your Canton wallet to submit as a real party.'}
-          </p>
-        </div>
-
-        {result?.error && (
-          <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-red-400">{result.error}</p>
-          </div>
-        )}
 
         <div className="space-y-5">
           <div>
-            <div className="flex justify-between text-xs mb-2">
-              <label className="text-dark-muted font-medium">Advance Rate</label>
-              <span className="text-white font-bold">{advance}%</span>
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="text-slate-400">Advance rate</span>
+              <span className="font-data font-bold text-white">{advance}%</span>
             </div>
-            <input type="range" min={70} max={95} value={advance} onChange={e => setAdvance(+e.target.value)} className="w-full accent-violet-500" />
-            <div className="flex justify-between text-xs text-dark-muted mt-1"><span>70%</span><span>95%</span></div>
+            <input type="range" min={70} max={95} step={0.5} value={advance}
+              onChange={e => setAdvance(Number(e.target.value))} className="w-full accent-violet-500" />
+            <p className="mt-1 font-data text-xs text-slate-500">seller receives <span className="text-amber-300">${netAmount.toLocaleString()}</span> now</p>
           </div>
 
           <div>
-            <div className="flex justify-between text-xs mb-2">
-              <label className="text-dark-muted font-medium">Annual Rate</label>
-              <span className="text-white font-bold">{annualRate}%</span>
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="text-slate-400">Annual rate</span>
+              <span className="font-data font-bold text-white">{annualRate}%</span>
             </div>
-            <input type="range" min={5} max={18} step={0.1} value={annualRate} onChange={e => setAnnualRate(+e.target.value)} className="w-full accent-violet-500" />
-            <div className="flex justify-between text-xs text-dark-muted mt-1"><span>5%</span><span>18%</span></div>
+            <input type="range" min={6} max={20} step={0.1} value={annualRate}
+              onChange={e => setAnnualRate(Number(e.target.value))} className="w-full accent-amber-400" />
+            <p className="mt-1 font-data text-xs text-slate-500">projected yield <span className="text-amber-300">${yieldAmount.toLocaleString()}</span> APR-basis</p>
           </div>
 
-          <div className="bg-dark-border/50 rounded-xl p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-dark-muted">Net to Seller</span>
-              <span className="text-white font-semibold">${netAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-dark-muted">Estimated Yield</span>
-              <span className="text-green-400 font-semibold">+${yieldAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between border-t border-dark-border pt-2">
-              <span className="text-dark-muted">Face Value</span>
-              <span className="text-white">${auction.amount.toLocaleString()}</span>
-            </div>
+          <div className="flex items-start gap-2.5 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] p-3">
+            <EyeOff className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+            <p className="text-xs leading-relaxed text-slate-400">Your bid becomes a private Canton contract. The seller and rival financiers cannot see it — enforced by the ledger's observer rules.</p>
           </div>
-        </div>
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 border border-dark-border text-dark-muted hover:text-white py-3 rounded-xl text-sm font-medium transition-colors">
-            Cancel
-          </button>
+          {result && !result.ok && (
+            <div className="flex items-start gap-2.5 rounded-2xl border border-red-500/25 bg-red-500/10 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+              <div>
+                <p className="text-xs font-medium text-red-300">Bid failed</p>
+                <p className="mt-0.5 text-xs text-slate-500">{result.error}</p>
+              </div>
+            </div>
+          )}
+
           <button onClick={handleSubmit} disabled={submitting}
-            className="flex-1 bg-violet-500 hover:bg-violet-600 disabled:opacity-60 text-white py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-            {submitting ? 'Submitting to Canton…' : 'Submit Sealed Bid'}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400 disabled:opacity-60">
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+            {submitting ? 'Submitting sealed bid…' : 'Submit sealed bid'}
           </button>
         </div>
       </div>
@@ -274,13 +154,15 @@ function BidModal({ auction, onClose, onBidPlaced }: {
 }
 
 export default function MarketplacePage() {
-  const [auctions, setAuctions] = useState<Auction[]>(demoAuctions)
+  const [auctions, setAuctions] = useState<Auction[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
-  const { ledgerStatus, party } = useCanton()
+  const { party } = useCanton()
 
   useEffect(() => {
-    if (!party?.id) return
-
+    if (!party?.id) { setAuctions([]); setLoading(false); return }
+    let cancelled = false
+    setLoading(true)
     const load = async () => {
       try {
         const res = await fetch('/api/canton/contracts/list', {
@@ -289,161 +171,135 @@ export default function MarketplacePage() {
           body: JSON.stringify({ parties: [party.id], template: 'auction' }),
         })
         const data = await res.json()
-        if (data.ok) {
+        if (!cancelled && data.ok) {
           const rows = (data.contracts || []).map((c: any) => {
             const p = c.payload || {}
-            const face = Number(p.faceAmount?.value ?? p.faceAmount ?? 0)
-            const riskScore = Number(p.aiScore?.value ?? p.aiScore ?? 0)
-            const grade = p.riskGrade?.value ?? p.riskGrade ?? '—'
             return {
               id: c.contractId.slice(0, 12),
               invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
               buyer: p.debtorName?.value ?? p.debtorName ?? 'Unknown',
-              industry: '—',
-              amount: face,
+              amount: Number(p.faceAmount?.value ?? p.faceAmount ?? 0),
               currency: p.currency?.value ?? p.currency ?? 'USD',
               dueDate: p.dueDate?.value ?? p.dueDate ?? '',
-              grade,
-              riskScore,
-              timeLeft: 'N/A',
+              grade: String(p.riskGrade?.value ?? p.riskGrade ?? '—').replace('Grade_', ''),
+              riskScore: Number(p.aiScore?.value ?? p.aiScore ?? 0),
               bidsReceived: Number(p.bidCount ?? 0),
               myBid: null,
               status: p.settled ? 'settled' : 'open',
-              expectedYield: '—',
               auctionContractId: c.contractId,
             } as Auction
           })
-
           setAuctions(rows)
         }
-      } catch (e) {
-        // ignore
+      } catch { /* keep empty */ } finally {
+        if (!cancelled) setLoading(false)
       }
     }
-
     load()
+    return () => { cancelled = true }
   }, [party])
 
   const handleBidPlaced = (auctionId: string, advanceRate: number) => {
     setAuctions(prev => prev.map(a => a.id === auctionId ? { ...a, myBid: advanceRate, bidsReceived: a.bidsReceived + 1 } : a))
   }
 
+  const open = auctions.filter(a => a.status === 'open')
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Header title="Marketplace" />
       {selectedAuction && (
-        <BidModal
-          auction={selectedAuction}
-          onClose={() => setSelectedAuction(null)}
-          onBidPlaced={handleBidPlaced}
-        />
+        <BidModal auction={selectedAuction} onClose={() => setSelectedAuction(null)} onBidPlaced={handleBidPlaced} />
       )}
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-        <div className="bg-gradient-to-r from-violet-500/10 via-violet-500/5 to-transparent border border-violet-500/20 rounded-2xl p-5 flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center shrink-0">
-            <Lock className="w-5 h-5 text-violet-400" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white mb-1">Private Sealed-Bid Auctions · Powered by Canton Network</p>
-            <p className="text-xs text-dark-muted leading-relaxed">
-              Every bid is a private Canton smart contract. Competing financiers cannot see your offer.
-              The seller sees all bids simultaneously at close. Settlement is atomic — all state changes happen in a single Canton transaction.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Open Auctions', value: auctions.length.toString() },
-            { label: 'Avg Risk Score', value: Math.round(auctions.reduce((s, a) => s + a.riskScore, 0) / auctions.length).toString() },
-            { label: 'Canton Block', value: ledgerStatus?.ok ? (ledgerStatus.offset?.toLocaleString() ?? '…') : 'Connecting…' },
-          ].map(s => (
-            <div key={s.label} className="bg-dark-card border border-dark-border rounded-2xl p-4 text-center">
-              <p className="text-2xl font-bold text-white mb-1">{s.value}</p>
-              <p className="text-xs text-dark-muted">{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-white">Open Auctions ({auctions.length})</h2>
-          {auctions.map(auction => (
-            <div key={auction.id} className="bg-dark-card border border-dark-border rounded-2xl p-5 hover:border-violet-500/30 transition-all group">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={cn('text-xs font-bold px-2 py-0.5 rounded-lg border', gradeColors[auction.grade] ?? gradeColors.B)}>
-                      Grade {auction.grade}
-                    </span>
-                    <span className="text-xs text-dark-muted">{auction.industry}</span>
-                    <span className="text-xs text-dark-muted">·</span>
-                    <span className="text-xs text-dark-muted font-mono">{auction.invoiceId}</span>
-                  </div>
-                  <h3 className="text-base font-semibold text-white mb-1">{auction.buyer}</h3>
-                  <p className="text-xs text-dark-muted">Due {auction.dueDate}</p>
-                </div>
-
-                <div className="flex items-center gap-6 flex-wrap">
-                  <div>
-                    <p className="text-xs text-dark-muted mb-0.5">Invoice Value</p>
-                    <p className="text-lg font-bold text-white">${auction.amount.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-dark-muted mb-0.5">Est. Yield</p>
-                    <p className="text-sm font-semibold text-green-400">{auction.expectedYield}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-dark-muted mb-0.5">Risk Score</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-dark-border rounded-full overflow-hidden">
-                        <div className={cn('h-full rounded-full', auction.riskScore >= 80 ? 'bg-green-500' : auction.riskScore >= 65 ? 'bg-violet-500' : 'bg-yellow-500')} style={{ width: `${auction.riskScore}%` }} />
-                      </div>
-                      <span className="text-sm font-semibold text-white">{auction.riskScore}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-dark-muted mb-0.5 flex items-center gap-1"><Lock className="w-3 h-3" /> Sealed Bids</p>
-                    <p className="text-sm font-semibold text-white">{auction.bidsReceived} received</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-dark-muted mb-0.5 flex items-center gap-1"><Timer className="w-3 h-3" /> Closes In</p>
-                    <p className="text-sm font-semibold text-orange-400">{auction.timeLeft}</p>
-                  </div>
-                </div>
-
-                <div className="lg:ml-4 shrink-0">
-                  {auction.myBid !== null ? (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Eye className="w-4 h-4 text-violet-400" />
-                      <span className="text-violet-400 font-semibold">My Bid: {auction.myBid}%</span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setSelectedAuction(auction)}
-                      className="flex items-center gap-2 bg-violet-500 hover:bg-violet-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                      <Lock className="w-4 h-4" />
-                      Place Sealed Bid
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-dark-border flex items-center justify-between text-xs text-dark-muted">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-3.5 h-3.5 text-green-400" />
-                  <span>Anti-fraud registry checked · Invoice hash: <span className="font-mono">{auction.id}::verified</span></span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-violet-400" />
-                  <span>Atomic settlement on acceptance</span>
-                </div>
+        {/* Banner */}
+        <div className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-r from-violet-950/50 via-[#130E24] to-[#100C1E] p-5">
+          <div className="pointer-events-none absolute -top-20 -right-12 h-48 w-48 rounded-full bg-violet-600/20 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
+                <Lock className="h-4 w-4 text-violet-300" />
+              </span>
+              <div>
+                <p className="font-display font-semibold text-white">Sealed-bid auctions</p>
+                <p className="text-xs text-slate-400">Bids are private Canton contracts — the seller and rival financiers never see your numbers.</p>
               </div>
             </div>
-          ))}
+            <span className="font-data rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300">
+              {loading ? '…' : `${open.length} open`}
+            </span>
+          </div>
         </div>
+
+        {/* Auctions */}
+        {loading ? (
+          <div className={cn(panel, 'flex flex-col items-center justify-center gap-3 py-16')}>
+            <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
+            <p className="text-sm text-slate-500">Loading auctions from Canton…</p>
+          </div>
+        ) : !party ? (
+          <div className={cn(panel, 'flex flex-col items-center justify-center gap-2 py-16 text-center px-6')}>
+            <Wallet className="h-6 w-6 text-slate-600" />
+            <p className="text-sm font-medium text-white">Connect your Canton wallet</p>
+            <p className="max-w-xs text-xs text-slate-500">Live auctions are read from the ledger. Connect a financier party to browse and bid.</p>
+          </div>
+        ) : auctions.length === 0 ? (
+          <div className={cn(panel, 'flex flex-col items-center justify-center gap-2 py-16 text-center px-6')}>
+            <Store className="h-6 w-6 text-slate-600" />
+            <p className="text-sm font-medium text-white">No auctions yet</p>
+            <p className="max-w-xs text-xs text-slate-500">When sellers list verified invoices, the sealed-bid auctions appear here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {auctions.map(a => (
+              <div key={a.id} className={cn(panel, 'p-5 transition-all hover:-translate-y-0.5 hover:border-violet-500/30')}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-data text-xs text-slate-600">{a.id}</p>
+                    <p className="mt-0.5 truncate font-display font-semibold text-white">{a.invoiceId || 'Auction'}</p>
+                    <p className="truncate text-xs text-slate-500">{a.buyer}</p>
+                  </div>
+                  <span className={cn('font-data shrink-0 rounded-md border px-2 py-1 text-xs font-bold', gradeStyle[a.grade] ?? gradeStyle.C)}>
+                    {a.grade}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-600">Face value</p>
+                    <p className="font-data mt-1 text-lg font-bold text-amber-300">${a.amount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-600">Score</p>
+                    <p className="font-data mt-1 text-lg font-bold text-white">{a.riskScore || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-600">Due</p>
+                    <p className="font-data mt-1 text-sm text-slate-300">{a.dueDate || '—'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4">
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-violet-400" /><span className="font-data">{a.bidsReceived}</span> sealed</span>
+                    {a.status !== 'open' && <span className="flex items-center gap-1.5"><Timer className="h-3.5 w-3.5" />settled</span>}
+                    {a.myBid != null && <span className="font-data text-amber-300">your bid: {a.myBid}%</span>}
+                  </div>
+                  <button
+                    onClick={() => a.status === 'open' && setSelectedAuction(a)}
+                    disabled={a.status !== 'open'}
+                    className={cn('rounded-xl px-4 py-2 text-xs font-semibold transition-colors',
+                      a.status === 'open' ? 'bg-violet-500 text-white hover:bg-violet-400' : 'cursor-not-allowed bg-white/5 text-slate-600')}
+                  >
+                    {a.status === 'open' ? 'Place sealed bid' : 'Settled'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
