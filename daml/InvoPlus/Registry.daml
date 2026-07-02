@@ -1,16 +1,14 @@
 -- InvoPlus: Anti-fraud double-financing registry
--- Ensures each invoice can only be financed once across the entire platform.
--- The registry entry is created when an invoice is listed and archived when funded.
+-- Each listed invoice gets exactly one RegistryEntry, enforced by a contract
+-- key on (platform, invoiceHash): creating a second entry for the same
+-- invoice fails at the ledger level with a duplicate-key error.
 module InvoPlus.Registry where
 
--- The platform holds a registry entry for every listed invoice.
--- Signatories: platform only — sellers cannot forge or remove entries.
--- Observers: seller so they can see their own registrations.
 template RegistryEntry
   with
     platform       : Party
     seller         : Party
-    invoiceHash    : Text   -- SHA-256 of (invoiceNumber + debtorTaxId + amount)
+    invoiceHash    : Text   -- identity: hash of (invoiceNumber + debtorTaxId + amount)
     invoiceId      : Text   -- human-readable invoice number
     debtorName     : Text
     faceAmount     : Decimal
@@ -19,29 +17,11 @@ template RegistryEntry
   where
     signatory platform
     observer seller
+    key (platform, invoiceHash) : (Party, Text)
+    maintainer key._1
 
-    -- Platform removes the entry only when the invoice is fully repaid.
-    -- While this entry exists, no other listing with the same invoiceHash can be created.
+    -- Platform removes the entry (e.g. when a seller cancels an auction,
+    -- freeing the invoice to be re-listed).
     choice DeregisterInvoice : ()
-      controller platform
-      do return ()
-
--- The platform checks for an existing entry before accepting a new listing.
--- This is enforced in the InvoiceContract.ListForAuction choice.
-template RegistryLookupRequest
-  with
-    requester    : Party
-    platform     : Party
-    invoiceHash  : Text
-  where
-    signatory requester
-    observer platform
-
-    choice ApproveListing : ()
-      -- Platform approves only when no matching RegistryEntry exists.
-      controller platform
-      do return ()
-
-    choice RejectDuplicate : ()
       controller platform
       do return ()
