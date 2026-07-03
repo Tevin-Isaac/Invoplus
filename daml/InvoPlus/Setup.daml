@@ -9,7 +9,6 @@ import DA.Date (date, Month(..))
 import Daml.Script
 import InvoPlus.Types
 import InvoPlus.Invoice
-import InvoPlus.Registry
 import InvoPlus.Platform
 import InvoPlus.Financier
 import InvoPlus.Repayment
@@ -276,7 +275,7 @@ setupDemo = do
 
   debug "Repayment approved with validation"
 
-  _confirmCid <- submit platform do exerciseCmd repayReqCid CompleteRepayment
+  _confirmCid <- submitMulti [platform, financier, seller] [] do exerciseCmd repayReqCid CompleteRepayment
 
   debug "Reayment completed"
 
@@ -327,7 +326,7 @@ setupDisputeDemo = do
   let t = time (date 2026 Jun 23) 9 0 0
 
   -- Fast-path: create a FundedInvoice directly for dispute demo
-  fundedCid <- submit seller do
+  fundedCid <- submitMulti [seller, financier] [] do
     createCmd FundedInvoice with
       seller       = seller
       financier    = financier
@@ -378,7 +377,7 @@ setupDisputeDemo = do
       requestedAt  = t
       status       = "Pending"
 
-  disputeCid <- submit seller do
+  disputeCid <- submitMulti [seller, platform] [] do
     exerciseCmd repayReqCid RaiseDispute with reason = "Debtor paid 60% — requesting partial credit"
 
   disputeCid <- submit platform do exerciseCmd disputeCid ReviewDispute

@@ -4,7 +4,6 @@
 -- Production-ready with comprehensive validation and safeguards
 module InvoPlus.Platform where
 
-import DA.Time (Time)
 import InvoPlus.Types
 
 -- Platform-wide configuration stored as a Canton contract.

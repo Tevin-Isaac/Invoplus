@@ -4,7 +4,6 @@
 -- Production-ready with comprehensive validation and safeguards
 module InvoPlus.Financier where
 
-import DA.Time (Time)
 import InvoPlus.Types
 
 -- Financier profile — created by platform after KYC/AML checks.

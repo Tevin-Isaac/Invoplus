@@ -2,7 +2,6 @@
 -- Manages party credentials, API tokens, session tokens, and login/logout flows
 module InvoPlus.Auth where
 
-import DA.Time (Time)
 
 -- User login credentials — stored securely by platform
 -- Password hash computed server-side using bcrypt or similar

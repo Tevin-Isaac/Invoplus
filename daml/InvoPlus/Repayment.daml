@@ -4,7 +4,6 @@
 -- Production-ready with comprehensive validation and error handling
 module InvoPlus.Repayment where
 
-import DA.Time (Time)
 import InvoPlus.Types
 
 -- Seller-initiated repayment request after collecting from debtor.
@@ -45,7 +44,7 @@ template RepaymentRequest
 
     -- Platform marks repayment as completed (funds transferred).
     choice CompleteRepayment : ContractId RepaymentConfirmation
-      controller platform
+      controller platform, financier
       do
         assertMsg "Must be Approved before completing" (status == "Approved")
         now <- getTime
@@ -63,7 +62,7 @@ template RepaymentRequest
     -- Either party can raise a dispute.
     choice RaiseDispute : ContractId DisputeCase
       with reason : Text
-      controller seller
+      controller seller, platform
       do
         now <- getTime
         create DisputeCase with

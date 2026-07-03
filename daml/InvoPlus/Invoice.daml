@@ -1,3 +1,4 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 -- InvoPlus: Invoice lifecycle on Canton Network
 -- An InvoiceContract moves through: Pending → Verified → (listed as Auction) → Funded
 --
@@ -13,11 +14,9 @@
 --     never inside SettleAuction, so their contents are not witnessed by the seller.
 module InvoPlus.Invoice where
 
-import DA.Time (Time)
-import DA.Date (Date)
 import InvoPlus.Types
-import InvoPlus.Registry (RegistryEntry(..))
-import InvoPlus.Repayment (RepaymentRequest(..), DefaultNotice(..))
+import InvoPlus.Registry qualified as Registry
+import InvoPlus.Repayment qualified as Repayment
 
 -- Uploaded by the seller; platform becomes co-signatory after verification.
 template InvoiceContract
@@ -76,7 +75,7 @@ template InvoiceContract
     -- Creates the Auction and the RegistryEntry in one atomic transaction.
     -- Double financing is blocked by the RegistryEntry contract key:
     -- a second listing with the same invoiceHash fails on duplicate key.
-    choice ListForAuction : (ContractId Auction, ContractId RegistryEntry)
+    choice ListForAuction : (ContractId Auction, ContractId Registry.RegistryEntry)
       with
         terms       : AuctionTerms
         auctionEnd  : Time
@@ -102,7 +101,7 @@ template InvoiceContract
           dueDate      = dueDate
           aiScore      = aiScore
           riskGrade    = riskGrade
-          invoiceHash  = invoiceHash
+          invoiceHash  = this.invoiceHash
           terms        = terms
           auctionEnd   = auctionEnd
           bidCount     = 0
@@ -111,10 +110,10 @@ template InvoiceContract
 
         -- Anti-fraud: the contract key on (platform, invoiceHash) makes this
         -- create FAIL if an entry for the same invoice already exists.
-        regCid <- create RegistryEntry with
+        regCid <- create Registry.RegistryEntry with
           platform      = platform
           seller        = seller
-          invoiceHash   = invoiceHash
+          invoiceHash   = this.invoiceHash
           invoiceId     = invoiceId
           debtorName    = debtorName
           faceAmount    = faceAmount
@@ -179,6 +178,7 @@ template Auction
           advanceRate  = advanceRate
           annualRate   = annualRate
           fundedAmount = fundedAmount
+          invoiceHash  = invoiceHash
           isRevealed   = False
 
         newAuctionCid <- create this with bidCount = bidCount + 1
@@ -209,13 +209,13 @@ template Auction
     -- Seller cancels the auction before it ends (e.g. no good bids).
     choice CancelAuction : ContractId InvoiceContract
       with
-        regEntryCid : ContractId RegistryEntry
+        regEntryCid : ContractId Registry.RegistryEntry
       controller seller
       do
         now <- getTime
         assertMsg "Cannot cancel a settled auction" (not settled)
         assertMsg "Cannot cancel auction after end time" (auctionEnd > now)
-        exercise regEntryCid DeregisterInvoice
+        exercise regEntryCid Registry.DeregisterInvoice
         create InvoiceContract with
           seller       = seller
           platform     = platform
@@ -227,7 +227,7 @@ template Auction
           issueDate    = dueDate   -- approximate: original issue date not carried
           dueDate      = dueDate
           docHash      = ""
-          invoiceHash  = invoiceHash
+          invoiceHash  = this.invoiceHash
           aiScore      = aiScore
           riskGrade    = riskGrade
           status       = Verified  -- back to verified, can re-list
@@ -249,6 +249,7 @@ template SealedBid
     advanceRate  : Decimal
     annualRate   : Decimal
     fundedAmount : Decimal  -- faceAmount * advanceRate
+    invoiceHash  : Text
     isRevealed   : Bool
   where
     signatory financier
@@ -299,7 +300,7 @@ template SealedBid
           currency     = currency
           dueDate      = dueDate'
           settledAt    = settledAt'
-          invoiceHash  = invoiceHash
+          invoiceHash  = this.invoiceHash
 
 -- ─── FundedInvoice ──────────────────────────────────────────────────────────
 
@@ -326,14 +327,14 @@ template FundedInvoice
 
     -- When the debtor pays the seller, the seller opens a repayment request:
     -- principal (fundedAmount) plus yield (face minus funded) to the financier.
-    choice RepayFinancier : ContractId RepaymentRequest
+    choice RepayFinancier : ContractId Repayment.RepaymentRequest
       with
         debtorPaidAt : Time
       controller seller
       do
         now <- getTime
         let yieldAmount = faceAmount - fundedAmount
-        create RepaymentRequest with
+        create Repayment.RepaymentRequest with
           seller       = seller
           financier    = financier
           platform     = platform
@@ -347,11 +348,11 @@ template FundedInvoice
           status       = "Pending"
 
     -- Platform marks the invoice defaulted, opening formal default handling.
-    choice MarkDefault : ContractId DefaultNotice
+    choice MarkDefault : ContractId Repayment.DefaultNotice
       controller platform
       do
         now <- getTime
-        create DefaultNotice with
+        create Repayment.DefaultNotice with
           platform     = platform
           seller       = seller
           financier    = financier

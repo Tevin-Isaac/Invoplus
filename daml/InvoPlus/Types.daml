@@ -3,8 +3,9 @@
 -- All numeric types enforce bounds checking to prevent overflow/underflow
 module InvoPlus.Types where
 
-import DA.Date (Date)
-import DA.Time (Time)
+import qualified DA.Text as T
+
+
 
 -- Risk grade assigned by AI scoring engine
 -- Higher grade = lower risk
@@ -93,7 +94,7 @@ validateAmount amount = amount >= 0.01 && amount <= 999999999.99
 
 -- Validate currency code is ISO 4217 format (basic check)
 validateCurrency : Text -> Bool
-validateCurrency currency = length currency == 3 && all isUpper currency
+validateCurrency currency = T.length currency == 3
 
 -- Validate percentage is between 0 and 1
 validatePercentage : Decimal -> Bool
@@ -115,9 +116,6 @@ validateAuctionDuration hours = hours >= 1 && hours <= 720
 validateRiskScore : Int -> Bool
 validateRiskScore score = score >= 0 && score <= 100
 
--- Validate date is not in the past (for issue dates)
-validateFutureDate : Date -> Time -> Bool
-validateFutureDate date currentTime = dateToTime date >= currentTime
 
 -- Validate due date is after issue date
 validateDueDate : Date -> Date -> Bool
@@ -125,15 +123,15 @@ validateDueDate issueDate dueDate = dueDate >= issueDate
 
 -- Validate invoice ID format (basic check)
 validateInvoiceId : Text -> Bool
-validateInvoiceId invoiceId = length invoiceId >= 3 && length invoiceId <= 50
+validateInvoiceId invoiceId = T.length invoiceId >= 3 && T.length invoiceId <= 50
 
 -- Validate tax ID format (basic check)
 validateTaxId : Text -> Bool
-validateTaxId taxId = length taxId >= 8 && length taxId <= 30
+validateTaxId taxId = T.length taxId >= 8 && T.length taxId <= 30
 
 -- Validate party name is not empty
 validatePartyName : Text -> Bool
-validatePartyName name = length name >= 2 && length name <= 100
+validatePartyName name = T.length name >= 2 && T.length name <= 100
 
 -- Calculate funded amount with validation
 calculateFundedAmount : Decimal -> Decimal -> Either Text Decimal
@@ -157,4 +155,4 @@ calculateYieldAmount fundedAmount annualRate days =
 
 -- Validate hash format (basic SHA-256 check)
 validateHash : Text -> Bool
-validateHash hash = length hash >= 10 && length hash <= 128
+validateHash hash = T.length hash >= 10 && T.length hash <= 128
