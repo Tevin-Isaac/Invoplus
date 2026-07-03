@@ -19,11 +19,11 @@ setupDemo : Script ()
 setupDemo = do
 
   -- 1. Allocate parties
-  platform   <- allocatePartyWithHint "InvoPlus-Platform"   (PartyIdHint "invplus_platform")
-  seller     <- allocatePartyWithHint "Acme-Corp"            (PartyIdHint "invplus_seller_acme")
-  seller2    <- allocatePartyWithHint "NovaBuild-Corp"       (PartyIdHint "invplus_seller_novabuild")
-  financier  <- allocatePartyWithHint "Capital-Partners"     (PartyIdHint "invplus_fin_cp")
-  financier2 <- allocatePartyWithHint "Apex-Fund"            (PartyIdHint "invplus_fin_apex")
+  platform   <- allocatePartyByHint (PartyIdHint "invplus_platform")
+  seller     <- allocatePartyByHint (PartyIdHint "invplus_seller_acme")
+  seller2    <- allocatePartyByHint (PartyIdHint "invplus_seller_novabuild")
+  financier  <- allocatePartyByHint (PartyIdHint "invplus_fin_cp")
+  financier2 <- allocatePartyByHint (PartyIdHint "invplus_fin_apex")
 
   let baseDate  = date 2026 Jun 23
   let dueDate1  = date 2026 Sep 23   -- 90 days
@@ -319,9 +319,9 @@ setupDemo = do
 
 setupDisputeDemo : Script ()
 setupDisputeDemo = do
-  platform  <- allocatePartyWithHint "InvoPlus-Platform-Dispute" (PartyIdHint "invplus_platform_d")
-  seller    <- allocatePartyWithHint "Trouble-Corp"              (PartyIdHint "invplus_seller_trouble")
-  financier <- allocatePartyWithHint "Patient-Fund"              (PartyIdHint "invplus_fin_patient")
+  platform  <- allocatePartyByHint (PartyIdHint "invplus_platform_d")
+  seller    <- allocatePartyByHint (PartyIdHint "invplus_seller_trouble")
+  financier <- allocatePartyByHint (PartyIdHint "invplus_fin_patient")
 
   let t = time (date 2026 Jun 23) 9 0 0
 
