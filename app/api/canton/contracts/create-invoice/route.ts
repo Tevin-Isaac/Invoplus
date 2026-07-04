@@ -87,7 +87,7 @@ export async function POST(req: Request) {
       }],
     )
 
-    const contractId = result?.completionOffset ?? result?.transactionId ?? 'created'
+    const contractId = result?.contractId ?? 'unknown'
 
     return NextResponse.json({
       ok: true,

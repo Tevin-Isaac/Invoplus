@@ -48,9 +48,13 @@ export async function POST(req: Request) {
       }],
     )
 
+    const newInvoiceContractId = (result?.created ?? [])
+      .find((c: any) => c.templateId.endsWith(':InvoiceContract'))?.contractId
+
     return NextResponse.json({
       ok: true,
       transactionId: result?.transactionId,
+      newInvoiceContractId,
       message: 'Auction cancelled. Invoice returned to Verified state. Registry entry deregistered. Invoice can be re-listed.',
     })
   } catch (err) {

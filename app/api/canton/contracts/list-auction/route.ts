@@ -86,11 +86,17 @@ export async function POST(req: Request) {
       }],
     )
 
+    const created: Array<{ contractId: string; templateId: string }> = result?.created ?? []
+    const auctionContractId = created.find((c) => c.templateId.endsWith(':Auction'))?.contractId
+    const registryEntryContractId = created.find((c) => c.templateId.endsWith(':RegistryEntry'))?.contractId
+
     return NextResponse.json({
       ok: true,
       auctionEnd,
       durationHours: durationHours ?? 72,
       transactionId: result?.transactionId,
+      auctionContractId,
+      registryEntryContractId,
       message: 'Invoice listed for auction. Auction and RegistryEntry created atomically on Canton.',
     })
   } catch (err) {

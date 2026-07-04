@@ -136,28 +136,50 @@ export async function getUsers() {
 // Queries the Active Contract Set for given parties + optional template filter.
 // templateIds format: "packageId:ModuleName:TemplateName"
 // Uses raw fetch because TypedHttpClient's queryActiveContracts has strict branded types.
+//
+// Two things about this endpoint are easy to get wrong (both were wrong here originally):
+//   1. An empty `cumulative: []` filter matches NOTHING, not "all templates" — you need an
+//      explicit `identifierFilter: { WildcardFilter: {...} }` entry to mean "all templates".
+//      A specific template needs `identifierFilter: { TemplateFilter: { value: { templateId, ... } } }`
+//      with templateId as a single "pkgId:Module:Entity" string, not a {packageId,moduleName,entityName} object.
+//   2. The endpoint requires `activeAtOffset` explicitly — omitting it does not default to
+//      ledger end, so queries silently return an empty result set.
+
+async function getLedgerEndOffset(token: string): Promise<number> {
+  const res = await fetch(`${LEDGER_URL}/v2/state/ledger-end`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`GET /v2/state/ledger-end failed: ${res.status}`)
+  const data = await res.json()
+  return data.offset
+}
+
+// Canton's TemplateFilter wants a package-name reference ("#invoplus:Module:Entity"),
+// not the raw package-id hash — passing the hash directly errors with
+// "expected a package name" (or silently mis-filters). Callers build filter
+// strings as "<packageId>:Module:Entity" (matching the command-submission
+// format), so rewrite the package-id segment to "#invoplus" here.
+const PACKAGE_NAME = 'invoplus'
+
+function toPackageNameRef(templateId: string): string {
+  const parts = templateId.split(':')
+  return [`#${PACKAGE_NAME}`, ...parts.slice(1)].join(':')
+}
 
 export async function queryACS(parties: string[], templateIds?: string[]) {
   const token = await getCantonToken()
+  const activeAtOffset = await getLedgerEndOffset(token)
+
+  const cumulative = templateIds?.length
+    ? templateIds.map(templateId => ({
+        identifierFilter: { TemplateFilter: { value: { templateId: toPackageNameRef(templateId), includeCreatedEventBlob: false } } },
+      }))
+    : [{ identifierFilter: { WildcardFilter: { value: { includeCreatedEventBlob: false } } } }]
 
   const filtersByParty: Record<string, unknown> = {}
   for (const p of parties) {
-    if (templateIds?.length) {
-      filtersByParty[p] = {
-        cumulative: templateIds.map(id => {
-          const parts = id.split(':')
-          return {
-            templateIds: [{
-              packageId: parts[0],
-              moduleName: parts[1],
-              entityName: parts[2],
-            }],
-          }
-        }),
-      }
-    } else {
-      filtersByParty[p] = { cumulative: [] }
-    }
+    filtersByParty[p] = { cumulative }
   }
 
   const res = await fetch(`${LEDGER_URL}/v2/state/active-contracts`, {
@@ -166,7 +188,7 @@ export async function queryACS(parties: string[], templateIds?: string[]) {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ filter: { filtersByParty } }),
+    body: JSON.stringify({ filter: { filtersByParty }, verbose: true, activeAtOffset }),
     cache: 'no-store',
   })
 
@@ -175,36 +197,63 @@ export async function queryACS(parties: string[], templateIds?: string[]) {
     throw new Error(`ACS query failed ${res.status}: ${text}`)
   }
 
-  // ACS returns newline-delimited JSON (NDJSON)
   const text = await res.text()
-  return text
-    .split('\n')
-    .filter(Boolean)
-    .map(line => { try { return JSON.parse(line) } catch { return null } })
-    .filter(Boolean)
+  if (!text.trim()) return []
+
+  // The endpoint returns a single JSON array in practice, but fall back to
+  // NDJSON parsing (one JSON object per line) in case a large/paginated
+  // response is streamed that way.
+  try {
+    const parsed = JSON.parse(text)
+    return Array.isArray(parsed) ? parsed : [parsed]
+  } catch {
+    return text
+      .split('\n')
+      .filter(Boolean)
+      .map(line => { try { return JSON.parse(line) } catch { return null } })
+      .filter(Boolean)
+  }
 }
 
 // ─── Submit a command and wait for completion ─────────────────────────────────
 
+// Uses /v2/commands/submit-and-wait-for-transaction (not the plain
+// submit-and-wait endpoint) because plain submit-and-wait only returns
+// { updateId, completionOffset } — no created/exercised contract IDs.
+// Every choice-exercising route needs the real contract ID of what it just
+// created (e.g. list-auction needs the InvoiceContract ID from create-invoice),
+// so we ask for the transaction body back via transactionFormat.
 export async function submitAndWait(
   actAs: string[],
   readAs: string[],
   commands: unknown[],
 ) {
   const token = await getCantonToken()
-  const res = await fetch(`${LEDGER_URL}/v2/commands/submit-and-wait`, {
+  const allParties = Array.from(new Set([...actAs, ...readAs]))
+  const filtersByParty: Record<string, unknown> = {}
+  for (const p of allParties) {
+    filtersByParty[p] = { cumulative: [{ identifierFilter: { WildcardFilter: { value: {} } } }] }
+  }
+
+  const res = await fetch(`${LEDGER_URL}/v2/commands/submit-and-wait-for-transaction`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      actAs,
-      readAs,
-      commands,
-      workflowId: `invoplus-${Date.now()}`,
-      applicationId: 'invoplus',
-      commandId: `cmd-${Date.now()}`,
+      commands: {
+        actAs,
+        readAs,
+        commands,
+        workflowId: `invoplus-${Date.now()}`,
+        applicationId: 'invoplus',
+        commandId: `cmd-${Date.now()}`,
+      },
+      transactionFormat: {
+        eventFormat: { filtersByParty, verbose: true },
+        transactionShape: 'TRANSACTION_SHAPE_ACS_DELTA',
+      },
     }),
     cache: 'no-store',
   })
@@ -212,7 +261,31 @@ export async function submitAndWait(
     const text = await res.text()
     throw new Error(`submitAndWait failed ${res.status}: ${text}`)
   }
-  return res.json()
+  const data = await res.json()
+
+  // Flatten events into a convenient shape for callers: pull out created/exercised
+  // contract IDs so routes don't need to know the raw transaction event shape.
+  const events: any[] = data?.transaction?.events ?? []
+  const created = events
+    .filter(e => e.CreatedEvent)
+    .map(e => ({ contractId: e.CreatedEvent.contractId, templateId: e.CreatedEvent.templateId }))
+  const exercised = events
+    .filter(e => e.ExercisedEvent)
+    .map(e => ({
+      contractId: e.ExercisedEvent.contractId,
+      templateId: e.ExercisedEvent.templateId,
+      choice: e.ExercisedEvent.choice,
+      exerciseResult: e.ExercisedEvent.exerciseResult,
+    }))
+
+  return {
+    transactionId: data?.transaction?.updateId,
+    completionOffset: data?.transaction?.offset,
+    created,
+    exercised,
+    // First created contract ID — the common case for a single CreateCommand.
+    contractId: created[0]?.contractId,
+  }
 }
 
 // ─── WebSocket config (consumed by client-side code) ─────────────────────────

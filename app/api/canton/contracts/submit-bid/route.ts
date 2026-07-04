@@ -62,11 +62,17 @@ export async function POST(req: Request) {
       }],
     )
 
+    const created: Array<{ contractId: string; templateId: string }> = result?.created ?? []
+    const newAuctionContractId = created.find((c) => c.templateId.endsWith(':Auction'))?.contractId
+    const bidContractId = created.find((c) => c.templateId.endsWith(':SealedBid'))?.contractId
+
     return NextResponse.json({
       ok: true,
       advanceRate,
       annualRate,
       transactionId: result?.transactionId,
+      newAuctionContractId,
+      bidContractId,
       // Never return bid details to seller — only confirm to the bidder
       message: `Sealed bid submitted on Canton. Advance rate: ${(advanceRate * 100).toFixed(1)}%. Annual rate: ${(annualRate * 100).toFixed(2)}%. Your bid is private — seller cannot see it.`,
       privacyNote: 'SealedBid contract created with financier + platform as observers only. Seller excluded per Canton sub-transaction privacy.',

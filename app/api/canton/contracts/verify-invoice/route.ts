@@ -68,7 +68,7 @@ export async function POST(req: Request) {
           contractId: invoiceContractId,
           choice: 'VerifyInvoice',
           choiceArgument: {
-            score: risk.score,
+            score: risk.score.toString(),
             grade: `Grade_${risk.grade}`,
           },
         },
@@ -85,6 +85,10 @@ export async function POST(req: Request) {
       positiveFactors: risk.positiveFactors,
       summary: risk.summary,
       transactionId: result?.transactionId,
+      // VerifyInvoice archives the old InvoiceContract and creates a new one
+      // (Daml contracts are immutable) — this is that new contract's ID.
+      // Callers (e.g. ListForAuction) must use this ID, not the one passed in.
+      newInvoiceContractId: result?.contractId,
       newStatus: 'Verified',
       message: `Invoice verified on Canton with risk score ${risk.score}/100 (Grade ${risk.grade})`,
     })

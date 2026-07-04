@@ -52,18 +52,18 @@ export async function POST(req: Request) {
 
     const contracts = await queryACS(parties, templateIds)
 
-    // Parse the NDJSON stream into usable contract objects
+    // Each entry's real shape: { contractEntry: { JsActiveContract: { createdEvent: {...} } } }
     const active = contracts
-      .filter((line: any) => line?.contractEntry?.v1?.contract)
+      .filter((line: any) => line?.contractEntry?.JsActiveContract?.createdEvent)
       .map((line: any) => {
-        const contract = line.contractEntry.v1.contract
+        const event = line.contractEntry.JsActiveContract.createdEvent
         return {
-          contractId: contract.contractId,
-          templateId: contract.templateId,
-          payload: contract.payload,
-          createdAt: contract.createdAt,
-          signatories: contract.signatories,
-          observers: contract.observers,
+          contractId: event.contractId,
+          templateId: event.templateId,
+          payload: event.createArgument,
+          createdAt: event.createdAt,
+          signatories: event.signatories,
+          observers: event.observers,
         }
       })
 
