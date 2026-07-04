@@ -9,7 +9,7 @@
  * Daml choice: InvoPlus.Invoice:InvoiceContract:ListForAuction
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait } from '@/lib/canton-server'
+import { submitAndWait, queryACS } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       sellerPartyId,
       platformPartyId,
       invoiceContractId,   // Canton contract ID of the InvoiceContract to exercise
+      invoiceHash,         // hash of (invoiceId + debtorTaxId + faceAmount), for dup check
       minAdvanceRate,      // e.g. 0.82
       maxAnnualRate,       // e.g. 0.18
       durationHours,       // e.g. 72
@@ -38,6 +39,27 @@ export async function POST(req: Request) {
         ok: false,
         error: 'INVOPLUS_PACKAGE_ID not set. Deploy the Daml DAR via Seaport first.',
       }, { status: 503 })
+    }
+
+    // Anti-fraud check: Daml-LF 2.x on Canton dropped contract keys (global key
+    // uniqueness doesn't hold across partitioned synchronizers), so uniqueness
+    // of invoiceHash is enforced here instead of via `key`/`maintainer` in Daml.
+    // Reject the listing if an active RegistryEntry already exists for this hash.
+    if (invoiceHash) {
+      const existing = await queryACS(
+        [platformPartyId ?? sellerPartyId],
+        [`${packageId}:InvoPlus.Registry:RegistryEntry`],
+      )
+      const duplicate = existing.some((line: any) => {
+        const payload = line?.contractEntry?.v1?.contract?.payload
+        return payload?.invoiceHash === invoiceHash
+      })
+      if (duplicate) {
+        return NextResponse.json({
+          ok: false,
+          error: `Invoice hash ${invoiceHash} is already listed on Canton. Double-financing rejected.`,
+        }, { status: 409 })
+      }
     }
 
     const auctionEnd = new Date(

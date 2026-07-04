@@ -1,9 +1,9 @@
-sdk-version: 3.5.2
+sdk-version: 3.4.11
 name: invoplus
 version: 1.0.0
 source: daml
 build-options:
-  - --target=2.3
+  - --target=2.1
 dependencies:
   - daml-prim
   - daml-stdlib

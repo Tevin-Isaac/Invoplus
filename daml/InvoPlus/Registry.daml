@@ -1,7 +1,13 @@
 -- InvoPlus: Anti-fraud double-financing registry
--- Each listed invoice gets exactly one RegistryEntry, enforced by a contract
--- key on (platform, invoiceHash): creating a second entry for the same
--- invoice fails at the ledger level with a duplicate-key error.
+-- Each listed invoice gets exactly one active RegistryEntry per invoiceHash.
+--
+-- Note: Daml contract keys are not available on Canton's multi-synchronizer
+-- Daml-LF 2.x (global key uniqueness doesn't hold across partitioned domains,
+-- so keys were removed from the LF spec). Uniqueness is instead enforced by
+-- the caller: before creating a RegistryEntry, query the ACS for an existing
+-- active entry with the same invoiceHash (see /api/canton/contracts/list-auction)
+-- and reject the listing if one is found. DeregisterInvoice archives the
+-- entry, freeing the invoiceHash for a future listing.
 module InvoPlus.Registry where
 
 template RegistryEntry
@@ -17,8 +23,6 @@ template RegistryEntry
   where
     signatory platform
     observer seller
-    key (platform, invoiceHash) : (Party, Text)
-    maintainer key._1
 
     -- Platform removes the entry (e.g. when a seller cancels an auction,
     -- freeing the invoice to be re-listed).
