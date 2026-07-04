@@ -1,13 +1,13 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
-import type { Wallet as ConsoleAccount } from '@console-wallet/dapp-sdk'
+import type { Wallet as CantonAccount } from '@canton-network/core-wallet-dapp-rpc-client'
 
 export interface CantonParty {
   id: string
   displayName: string
   type: 'business' | 'financier'
-  source: 'provisioned' | 'seaport' | 'console-wallet'  // how the party was connected
+  source: 'provisioned' | 'seaport' | 'wallet'  // how the party was connected
 }
 
 export interface LedgerStatus {
@@ -25,8 +25,8 @@ interface CantonContextType {
   connect: (role?: 'business' | 'financier') => Promise<void>
   /** Use an existing Seaport party ID directly */
   connectWithPartyId: (partyId: string, displayName: string, role: 'business' | 'financier') => Promise<void>
-  /** Connect via the Console Wallet browser extension (CIP-103) */
-  connectWithWallet: (account: ConsoleAccount) => Promise<void>
+  /** Connect via the Canton DevNet Wallet (CIP-103, see components/wallet-connect.tsx) */
+  connectWithWallet: (account: CantonAccount) => Promise<void>
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
@@ -128,18 +128,18 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /**
-   * Connect via the Console Wallet browser extension. The account object
-   * (with a real, wallet-allocated partyId) is resolved by WalletConnect
-   * before this is called — see components/wallet-connect.tsx.
+   * Connect via the Canton DevNet Wallet. The account object (with a real,
+   * wallet-allocated partyId) is resolved by WalletConnect before this is
+   * called — see components/wallet-connect.tsx.
    */
-  const connectWithWallet = useCallback(async (account: ConsoleAccount) => {
+  const connectWithWallet = useCallback(async (account: CantonAccount) => {
     setIsConnecting(true)
     try {
       setParty({
         id: account.partyId,
-        displayName: account.hint || 'Console Wallet User',
+        displayName: account.hint || 'Wallet User',
         type: 'business',
-        source: 'console-wallet',
+        source: 'wallet',
       })
       setIsConnected(true)
     } finally {

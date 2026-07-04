@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,67 +10,66 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Wallet, Loader2, ExternalLink, CheckCircle } from 'lucide-react'
-import type { Wallet as ConsoleAccount } from '@console-wallet/dapp-sdk'
+import { Wallet, Loader2, ExternalLink } from 'lucide-react'
+import type { Wallet as CantonAccount } from '@canton-network/core-wallet-dapp-rpc-client'
 
-const INSTALL_URL = 'https://consolewallet.io'
-
-// Lazy-loaded: the SDK touches browser storage (IndexedDB/localStorage) at
-// module-init time, which errors noisily during Next.js's server-side
-// prerendering. Importing it only inside client event handlers/effects
-// keeps it out of the server module graph entirely.
-const loadConsoleWallet = () => import('@console-wallet/dapp-sdk').then((m) => m.consoleWallet)
+// FiveNorth's DevNet validator ships a Splice Wallet UI with every node — the
+// same reference wallet documented at docs.canton.network/overview/reference/
+// splice-wallet-reference. Connecting to it directly means testers install
+// nothing: no browser extension, no separate account, just the wallet that's
+// already running as part of the Canton DevNet infrastructure InvoPlus itself
+// talks to. This is the one wallet InvoPlus supports — see CIP103_INTEGRATION.md
+// for why the alternatives (Splice Wallet Kernel extension, DFNS, third-party
+// wallets) were ruled out.
+const WALLET_GATEWAY_URL = 'https://wallet.validator.devnet.sandbox.fivenorth.io/api/v0/dapp'
+const WALLET_UI_URL = 'https://wallet.validator.devnet.sandbox.fivenorth.io'
 
 interface WalletConnectProps {
-  onConnect?: (account: ConsoleAccount) => void
+  onConnect?: (account: CantonAccount) => void
   onDisconnect?: () => void
   isConnected?: boolean
   triggerClassName?: string
   triggerLabel?: string
 }
 
-/**
- * Connects to Console Wallet — the only wallet InvoPlus integrates with.
- *
- * Why Console Wallet and not the other CIP-103 wallets in the ecosystem:
- *   - Splice Wallet Kernel (the "official" reference wallet) has no browser
- *     extension yet — it's explicitly unimplemented in its own repo, so there's
- *     nothing a tester could install today.
- *   - DFNS Wallet Gateway is institutional custody infrastructure — it requires
- *     a DFNS business account, not something a hackathon judge can set up in
- *     two minutes.
- *   - Console Wallet ships real Chrome/Firefox extensions, is self-custodial
- *     with passkey auth (no seed phrases), and its @console-wallet/dapp-sdk
- *     is a genuine CIP-103 implementation with explicit DevNet support
- *     (including a test-token faucet).
- */
+// Lazily loaded: the SDK touches browser storage at module-init time, which
+// errors during Next.js's server-side prerendering if imported at the top level.
+let initialized = false
+async function getDappSdk() {
+  const mod = await import('@canton-network/dapp-sdk')
+  if (!initialized) {
+    await mod.init({
+      defaultAdapters: [
+        new mod.RemoteAdapter({
+          rpcUrl: WALLET_GATEWAY_URL,
+          providerId: 'fivenorth-splice-wallet',
+          name: 'Canton DevNet Wallet',
+        }),
+      ],
+    })
+    initialized = true
+  }
+  return mod
+}
+
 export function WalletConnect({ onConnect, onDisconnect, isConnected = false, triggerClassName, triggerLabel }: WalletConnectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [installed, setInstalled] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!isOpen) return
-    setError(null)
-    loadConsoleWallet()
-      .then((consoleWallet) => consoleWallet.checkExtensionAvailability())
-      .then((res) => setInstalled(res.status === 'installed'))
-      .catch(() => setInstalled(false))
-  }, [isOpen])
 
   const handleConnect = async () => {
     setIsConnecting(true)
     setError(null)
     try {
-      const consoleWallet = await loadConsoleWallet()
-      const result = await consoleWallet.connect({ name: 'InvoPlus' })
+      const { connect, listAccounts } = await getDappSdk()
+      const result = await connect()
       if (!result.isConnected) {
-        throw new Error(result.reason ?? 'Connection was declined in Console Wallet')
+        throw new Error(result.reason ?? 'Connection was declined in the wallet')
       }
-      const account = await consoleWallet.getPrimaryAccount()
+      const accounts = await listAccounts()
+      const account = accounts[0]
       if (!account) {
-        throw new Error('No account found — create one in Console Wallet first')
+        throw new Error('No account found — create a party in the wallet first')
       }
       onConnect?.(account)
       setIsOpen(false)
@@ -83,8 +82,8 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false, tr
 
   const handleDisconnect = async () => {
     try {
-      const consoleWallet = await loadConsoleWallet()
-      await consoleWallet.disconnect()
+      const { disconnect } = await getDappSdk()
+      await disconnect()
     } catch { /* ignore */ }
     onDisconnect?.()
     setIsOpen(false)
@@ -100,50 +99,32 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false, tr
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Console Wallet</DialogTitle>
+          <DialogTitle>Canton DevNet Wallet</DialogTitle>
           <DialogDescription>
             {isConnected
               ? 'Your wallet is connected. You can disconnect below.'
-              : 'InvoPlus connects to Canton DevNet through Console Wallet.'}
+              : "InvoPlus connects to FiveNorth's Splice Wallet — no install required."}
           </DialogDescription>
         </DialogHeader>
 
         {!isConnected ? (
           <div className="py-2 space-y-4">
-            {installed === false && (
-              <a
-                href={INSTALL_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-4 p-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] text-white hover:border-amber-500/50 transition-colors"
-              >
-                <ExternalLink className="h-5 w-5 shrink-0 text-amber-400" />
-                <div className="text-left flex-1">
-                  <div className="font-medium">Console Wallet not detected</div>
-                  <div className="text-sm text-slate-400">Install the browser extension, then come back and connect</div>
-                </div>
-              </a>
-            )}
+            {error && <p className="text-sm text-red-400">{error}</p>}
 
-            {installed === true && (
-              <div className="flex items-center gap-2 text-sm text-emerald-400">
-                <CheckCircle className="h-4 w-4" />
-                Console Wallet detected
-              </div>
-            )}
-
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
-
-            <Button
-              onClick={handleConnect}
-              disabled={isConnecting || installed === false}
-              className="w-full"
-            >
+            <Button onClick={handleConnect} disabled={isConnecting} className="w-full">
               {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wallet className="mr-2 h-4 w-4" />}
-              {isConnecting ? 'Waiting for approval…' : 'Connect Console Wallet'}
+              {isConnecting ? 'Waiting for approval…' : 'Connect Wallet'}
             </Button>
+
+            <a
+              href={WALLET_UI_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              Open the wallet directly
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
         ) : (
           <div className="py-2">
