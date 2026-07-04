@@ -1,13 +1,13 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
-import type { Cip103Provider, Account } from './cip103-provider'
+import type { Wallet as ConsoleAccount } from '@console-wallet/dapp-sdk'
 
 export interface CantonParty {
   id: string
   displayName: string
   type: 'business' | 'financier'
-  source: 'provisioned' | 'seaport' | 'cip103'  // how the party was connected
+  source: 'provisioned' | 'seaport' | 'console-wallet'  // how the party was connected
 }
 
 export interface LedgerStatus {
@@ -25,13 +25,12 @@ interface CantonContextType {
   connect: (role?: 'business' | 'financier') => Promise<void>
   /** Use an existing Seaport party ID directly */
   connectWithPartyId: (partyId: string, displayName: string, role: 'business' | 'financier') => Promise<void>
-  /** Connect via CIP-103 compliant wallet */
-  connectWithWallet: (provider: Cip103Provider) => Promise<void>
+  /** Connect via the Console Wallet browser extension (CIP-103) */
+  connectWithWallet: (account: ConsoleAccount) => Promise<void>
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
   ledgerLoading: boolean
-  walletProvider: Cip103Provider | null
 }
 
 const CantonContext = createContext<CantonContextType | null>(null)
@@ -42,7 +41,6 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [ledgerStatus, setLedgerStatus] = useState<LedgerStatus | null>(null)
   const [ledgerLoading, setLedgerLoading] = useState(true)
-  const [walletProvider, setWalletProvider] = useState<Cip103Provider | null>(null)
 
   // Poll real Canton ledger status every 30s
   useEffect(() => {
@@ -127,35 +125,23 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   const disconnect = useCallback(() => {
     setParty(null)
     setIsConnected(false)
-    setWalletProvider(null)
   }, [])
 
   /**
-   * Connect via CIP-103 compliant wallet
-   * This allows users to connect with any wallet that implements the CIP-103 standard
+   * Connect via the Console Wallet browser extension. The account object
+   * (with a real, wallet-allocated partyId) is resolved by WalletConnect
+   * before this is called — see components/wallet-connect.tsx.
    */
-  const connectWithWallet = useCallback(async (provider: Cip103Provider) => {
+  const connectWithWallet = useCallback(async (account: ConsoleAccount) => {
     setIsConnecting(true)
     try {
-      // Get the primary account from the wallet
-      const account = await provider.request<Account>({ method: 'getPrimaryAccount' })
-      
-      // Get network information
-      const network = await provider.request({ method: 'getActiveNetwork' })
-      
-      // Set up the party from the wallet account
       setParty({
         id: account.partyId,
-        displayName: account.hint || 'Wallet User',
-        type: 'business', // Default to business, could be determined from account metadata
-        source: 'cip103',
+        displayName: account.hint || 'Console Wallet User',
+        type: 'business',
+        source: 'console-wallet',
       })
-      
-      setWalletProvider(provider)
       setIsConnected(true)
-    } catch (error) {
-      console.error('Wallet connection failed:', error)
-      throw error
     } finally {
       setIsConnecting(false)
     }
@@ -164,7 +150,7 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   return (
     <CantonContext.Provider value={{
       isConnected, party, connect, connectWithPartyId, connectWithWallet, disconnect,
-      isConnecting, ledgerStatus, ledgerLoading, walletProvider,
+      isConnecting, ledgerStatus, ledgerLoading,
     }}>
       {children}
     </CantonContext.Provider>
