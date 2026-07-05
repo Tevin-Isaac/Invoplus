@@ -1,72 +1,111 @@
+'use client'
+
+import { useRef } from 'react'
+import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
+import { FileText, Gavel, EyeOff, Zap } from 'lucide-react'
+
+// Each step corresponds to a real Daml choice on the deployed InvoPlus package —
+// not illustrative copy. See daml/InvoPlus/Invoice.daml for the exact contracts.
 const steps = [
   {
     number: '01',
-    title: 'Create Your Invoice',
-    description: 'Fill in client details, services, and amounts or use one of our templates to generate a professional invoice in seconds.',
-    tag: 'Easy Templates',
+    tag: 'InvoiceContract',
+    title: 'Upload & Score',
+    description: 'The seller submits an invoice, creating an InvoiceContract on Canton. A deterministic risk engine — tenor, amount, currency, debtor profile — computes a 0–100 score and A–D grade, written on-chain via VerifyInvoice. No external AI call, no black box.',
+    icon: FileText,
   },
   {
     number: '02',
-    title: 'Send & Track',
-    description: 'Send invoices via email or share a payment link. Track when clients view invoices and get notified on activity.',
-    tag: 'Tracking',
+    tag: 'Auction + RegistryEntry',
+    title: 'List for Sealed-Bid Auction',
+    description: 'ListForAuction creates an Auction and a RegistryEntry in one atomic transaction. The registry is checked before every future listing — the same invoice hash can never be financed twice.',
+    icon: Gavel,
   },
   {
     number: '03',
-    title: 'Get Funded',
-    description: 'Use our instant funding feature to get paid before your customers pay. Connect with investors on our marketplace.',
-    tag: 'Funding',
+    tag: 'SealedBid',
+    title: 'Sealed Bids Roll In',
+    description: 'Financiers submit SealedBid contracts. The seller is never added as an observer while a bid is sealed — Canton’s privacy model makes this unreadable to them, not just hidden by the UI.',
+    icon: EyeOff,
   },
   {
     number: '04',
-    title: 'Manage & Grow',
-    description: 'Use reporting, analytics, and marketplace features to keep cash flow predictable and grow your business.',
-    tag: 'Growth',
+    tag: 'FundedInvoice',
+    title: 'Atomic Settlement',
+    description: 'Losing bids are rejected in their own private transactions — their contents never touch the seller’s view. The winning bid becomes a FundedInvoice, signed by both seller and financier, in a single Canton transaction.',
+    icon: Zap,
   },
 ]
 
-export function HowItWorks() {
+function StackCard({
+  step, index, total, progress,
+}: {
+  step: typeof steps[number]
+  index: number
+  total: number
+  progress: MotionValue<number>
+}) {
+  const targetScale = 1 - (total - 1 - index) * 0.04
+  const range: [number, number] = [index / total, 1]
+  const scale = useTransform(progress, range, [1, targetScale])
+  const Icon = step.icon
+
   return (
-    <section id="how-it-works" className="py-24 lg:py-32 bg-slate-950 border-t border-slate-800">
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        {/* Header */}
+    <div className="sticky top-24 md:top-28 h-[70vh] flex items-start justify-center" style={{ top: `${96 + index * 24}px` }}>
+      <motion.div
+        style={{ scale }}
+        className="w-full max-w-4xl rounded-[2.5rem] border-2 border-white/15 bg-slate-900 p-8 md:p-12 shadow-2xl origin-top"
+      >
+        <div className="flex items-start justify-between gap-6 mb-8">
+          <span className="font-data text-6xl md:text-7xl font-bold text-white/10">{step.number}</span>
+          <span className="text-xs font-semibold text-violet-300 bg-violet-500/10 border border-violet-500/20 px-3 py-1.5 rounded-full font-data">
+            {step.tag}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0">
+            <Icon className="w-5 h-5 text-violet-300" />
+          </div>
+          <h3 className="text-2xl md:text-3xl font-bold text-white">{step.title}</h3>
+        </div>
+
+        <p className="text-base md:text-lg text-slate-400 leading-relaxed max-w-2xl">{step.description}</p>
+      </motion.div>
+    </div>
+  )
+}
+
+export function HowItWorks() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start start', 'end end'],
+  })
+
+  return (
+    <section id="how-it-works" className="bg-slate-950 border-t border-slate-800">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-24 lg:pt-32">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-6">
             <span className="text-xs text-slate-300 font-medium">HOW IT WORKS</span>
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            From invoice to payment in four simple steps
+            Every step is a real Canton transaction
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            A streamlined workflow designed for modern businesses.
+            Not a diagram — the exact Daml contracts that run on Canton DevNet today.
           </p>
         </div>
-
-        {/* Steps */}
-        <div className="relative">
-          {/* Connector line */}
-          <div className="hidden lg:block absolute top-12 left-[calc(12.5%+24px)] right-[calc(12.5%+24px)] h-px bg-gradient-to-r from-slate-800 via-violet-600 to-slate-800" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {steps.map((step, i) => (
-              <div key={i} className="relative flex flex-col items-center lg:items-start text-center lg:text-left">
-                {/* Number circle */}
-                <div className="relative z-10 w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-violet-700 text-white flex items-center justify-center text-sm font-bold mb-6 shadow-lg shadow-violet-500/30">
-                  {step.number}
-                </div>
-
-                {/* Tag */}
-                <span className="text-xs font-semibold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 rounded-full mb-3">
-                  {step.tag}
-                </span>
-
-                <h3 className="text-lg font-bold text-white mb-3">{step.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+
+      <div ref={containerRef} style={{ height: `${steps.length * 90}vh` }} className="relative max-w-4xl mx-auto px-6">
+        {steps.map((step, i) => (
+          <StackCard key={step.number} step={step} index={i} total={steps.length} progress={scrollYProgress} />
+        ))}
+      </div>
+
+      <div className="h-24 lg:h-32" />
     </section>
   )
 }

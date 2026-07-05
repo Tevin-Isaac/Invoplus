@@ -1,4 +1,5 @@
 import { Hero } from '@/components/landing/Hero'
+import { HowItWorks } from '@/components/landing/HowItWorks'
 import { Footer } from '@/components/landing/Footer'
 import { BarChart3, DollarSign, Lock, Target, Eye, Gem } from 'lucide-react'
 
@@ -6,6 +7,7 @@ export default function HomePage() {
   return (
     <div className="bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-white">
       <Hero />
+      <HowItWorks />
 
       <main className="space-y-12">
         <section id="platform" className="px-6 py-16 md:px-10 bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
