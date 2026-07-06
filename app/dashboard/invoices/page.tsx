@@ -9,7 +9,7 @@ import { useCanton } from '@/lib/canton'
 type InvoiceStatus = 'funded' | 'bidding' | 'verified' | 'pending' | 'rejected'
 
 const statusConfig: Record<InvoiceStatus, { label: string; icon: typeof CheckCircle; color: string }> = {
-  funded:   { label: 'Funded',   icon: CheckCircle, color: 'text-amber-300 bg-amber-500/10 border-amber-400/25' },
+  funded:   { label: 'Funded',   icon: CheckCircle, color: 'text-violet-300 bg-violet-500/10 border-violet-400/25' },
   bidding:  { label: 'Bidding',  icon: Zap,         color: 'text-violet-300 bg-violet-500/10 border-violet-500/25' },
   verified: { label: 'Verified', icon: FileText,    color: 'text-sky-300 bg-sky-500/10 border-sky-500/25' },
   pending:  { label: 'Pending',  icon: Clock,       color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/25' },
@@ -204,7 +204,7 @@ export default function InvoicesPage() {
                 'Invoice status: Pending → awaiting platform verification',
               ].map((step, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <span className="font-data shrink-0 text-xs font-bold text-amber-300">{i + 1}.</span>
+                  <span className="font-data shrink-0 text-xs font-bold text-violet-300">{i + 1}.</span>
                   <p className="text-xs text-slate-500">{step}</p>
                 </div>
               ))}
@@ -249,7 +249,7 @@ export default function InvoicesPage() {
 
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                   <div className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${result.riskScore}%`, background: (result.riskScore ?? 0) >= 80 ? '#34D399' : (result.riskScore ?? 0) >= 60 ? '#8B5CF6' : '#F59E0B' }} />
+                    style={{ width: `${result.riskScore}%`, background: (result.riskScore ?? 0) >= 80 ? '#34D399' : (result.riskScore ?? 0) >= 60 ? '#14B892' : '#F59E0B' }} />
                 </div>
 
                 <p className="text-sm italic text-slate-400">"{result.summary}"</p>
@@ -355,13 +355,13 @@ export default function InvoicesPage() {
                         <p className="font-data max-w-[180px] truncate text-xs text-slate-600">{inv.id}</p>
                       </div>
                     </div>
-                    <span className="font-data text-sm font-bold text-amber-300">${inv.amount.toLocaleString()}</span>
+                    <span className="font-data text-sm font-bold text-violet-300">${inv.amount.toLocaleString()}</span>
                     <span className="font-data text-sm text-slate-400">{inv.dueDate}</span>
                     <div className="flex items-center gap-2">
                       {inv.aiScore > 0 ? (
                         <>
                           <div className="h-1.5 max-w-16 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-amber-400" style={{ width: `${inv.aiScore}%` }} />
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400" style={{ width: `${inv.aiScore}%` }} />
                           </div>
                           <span className="font-data text-xs font-medium text-white">{inv.aiScore}</span>
                         </>

@@ -83,7 +83,7 @@ export function Sidebar() {
               {(user?.email?.[0] ?? party?.displayName?.[0] ?? 'I').toUpperCase()}
             </div>
             <p className="mt-3 truncate text-sm font-semibold text-white">{user?.email?.split('@')[0] ?? party?.displayName ?? 'Not connected'}</p>
-            <p className="mt-0.5 font-data text-[10px] uppercase tracking-[0.2em] text-amber-300/90">{user?.role ?? party?.type ?? 'guest'}</p>
+            <p className="mt-0.5 font-data text-[10px] uppercase tracking-[0.2em] text-violet-300/90">{user?.role ?? party?.type ?? 'guest'}</p>
           </div>
         </div>
 

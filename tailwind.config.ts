@@ -10,17 +10,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Renamed in intent, not in key: every `violet-*` class across the app
+        // (dashboard, landing, buttons, badges) now resolves to the InvoPlus
+        // brand teal/green (#14B892 family) instead of the old purple. Kept
+        // the Tailwind key as "violet" so this one file update cascades
+        // everywhere without touching every component that references it.
         violet: {
-          50:  '#f3f0ff',
-          100: '#e9e3ff',
-          200: '#d5caff',
-          300: '#b8a6ff',
-          400: '#9575ff',
-          500: '#6D4AFF',
-          600: '#5537E8',
-          700: '#4429cc',
-          800: '#3820a6',
-          900: '#2e1a87',
+          50:  '#EAFBF6',
+          100: '#D2F5E9',
+          200: '#A6EAD3',
+          300: '#6ADFC0',
+          400: '#2FCDA0',
+          500: '#14B892',
+          600: '#0E8C6F',
+          700: '#0B6F58',
+          800: '#085142',
+          900: '#06392E',
         },
         dark: {
           bg:     '#0D0D0F',

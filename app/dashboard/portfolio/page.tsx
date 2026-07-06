@@ -94,15 +94,15 @@ export default function PortfolioPage() {
             return (
               <div key={s.label} className={cn(
                 'bg-dark-card border border-dark-border rounded-2xl p-5 border-t-2',
-                s.gold ? 'border-t-amber-400/70' : 'border-t-violet-500/50'
+                s.gold ? 'border-t-violet-400/70' : 'border-t-violet-500/50'
               )}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs text-dark-muted">{s.label}</p>
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', s.gold ? 'bg-amber-500/15' : 'bg-violet-500/10')}>
-                    <Icon className={cn('w-4 h-4', s.gold ? 'text-amber-300' : 'text-violet-400')} />
+                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', s.gold ? 'bg-violet-500/15' : 'bg-violet-500/10')}>
+                    <Icon className={cn('w-4 h-4', s.gold ? 'text-violet-300' : 'text-violet-400')} />
                   </div>
                 </div>
-                <p className={cn('text-2xl font-bold font-data', s.gold ? 'text-amber-300' : 'text-white')}>{loading ? '—' : s.value}</p>
+                <p className={cn('text-2xl font-bold font-data', s.gold ? 'text-violet-300' : 'text-white')}>{loading ? '—' : s.value}</p>
               </div>
             )
           })}
@@ -153,7 +153,7 @@ export default function PortfolioPage() {
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex items-start gap-3 min-w-0">
                       <span className={cn('shrink-0 text-xs font-bold px-2 py-1 rounded-md border',
-                        pos.status === 'active' ? 'bg-amber-500/15 text-amber-300 border-amber-400/40' : 'bg-violet-500/15 text-violet-400 border-violet-500/30')}>
+                        pos.status === 'active' ? 'bg-violet-500/15 text-violet-300 border-violet-400/40' : 'bg-violet-500/15 text-violet-400 border-violet-500/30')}>
                         {pos.status === 'active' ? 'Funded' : 'Sealed'}
                       </span>
                       <div className="min-w-0">
@@ -173,16 +173,16 @@ export default function PortfolioPage() {
                       </div>
                       <div>
                         <p className="text-xs text-dark-muted">Annual Rate</p>
-                        <p className="text-sm font-semibold text-amber-300 font-data">{(pos.annualRate * 100).toFixed(1)}%</p>
+                        <p className="text-sm font-semibold text-violet-300 font-data">{(pos.annualRate * 100).toFixed(1)}%</p>
                       </div>
                       {pos.status === 'active' && (
                         <div>
                           <p className="text-xs text-dark-muted">Return at Repayment</p>
-                          <p className="text-sm font-semibold text-amber-300 font-data">{money(pos.returnAtRepayment, pos.currency)}</p>
+                          <p className="text-sm font-semibold text-violet-300 font-data">{money(pos.returnAtRepayment, pos.currency)}</p>
                         </div>
                       )}
                       <span className={cn('text-xs px-2 py-1 rounded-md font-medium',
-                        pos.status === 'active' ? 'bg-amber-500/15 text-amber-300' : 'bg-violet-500/15 text-violet-400')}>
+                        pos.status === 'active' ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-500/15 text-violet-400')}>
                         {pos.status === 'pending' ? '🔒 sealed' : 'active'}
                       </span>
                     </div>

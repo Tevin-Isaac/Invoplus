@@ -140,9 +140,9 @@ export default function AnalyticsPage() {
 
         <div className="grid grid-cols-3 gap-4">
           {kpis.map(k => (
-            <div key={k.label} className={cn('bg-dark-card border border-dark-border rounded-2xl p-5 border-t-2', k.gold ? 'border-t-amber-400/70' : 'border-t-violet-500/50')}>
+            <div key={k.label} className={cn('bg-dark-card border border-dark-border rounded-2xl p-5 border-t-2', k.gold ? 'border-t-violet-400/70' : 'border-t-violet-500/50')}>
               <p className="text-xs text-dark-muted mb-1">{k.label}</p>
-              <p className={cn('text-3xl font-bold font-data', k.gold ? 'text-amber-300' : 'text-white')}>{k.value}</p>
+              <p className={cn('text-3xl font-bold font-data', k.gold ? 'text-violet-300' : 'text-white')}>{k.value}</p>
               <p className="text-xs text-dark-muted mt-1">{k.sub}</p>
             </div>
           ))}
@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="month" tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}K`} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(245,158,11,0.06)' }} />
-                <Bar dataKey="funded" name="Funded" fill="#F59E0B" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="funded" name="Funded" fill="#14B892" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -181,7 +181,7 @@ export default function AnalyticsPage() {
                   <XAxis dataKey="month" tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis domain={[70, 100]} tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="avgAdvance" name="Advance %" stroke="#6D4AFF" strokeWidth={2} dot={{ fill: '#6D4AFF', r: 4 }} />
+                  <Line type="monotone" dataKey="avgAdvance" name="Advance %" stroke="#14B892" strokeWidth={2} dot={{ fill: '#14B892', r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -223,9 +223,9 @@ export default function AnalyticsPage() {
           <h3 className="text-sm font-semibold text-white mb-4">Canton Network Performance</h3>
           <div className="grid grid-cols-4 gap-4">
             {performance.map(s => (
-              <div key={s.label} className={cn('p-4 rounded-xl bg-dark-bg border', s.gold ? 'border-amber-400/30' : 'border-dark-border')}>
+              <div key={s.label} className={cn('p-4 rounded-xl bg-dark-bg border', s.gold ? 'border-violet-400/30' : 'border-dark-border')}>
                 <p className="text-xs text-dark-muted mb-1">{s.label}</p>
-                <p className={cn('text-lg font-bold font-data', s.gold ? 'text-amber-300' : 'text-white')}>{s.value}</p>
+                <p className={cn('text-lg font-bold font-data', s.gold ? 'text-violet-300' : 'text-white')}>{s.value}</p>
                 <p className="text-xs text-dark-muted mt-1">{s.note}</p>
               </div>
             ))}

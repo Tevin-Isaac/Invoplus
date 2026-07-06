@@ -49,7 +49,7 @@ export default function AboutPage() {
                 <p className="text-slate-400 text-sm">Invoices Powered</p>
               </div>
               <div className="p-8 rounded-xl border border-slate-800 bg-slate-900/50">
-                <div className="text-4xl font-bold text-amber-400 mb-2">$1.2B</div>
+                <div className="text-4xl font-bold text-violet-400 mb-2">$1.2B</div>
                 <p className="text-slate-400 text-sm">Financed</p>
               </div>
               <div className="p-8 rounded-xl border border-slate-800 bg-slate-900/50">

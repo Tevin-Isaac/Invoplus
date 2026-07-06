@@ -29,7 +29,7 @@ const gradeStyle: Record<string, string> = {
   A: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
   B: 'border-violet-500/30 bg-violet-500/15 text-violet-300',
   C: 'border-slate-500/30 bg-slate-500/15 text-slate-300',
-  D: 'border-amber-500/30 bg-amber-500/15 text-amber-300',
+  D: 'border-violet-500/30 bg-violet-500/15 text-violet-300',
 }
 
 function BidModal({ auction, onClose, onBidPlaced }: {
@@ -83,7 +83,7 @@ function BidModal({ auction, onClose, onBidPlaced }: {
           <div className="mb-5 space-y-2 rounded-2xl border border-white/[0.07] bg-[#0B0814] p-4 text-left text-sm">
             <div className="flex justify-between"><span className="text-slate-500">Advance Rate</span><span className="font-data font-semibold text-white">{advance}%</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Annual Rate</span><span className="font-data font-semibold text-white">{annualRate}%</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Net to Seller</span><span className="font-data font-semibold text-amber-300">${netAmount.toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Net to Seller</span><span className="font-data font-semibold text-violet-300">${netAmount.toLocaleString()}</span></div>
             {result.transactionId && (
               <div className="flex justify-between"><span className="text-slate-500">Canton Tx</span><span className="font-data max-w-[140px] truncate text-xs text-violet-300">{result.transactionId}</span></div>
             )}
@@ -101,7 +101,7 @@ function BidModal({ auction, onClose, onBidPlaced }: {
           <div>
             <p className="font-data text-[11px] uppercase tracking-[0.24em] text-violet-300">Sealed bid</p>
             <h3 className="font-display mt-1 text-lg font-semibold text-white">{auction.invoiceId || auction.id}</h3>
-            <p className="text-xs text-slate-500">{auction.buyer} · <span className="font-data text-amber-300">${auction.amount.toLocaleString()}</span></p>
+            <p className="text-xs text-slate-500">{auction.buyer} · <span className="font-data text-violet-300">${auction.amount.toLocaleString()}</span></p>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
         </div>
@@ -114,7 +114,7 @@ function BidModal({ auction, onClose, onBidPlaced }: {
             </div>
             <input type="range" min={70} max={95} step={0.5} value={advance}
               onChange={e => setAdvance(Number(e.target.value))} className="w-full accent-violet-500" />
-            <p className="mt-1 font-data text-xs text-slate-500">seller receives <span className="text-amber-300">${netAmount.toLocaleString()}</span> now</p>
+            <p className="mt-1 font-data text-xs text-slate-500">seller receives <span className="text-violet-300">${netAmount.toLocaleString()}</span> now</p>
           </div>
 
           <div>
@@ -123,8 +123,8 @@ function BidModal({ auction, onClose, onBidPlaced }: {
               <span className="font-data font-bold text-white">{annualRate}%</span>
             </div>
             <input type="range" min={6} max={20} step={0.1} value={annualRate}
-              onChange={e => setAnnualRate(Number(e.target.value))} className="w-full accent-amber-400" />
-            <p className="mt-1 font-data text-xs text-slate-500">projected yield <span className="text-amber-300">${yieldAmount.toLocaleString()}</span> APR-basis</p>
+              onChange={e => setAnnualRate(Number(e.target.value))} className="w-full accent-violet-400" />
+            <p className="mt-1 font-data text-xs text-slate-500">projected yield <span className="text-violet-300">${yieldAmount.toLocaleString()}</span> APR-basis</p>
           </div>
 
           <div className="flex items-start gap-2.5 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] p-3">
@@ -269,7 +269,7 @@ export default function MarketplacePage() {
                 <div className="mt-4 grid grid-cols-3 gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.16em] text-slate-600">Face value</p>
-                    <p className="font-data mt-1 text-lg font-bold text-amber-300">${a.amount.toLocaleString()}</p>
+                    <p className="font-data mt-1 text-lg font-bold text-violet-300">${a.amount.toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.16em] text-slate-600">Score</p>
@@ -285,7 +285,7 @@ export default function MarketplacePage() {
                   <div className="flex items-center gap-3 text-xs text-slate-500">
                     <span className="flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-violet-400" /><span className="font-data">{a.bidsReceived}</span> sealed</span>
                     {a.status !== 'open' && <span className="flex items-center gap-1.5"><Timer className="h-3.5 w-3.5" />settled</span>}
-                    {a.myBid != null && <span className="font-data text-amber-300">your bid: {a.myBid}%</span>}
+                    {a.myBid != null && <span className="font-data text-violet-300">your bid: {a.myBid}%</span>}
                   </div>
                   <button
                     onClick={() => a.status === 'open' && setSelectedAuction(a)}

@@ -105,12 +105,12 @@ export default function DashboardPage() {
   const stats = [
     {
       label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
-      sub: `${funded.length} positions`, from: '#FCD34D', to: '#B45309', accent: 'text-amber-300',
+      sub: `${funded.length} positions`, from: '#6ADFC0', to: '#0E8C6F', accent: 'text-violet-300',
       bars: monthly.map(m => m.amount),
     },
     {
       label: isFin ? 'Open bids' : 'Invoices', big: String(isFin ? bids.length : invoices.length),
-      sub: isFin ? 'sealed on ledger' : 'uploaded', from: '#A78BFA', to: '#5B21B6', accent: 'text-violet-300',
+      sub: isFin ? 'sealed on ledger' : 'uploaded', from: '#2FCDA0', to: '#085142', accent: 'text-violet-300',
       bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
     },
     {
@@ -122,7 +122,7 @@ export default function DashboardPage() {
 
   const activity = [...funded.map((c: any) => ({
     id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Funded', note: pv(c.payload, 'debtorName') || 'settled',
-    amount: num(pv(c.payload, 'fundedAmount')), tone: 'text-amber-300', chip: 'F',
+    amount: num(pv(c.payload, 'fundedAmount')), tone: 'text-violet-300', chip: 'F',
   })), ...invoices.map((c: any) => ({
     id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Invoice', note: pv(c.payload, 'debtorName') || 'uploaded',
     amount: num(pv(c.payload, 'faceAmount')), tone: 'text-slate-200', chip: 'I',
@@ -164,22 +164,22 @@ export default function DashboardPage() {
                   <h2 className="font-display text-lg font-semibold text-white">Funding volume</h2>
                   <p className="mt-0.5 text-xs text-slate-500">disbursed to sellers, by settlement month</p>
                 </div>
-                <span className="font-data rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-300">USD</span>
+                <span className="font-data rounded-lg border border-violet-400/25 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-300">USD</span>
               </div>
               {monthly.length ? (
                 <ResponsiveContainer width="100%" height={230}>
                   <AreaChart data={monthly}>
                     <defs>
                       <linearGradient id="fundGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#F59E0B" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#14B892" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#14B892" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#221B38" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#6B6486', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: '#6B6486', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v / 1000}K`} />
                     <Tooltip contentStyle={{ background: '#181226', border: '1px solid #2C2344', borderRadius: 12, fontSize: 12 }} labelStyle={{ color: '#9c93bd' }} />
-                    <Area type="monotone" dataKey="amount" stroke="#FBBF24" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#FBBF24', r: 3 }} />
+                    <Area type="monotone" dataKey="amount" stroke="#2FCDA0" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#2FCDA0', r: 3 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
@@ -194,7 +194,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {[
                 { icon: Lock, title: 'Sealed bids', desc: 'Only the bidder and platform can see a bid — Canton observers, not app code.', chip: 'bg-violet-500/15 text-violet-300' },
-                { icon: Shield, title: 'No double financing', desc: 'A ledger key makes financing the same invoice twice fail at the protocol.', chip: 'bg-amber-500/15 text-amber-300' },
+                { icon: Shield, title: 'No double financing', desc: 'A ledger key makes financing the same invoice twice fail at the protocol.', chip: 'bg-violet-500/15 text-violet-300' },
                 { icon: FileText, title: 'Atomic settlement', desc: 'Winner, funding, and transfer commit in one transaction.', chip: 'bg-emerald-500/15 text-emerald-300' },
               ].map(c => {
                 const Icon = c.icon
@@ -223,7 +223,7 @@ export default function DashboardPage() {
                 </button>
               </div>
               <div className="mt-4 flex items-center gap-3">
-                <span className={cn('h-2.5 w-2.5 rounded-full', status?.ok ? 'bg-emerald-400 animate-pulse' : ledgerLoading ? 'bg-amber-400 animate-pulse' : 'bg-red-400')} />
+                <span className={cn('h-2.5 w-2.5 rounded-full', status?.ok ? 'bg-emerald-400 animate-pulse' : ledgerLoading ? 'bg-violet-400 animate-pulse' : 'bg-red-400')} />
                 <p className="font-data text-xl text-white">
                   {status?.ok ? <>#{status.offset?.toLocaleString()}</> : ledgerLoading ? 'connecting…' : 'offline'}
                 </p>
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                   {activity.map(a => (
                     <div key={a.id} className="flex items-center gap-3 px-5 py-3.5">
                       <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-data text-xs',
-                        a.chip === 'F' ? 'bg-amber-500/15 text-amber-300' : 'bg-violet-500/15 text-violet-300')}>{a.chip}</span>
+                        a.chip === 'F' ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-500/15 text-violet-300')}>{a.chip}</span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-white">{a.name}</p>
                         <p className="truncate text-xs text-slate-500">{a.note}</p>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                 const Icon = a.icon
                 return (
                   <Link key={a.label} href={a.href} className="group flex flex-col items-center gap-2 rounded-2xl border border-white/[0.07] bg-[#120E1F] py-4 transition-all hover:-translate-y-0.5 hover:border-violet-500/40">
-                    <Icon className="h-4 w-4 text-violet-300 transition-colors group-hover:text-amber-300" />
+                    <Icon className="h-4 w-4 text-violet-300 transition-colors group-hover:text-violet-300" />
                     <span className="text-xs font-medium text-slate-300">{a.label}</span>
                   </Link>
                 )
