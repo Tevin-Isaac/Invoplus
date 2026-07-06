@@ -1,7 +1,9 @@
+import Image from 'next/image'
 import { Hero } from '@/components/landing/Hero'
 import { HowItWorks } from '@/components/landing/HowItWorks'
+import { Features } from '@/components/landing/Features'
 import { Footer } from '@/components/landing/Footer'
-import { BarChart3, DollarSign, Lock, Target, Eye, Gem } from 'lucide-react'
+import { Target, Eye, Gem, Check } from 'lucide-react'
 
 export default function HomePage() {
   return (
@@ -11,73 +13,45 @@ export default function HomePage() {
 
       <main className="space-y-12">
         <section id="platform" className="px-6 py-16 md:px-10 bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
-          <div className="max-w-6xl mx-auto grid gap-12 lg:grid-cols-[1.2fr_0.8fr] items-center">
+          <div className="max-w-6xl mx-auto grid gap-12 lg:grid-cols-[1fr_1fr] items-center">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">platform</p>
               <h2 className="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">Invoice flow built for cash-sensitive teams.</h2>
               <p className="mt-6 max-w-xl text-slate-600 dark:text-slate-300 leading-8">
                 Automate invoicing, unlock faster funding, and centralize customer payments in a secure workspace designed for steady growth.
               </p>
+              <div className="mt-8 space-y-4">
+                {[
+                  { title: 'Instant invoice creation', text: 'Generate invoices and submit them to Canton Network in seconds.' },
+                  { title: 'Real-time status tracking', text: 'Track invoice lifecycle from pending to verified, bidding, and funded.' },
+                  { title: 'Risk-aware financing', text: 'Every invoice gets a deterministic 0–100 score and A–D grade before listing.' },
+                  { title: 'Audit-grade security', text: 'Every step — verify, list, bid, settle — is a real transaction on Canton.' },
+                ].map((item) => (
+                  <div key={item.title} className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-3.5 h-3.5 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">{item.title}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                { title: 'Instant invoice creation', text: 'Generate polished invoices and submit them to the Canton Network in seconds.' },
-                { title: 'Real-time status tracking', text: 'Track invoice lifecycle from pending to verified, bidding, and funded.' },
-                { title: 'Risk-aware financing', text: 'Access financing confidently with transparent invoice scoring.' },
-                { title: 'Audit-grade security', text: 'Every payment and funding event is recorded on Canton blockchain.' },
-              ].map((item) => (
-                <div key={item.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-900">
-                  <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-400">{item.text}</p>
-                </div>
-              ))}
+            <div className="rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
+              <Image
+                src="/paid.png"
+                alt="Invoice paid notification — payment received"
+                width={1536}
+                height={1024}
+                className="w-full h-auto object-cover"
+              />
             </div>
           </div>
         </section>
 
-        <section id="features" className="px-6 py-16 md:px-10 bg-slate-100 text-slate-950 dark:bg-slate-900 dark:text-white relative overflow-hidden">
-          {/* Background decorations */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-slate-200/50 dark:bg-slate-800/30 -translate-y-1/2 translate-x-1/2 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-slate-200/30 dark:bg-slate-800/20 translate-y-1/2 -translate-x-1/2 blur-3xl" />
-          
-          <div className="max-w-6xl mx-auto text-center relative">
-            <div className="inline-flex items-center gap-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 mb-6">
-              <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">FEATURES</span>
-            </div>
-            <h2 className="mt-4 text-4xl md:text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">Everything your business needs to keep cash flow visible.</h2>
-            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-              Powerful tools designed to help you manage invoices, track payments, and grow your business with confidence.
-            </p>
-            <div className="mt-16 grid gap-6 lg:grid-cols-3">
-              {[
-                { number: '01', title: 'Payment tracking', description: 'See where every invoice sits, who owes you, and when payments arrive with real-time updates.', icon: BarChart3 },
-                { number: '02', title: 'Transparent funding', description: 'Know funding costs before you commit and close cash gaps with confidence and clarity.', icon: DollarSign },
-                { number: '03', title: 'Risk-based scoring', description: 'AI-powered risk assessment with grades A-D, analyzing tenor, amount, currency, and debtor profile.', icon: Lock },
-              ].map((item, index) => (
-                <div 
-                  key={item.title} 
-                  className="group relative rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-8 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 transition-all duration-300 hover:-translate-y-1"
-                >
-                  {/* Number badge */}
-                  <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-slate-950 dark:bg-white text-white dark:text-slate-950 text-sm font-bold flex items-center justify-center shadow-lg">
-                    {item.number}
-                  </div>
-                  
-                  {/* Icon */}
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <item.icon className="w-7 h-7 text-slate-700 dark:text-slate-300" />
-                  </div>
-                  
-                  <h3 className="text-xl font-semibold mb-3 text-slate-950 dark:text-white">{item.title}</h3>
-                  <p className="text-slate-600 dark:text-slate-400 leading-7">{item.description}</p>
-                  
-                  {/* Hover accent line */}
-                  <div className="absolute bottom-0 left-0 w-0 h-1 bg-gradient-to-r from-slate-400 to-slate-600 dark:from-slate-600 dark:to-slate-400 group-hover:w-full transition-all duration-500" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Features />
 
         <section id="company" className="px-6 py-16 md:px-10 bg-white text-slate-950 dark:bg-slate-950 dark:text-white relative overflow-hidden">
           {/* Background decorations */}

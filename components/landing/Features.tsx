@@ -1,35 +1,40 @@
-import { DollarSign, Zap, Shield, BarChart3, Lock, Users } from 'lucide-react'
+import { BarChart3, Lock, Zap, ShieldCheck, Wallet, LineChart } from 'lucide-react'
 
+// Cross-checked against what InvoPlus actually does — no "instant funding"
+// (funding happens through a sealed-bid auction, not instantly), no client
+// portal (there's no debtor-facing UI at all), no "auto-fill templates"
+// (the invoice form is a plain manual form). Every feature below maps to a
+// real page, API route, or Daml contract in this codebase.
 const features = [
   {
-    icon: DollarSign,
-    title: 'Instant Funding',
-    description: 'Get paid faster with our instant funding option. No more waiting for customer payments.',
-  },
-  {
-    icon: Zap,
-    title: 'Fast Invoice Creation',
-    description: 'Create professional invoices in seconds with customizable templates and auto-fill.',
-  },
-  {
-    icon: Shield,
-    title: 'Secure & Reliable',
-    description: 'Bank-level security with encrypted records and reliable delivery for all communications.',
-  },
-  {
     icon: BarChart3,
-    title: 'Real-time Analytics',
-    description: 'Track cash flow, outstanding invoices, and payment trends with advanced dashboards.',
+    title: 'Deterministic Risk Scoring',
+    description: 'Every invoice gets a 0–100 score and A–D grade from tenor, amount, currency, and debtor profile — computed server-side, no external API, no black box.',
   },
   {
     icon: Lock,
-    title: 'Smart Marketplace',
-    description: 'Connect with investors and buyers on our secure marketplace for better opportunities.',
+    title: 'Sealed-Bid Auctions',
+    description: 'Financiers bid blind. Each bid is a private Canton contract the seller cannot see until the auction closes — enforced by the ledger, not the UI.',
   },
   {
-    icon: Users,
-    title: 'Client Portal',
-    description: 'Clients can view invoices, pay online, and download receipts from a simple portal.',
+    icon: Zap,
+    title: 'Atomic Settlement',
+    description: 'Losing bids are rejected in their own private transactions. The winning bid becomes a dual-signed FundedInvoice in one atomic Canton transaction.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Anti-Fraud Registry',
+    description: 'A registry entry is checked before every listing — the same invoice can never be financed twice.',
+  },
+  {
+    icon: LineChart,
+    title: 'Live Analytics',
+    description: 'Funding volume, advance rate trends, and grade distribution — computed from your actual contracts on Canton, not sample data.',
+  },
+  {
+    icon: Wallet,
+    title: 'Canton Wallet Connect',
+    description: "Connect with FiveNorth's Splice Wallet — no browser extension to install, no separate account to create.",
   },
 ]
 
@@ -42,10 +47,10 @@ export function Features() {
             <span className="text-xs text-slate-300 font-medium">PLATFORM FEATURES</span>
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            Everything you need to manage invoices and grow faster
+            Everything you need to finance invoices privately
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            Powerful tools designed for businesses that want faster cash flow and better control.
+            Built on Canton Network — every guarantee below is enforced by the ledger, not application logic.
           </p>
         </div>
 

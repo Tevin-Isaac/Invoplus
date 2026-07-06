@@ -23,11 +23,18 @@ const stats = [
   { value: '100%', label: 'On-Chain Settlement' },
 ]
 
+// Rendered as separate always-mounted <video> elements crossfaded by opacity,
+// instead of swapping a single element's `key`/`src`. Swapping key/src forces
+// a full unmount+remount every rotation — the browser has to re-fetch and
+// re-decode the whole file from scratch, which is what produced the visible
+// freeze/flash ("hanging", "playing twice"). All three stay loaded and
+// playing in the background; only the CSS opacity changes.
+const videos = ['/cashflow.mp4', '/invoice.mp4', '/woman.mp4']
+
 export function Hero() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [currentVideo, setCurrentVideo] = useState(0)
-  const videos = ['/cashflow.mp4', '/invoice.mp4', '/woman.mp4']
 
   useEffect(() => {
     const stored = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
@@ -49,19 +56,26 @@ export function Hero() {
 
   return (
     <section className="relative min-h-screen w-full overflow-hidden bg-slate-950 text-white">
-      <video
-        key={videos[currentVideo]}
-        className="absolute inset-0 w-full h-full object-cover"
-        autoPlay
-        loop
-        muted
-        playsInline
-      >
-        <source src={videos[currentVideo]} type="video/mp4" />
-      </video>
+      {videos.map((src, i) => (
+        <video
+          key={src}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ease-in-out"
+          style={{ opacity: currentVideo === i ? 1 : 0 }}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+        >
+          <source src={src} type="video/mp4" />
+        </video>
+      ))}
 
-      <div className="absolute inset-0 bg-slate-950/70" />
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-b from-transparent to-slate-950" />
+      {/* Scrims: dark at both top (nav legibility) and bottom (content legibility),
+          so neither the nav nor the hero copy ever fights the video underneath. */}
+      <div className="absolute inset-0 bg-slate-950/60" />
+      <div className="pointer-events-none absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-slate-950/90 to-transparent" />
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-80 bg-gradient-to-b from-transparent to-slate-950" />
 
       <nav className="absolute top-0 left-0 right-0 z-20 px-6 md:px-10 pt-6 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-3 bg-slate-900/90 backdrop-blur rounded-full px-4 py-3 border border-white/10">
@@ -137,17 +151,27 @@ export function Hero() {
         </div>
       )}
 
-      <div className="relative z-10 flex min-h-screen flex-col justify-end px-6 md:px-10 pb-10 md:pb-14">
+      {/* pt-32 reserves clearance under the nav so hero copy never crowds it
+          on short viewports; justify-center (not justify-end) keeps the block
+          balanced instead of glued to the very bottom edge. */}
+      <div className="relative z-10 flex min-h-screen flex-col justify-center px-6 md:px-10 pt-32 pb-16 md:pb-20">
+        <p className="text-xs md:text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300/90 mb-4">
+          Live on Canton Network
+        </p>
+
         <h1 className="max-w-3xl text-4xl md:text-6xl lg:text-[4.25rem] font-semibold leading-[1.05] tracking-tight text-white">
-          Sealed-bid invoice{' '}
-          <span className={`${fraunces.className} italic font-normal text-violet-200`}>financing</span>
-          {' '}on Canton Network
+          Get paid today.{' '}
+          <span className={`${fraunces.className} italic font-normal text-violet-200`}>Not in 90 days.</span>
         </h1>
 
-        <p className="mt-6 max-w-xl text-base md:text-lg text-white/75 leading-relaxed">
-          Get paid on your invoices in days, not months. Financiers compete for the best rate in sealed
-          bids — private Canton contracts nobody else can see, not even you until the auction closes.
-          One atomic transaction settles it all: no partial fills, no double-financing, no waiting on trust.
+        <p className="mt-4 text-lg md:text-xl text-white/80 font-medium">
+          Sealed-bid invoice financing on Canton Network
+        </p>
+
+        <p className="mt-4 max-w-xl text-base md:text-lg text-white/70 leading-relaxed">
+          Financiers compete blind for your invoice — sealed bids on Canton that nobody else can see,
+          not even you, until the auction closes. One atomic transaction settles everything at once:
+          no partial fills, no double-financing, no waiting on trust.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
