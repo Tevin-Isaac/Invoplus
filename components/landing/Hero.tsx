@@ -180,9 +180,9 @@ export function Hero() {
         </h1>
 
         <p className="mt-6 max-w-xl text-base md:text-lg text-white/70 leading-relaxed">
-          Sell your invoice to the highest bidder — blind. Every offer is a private Canton contract
-          you can't see until the auction closes, and settlement happens in one atomic transaction:
-          no partial fills, no double-financing.
+          Turn unpaid invoices into cash in days, not months. List your invoice, let financiers
+          compete to fund it, and get paid the instant the winning bid is settled — no paperwork,
+          no bank, no waiting.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">

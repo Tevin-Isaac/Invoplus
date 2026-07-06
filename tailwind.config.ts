@@ -48,6 +48,7 @@ const config: Config = {
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'drift-1':    'drift1 14s ease-in-out infinite',
         'drift-2':    'drift2 18s ease-in-out infinite',
+        'float':      'float 7s ease-in-out infinite',
       },
       keyframes: {
         fadeUp: {
@@ -68,6 +69,11 @@ const config: Config = {
         drift2: {
           '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
           '50%':      { transform: 'translate(-50px, -30px) scale(1.1)' },
+        },
+        // Gentle bob + fade for the finance-icon particles in How It Works.
+        float: {
+          '0%, 100%': { transform: 'translateY(0)', opacity: '0.15' },
+          '50%':      { transform: 'translateY(-24px)', opacity: '0.35' },
         },
       },
     },
