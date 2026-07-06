@@ -54,7 +54,7 @@ function StackCard({
     <div className="sticky top-24 md:top-28 h-[70vh] flex items-start justify-center" style={{ top: `${96 + index * 24}px` }}>
       <motion.div
         style={{ scale }}
-        className="w-full max-w-4xl rounded-[2.5rem] border border-white/15 bg-slate-900/70 backdrop-blur-xl p-8 md:p-12 shadow-2xl origin-top"
+        className="w-full max-w-4xl rounded-[2.5rem] border-2 border-white/15 bg-slate-900 p-8 md:p-12 shadow-2xl origin-top"
       >
         <div className="flex items-start justify-between gap-6 mb-8">
           <span className="font-data text-6xl md:text-7xl font-bold text-white/10">{step.number}</span>
