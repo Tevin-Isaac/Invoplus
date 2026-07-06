@@ -19,7 +19,8 @@ export default function HomePage() {
               <p className="text-sm uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">platform</p>
               <h2 className="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">Invoice flow built for cash-sensitive teams.</h2>
               <p className="mt-6 max-w-xl text-slate-600 dark:text-slate-300 leading-8">
-                Automate invoicing, unlock faster funding, and centralize customer payments in a secure workspace designed for steady growth.
+                Upload an invoice, get it risk-scored, and list it for financiers to bid on — all through
+                one dashboard connected directly to Canton Network.
               </p>
               <div className="mt-8 space-y-4">
                 {[
@@ -61,10 +62,15 @@ export default function HomePage() {
             </div>
             <div className="order-1 md:order-2">
               <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 mb-3">Support</p>
-              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-950 dark:text-white mb-4">
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-950 dark:text-white mb-2">
                 Questions? Send us a message.
               </h2>
-              <ContactForm />
+              <a href="mailto:support@invoplus.xyz" className="text-sm text-violet-600 dark:text-violet-400 hover:underline mb-4 inline-block">
+                support@invoplus.xyz
+              </a>
+              <div className="mt-4">
+                <ContactForm />
+              </div>
             </div>
           </div>
         </section>

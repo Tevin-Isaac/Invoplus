@@ -30,12 +30,23 @@ const stats = [
 // re-decode the whole file from scratch, which is what produced the visible
 // freeze/flash ("hanging", "playing twice"). All three stay loaded and
 // playing in the background; only the CSS opacity changes.
+//
+// Transitions are sequential, not simultaneous: the outgoing video fades to
+// 0 first, then (after a short gap where nothing is visible but the black
+// section background) the incoming one fades in. Cross-fading two different,
+// unrelated clips at the same time read as "two videos overlapping" since
+// they don't blend into each other narratively — a brief blackout between
+// cuts reads as an intentional scene change instead.
 const videos = ['/cashflow.mp4', '/invoice.mp4', '/woman.mp4']
+const FADE_MS = 700
+const HOLD_MS = 9000
+const PLAYBACK_RATE = 0.65 // slower, calmer motion than native speed
 
 export function Hero() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [currentVideo, setCurrentVideo] = useState(0)
+  const [visible, setVisible] = useState(true)
 
   useEffect(() => {
     const stored = window.localStorage.getItem('invoplus-theme') as 'light' | 'dark' | null
@@ -45,8 +56,13 @@ export function Hero() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentVideo(prev => (prev + 1) % videos.length)
-    }, 10000)
+      setVisible(false) // fade the current video out
+      const swap = setTimeout(() => {
+        setCurrentVideo(prev => (prev + 1) % videos.length)
+        setVisible(true) // fade the next one in
+      }, FADE_MS)
+      return () => clearTimeout(swap)
+    }, HOLD_MS + FADE_MS)
     return () => clearInterval(interval)
   }, [])
 
@@ -60,8 +76,9 @@ export function Hero() {
       {videos.map((src, i) => (
         <video
           key={src}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[1200ms] ease-in-out"
-          style={{ opacity: currentVideo === i ? 1 : 0 }}
+          ref={el => { if (el) el.playbackRate = PLAYBACK_RATE }}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity ease-in-out"
+          style={{ opacity: currentVideo === i && visible ? 1 : 0, transitionDuration: `${FADE_MS}ms` }}
           autoPlay
           loop
           muted

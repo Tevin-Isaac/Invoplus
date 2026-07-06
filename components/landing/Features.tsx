@@ -1,54 +1,71 @@
-import { Lock, Zap, ShieldCheck } from 'lucide-react'
+import { Lock, Zap, ShieldCheck, Check, ArrowRight } from 'lucide-react'
 
 // Cross-checked against what InvoPlus actually does. The three core Canton
-// guarantees — matches the hero stats and the original pillar messaging.
+// guarantees — matches the hero stats and the how-it-works pillars.
 const features = [
   {
+    number: '01',
     icon: Lock,
     title: 'Sealed-Bid Auctions',
-    description: 'Financiers bid blind. Each bid is a private Canton contract the seller cannot see until the auction closes — enforced by the ledger, not the UI.',
+    points: ['Bids sealed until close', 'Seller sees nothing early', 'Enforced by Canton, not the UI'],
   },
   {
+    number: '02',
     icon: Zap,
     title: 'Atomic Settlement',
-    description: 'Losing bids are rejected in their own private transactions. The winning bid becomes a dual-signed FundedInvoice in one atomic Canton transaction.',
+    points: ['One transaction settles all', 'Losing bids rejected privately', 'No partial fills'],
   },
   {
+    number: '03',
     icon: ShieldCheck,
     title: 'Anti-Fraud Registry',
-    description: 'A registry entry is checked before every listing — the same invoice can never be financed twice.',
+    points: ['Checked before every listing', "Same invoice can't be financed twice", 'Enforced on-chain'],
   },
 ]
 
 export function Features() {
   return (
-    <section id="features" className="py-24 lg:py-32 bg-slate-950 border-t border-slate-800">
+    <section id="features" className="py-20 lg:py-28 bg-slate-950 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-6">
-            <span className="text-xs text-slate-300 font-medium">PLATFORM FEATURES</span>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-4">
+            <span className="text-xs text-slate-300 font-medium">FEATURES</span>
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            Everything you need to finance invoices privately
+          <h2 className="text-3xl lg:text-4xl font-bold text-white">
+            Enforced by the ledger, not application logic
           </h2>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            Built on Canton Network — every guarantee below is enforced by the ledger, not application logic.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {features.map((feature, i) => {
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {features.map((feature) => {
             const Icon = feature.icon
             return (
               <div
-                key={i}
-                className="p-8 rounded-2xl border border-slate-800 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-900 transition-all group"
+                key={feature.number}
+                className="p-7 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors flex flex-col"
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center mb-6 group-hover:shadow-lg group-hover:shadow-violet-500/20 transition-shadow">
-                  <Icon className="w-6 h-6 text-white" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-11 h-11 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <span className="font-data text-2xl font-bold text-white/10">{feature.number}</span>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-3">{feature.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{feature.description}</p>
+
+                <h3 className="text-lg font-semibold text-white mb-4">{feature.title}</h3>
+
+                <ul className="space-y-2.5 mb-6 flex-1">
+                  {feature.points.map((point) => (
+                    <li key={point} className="flex items-start gap-2.5 text-sm text-slate-400">
+                      <Check className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+
+                <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-white hover:text-violet-300 transition-colors group">
+                  Learn more
+                  <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:translate-x-0.5 transition-transform" />
+                </a>
               </div>
             )
           })}
