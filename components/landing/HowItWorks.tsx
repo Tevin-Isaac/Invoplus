@@ -84,11 +84,14 @@ export function HowItWorks() {
   })
 
   return (
-    <section id="how-it-works" className="relative bg-slate-950 border-t border-slate-800 overflow-hidden">
+    <section id="how-it-works" className="relative bg-slate-950 border-t border-slate-800">
       {/* Ambient "liquid glass" glow — stays in view as a sticky backdrop for
           the whole scroll-driven card stack below, instead of scrolling away
-          with the content. Brand teal, not the reference's blue. */}
-      <div className="sticky top-0 h-screen pointer-events-none -z-10">
+          with the content. Brand teal, not the reference's blue.
+          The clipping div here is separate from (and does not wrap) the
+          sticky cards below — `overflow-hidden` on a shared ancestor breaks
+          `position: sticky` on descendants, which is what happened before. */}
+      <div className="sticky top-0 h-screen overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/20 blur-[120px]" />
         <div className="absolute top-1/3 -right-1/4 w-[500px] h-[500px] rounded-full bg-violet-400/10 blur-[120px]" />
       </div>
