@@ -4,35 +4,35 @@ import { useRef } from 'react'
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
 import { FileText, Gavel, EyeOff, Zap } from 'lucide-react'
 
-// Each step corresponds to a real Daml choice on the deployed InvoPlus package —
-// not illustrative copy. See daml/InvoPlus/Invoice.daml for the exact contracts.
+// Selling points, not technical descriptions — but every claim here is true
+// to how the deployed InvoPlus package actually behaves on Canton DevNet.
 const steps = [
   {
     number: '01',
-    tag: 'InvoiceContract',
-    title: 'Upload & Score',
-    description: 'The seller submits an invoice, creating an InvoiceContract on Canton. A deterministic risk engine — tenor, amount, currency, debtor profile — computes a 0–100 score and A–D grade, written on-chain via VerifyInvoice. No external AI call, no black box.',
+    tag: 'Upload',
+    title: 'Upload & Get Scored',
+    description: 'Submit your invoice and get an instant, unbiased risk score and grade — no manual review, no waiting on a loan officer.',
     icon: FileText,
   },
   {
     number: '02',
-    tag: 'Auction + RegistryEntry',
-    title: 'List for Sealed-Bid Auction',
-    description: 'ListForAuction creates an Auction and a RegistryEntry in one atomic transaction. The registry is checked before every future listing — the same invoice hash can never be financed twice.',
+    tag: 'List',
+    title: 'List It for Bidding',
+    description: 'Your invoice goes live to a pool of financiers — and is protected from ever being listed or financed twice.',
     icon: Gavel,
   },
   {
     number: '03',
-    tag: 'SealedBid',
-    title: 'Sealed Bids Roll In',
-    description: 'Financiers submit SealedBid contracts. The seller is never added as an observer while a bid is sealed — Canton’s privacy model makes this unreadable to them, not just hidden by the UI.',
+    tag: 'Bid',
+    title: 'Financiers Bid Blind',
+    description: 'Financiers compete on price without seeing each other’s offers, so you get the best rate the market will bear — not the first one.',
     icon: EyeOff,
   },
   {
     number: '04',
-    tag: 'FundedInvoice',
-    title: 'Atomic Settlement',
-    description: 'Losing bids are rejected in their own private transactions — their contents never touch the seller’s view. The winning bid becomes a FundedInvoice, signed by both seller and financier, in a single Canton transaction.',
+    tag: 'Get Paid',
+    title: 'Get Paid Instantly',
+    description: 'The winning bid settles immediately and irreversibly. No partial payments, no waiting days for funds to clear.',
     icon: Zap,
   },
 ]
@@ -102,10 +102,10 @@ export function HowItWorks() {
             <span className="text-xs text-slate-300 font-medium">HOW IT WORKS</span>
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            Every step is a real Canton transaction
+            From invoice to cash in four steps
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            Not a diagram — the exact Daml contracts that run on Canton DevNet today.
+            No paperwork, no waiting on a bank — just a fast, transparent path from unpaid invoice to money in hand.
           </p>
         </div>
       </div>
