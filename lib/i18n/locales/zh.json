@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "平台",
+    "howItWorks": "它是如何运作的",
+    "features": "特征",
+    "support": "支持",
+    "launchApp": "启动应用程序"
+  },
+  "hero": {
+    "headline1": "今天就得到报酬。",
+    "headline2": "90天内不会。",
+    "subtext": "在几天而不是几个月内将未付发票变成现金。列出您的发票，让金融家竞相为其提供资金，并在中标后立即获得付款 - 无需文书工作，无需银行，无需等待。",
+    "launchApp": "启动应用程序",
+    "seeHowItWorks": "看看它是如何工作的",
+    "stat1Label": "最大提前率",
+    "stat2Label": "拍卖窗口",
+    "stat3Label": "链上结算"
+  },
+  "howItWorks": {
+    "badge": "它是如何运作的",
+    "headline": "从发票到现金只需四步",
+    "subtext": "无需文书工作，无需等待银行——只有一条从未付发票到手头资金的快速、透明的路径。",
+    "step1Tag": "上传",
+    "step1Title": "上传并评分",
+    "step1Desc": "提交发票并获得即时、公正的风险评分和等级——无需人工审核，无需等待信贷员。",
+    "step2Tag": "列表",
+    "step2Title": "列出招标",
+    "step2Desc": "您的发票将提交给金融家池，并受到保护，不会被两次列出或融资。",
+    "step3Tag": "出价",
+    "step3Title": "金融家盲目投标",
+    "step3Desc": "金融家在没有看到彼此报价的情况下进行价格竞争，因此您可以获得市场所能承受的最佳利率，而不是第一个。",
+    "step4Tag": "获得报酬",
+    "step4Title": "立即获得付款",
+    "step4Desc": "中标者立即结算且不可逆转。无需部分付款，无需等待资金结清。"
+  },
+  "features": {
+    "badge": "特征",
+    "headline": "由账本而非应用程序逻辑强制执行",
+    "learnMore": "了解更多",
+    "feature1Title": "密封投标拍卖",
+    "feature1Point1": "投标密封直至截止",
+    "feature1Point2": "卖家早看不到任何东西",
+    "feature1Point3": "由广州而非 UI 强制执行",
+    "feature2Title": "原子结算",
+    "feature2Point1": "一笔交易解决一切",
+    "feature2Point2": "失败的投标被私下拒绝",
+    "feature2Point3": "无部分填充",
+    "feature3Title": "反欺诈登记处",
+    "feature3Point1": "每次上市前都会检查",
+    "feature3Point2": "同一张发票不能重复融资",
+    "feature3Point3": "强制上链"
+  },
+  "platform": {
+    "label": "平台",
+    "headline": "为现金敏感的团队构建的发票流程。",
+    "intro": "上传发票、对其进行风险评分，并将其列出以供金融家竞标——所有这些都通过直接连接到 Canton Network 的一个仪表板完成。",
+    "item1Title": "即时发票创建",
+    "item1Text": "生成发票并在几秒钟内将其提交给 Canton Network。",
+    "item2Title": "实时状态追踪",
+    "item2Text": "跟踪发票从待处理到验证、投标和资助的整个生命周期。",
+    "item3Title": "风险意识融资",
+    "item3Text": "每张发票在上市前都会获得确定性的 0-100 分和 A-D 等级。",
+    "item4Title": "审计级安全性",
+    "item4Text": "每一步——验证、列出、出价、结算——都是 Canton 上的真实交易。"
+  },
+  "support": {
+    "label": "支持",
+    "headline": "问题？给我们留言。"
+  },
+  "contactForm": {
+    "namePlaceholder": "你的名字",
+    "emailPlaceholder": "你@company.com",
+    "messagePlaceholder": "我们能提供什么帮助？",
+    "sending": "正在发送...",
+    "send": "发送消息",
+    "thanks": "谢谢——我们会尽快回复您。",
+    "genericError": "出了点问题"
+  },
+  "footer": {
+    "rights": "版权所有。"
+  }
+}

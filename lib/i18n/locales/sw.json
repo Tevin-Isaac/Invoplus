@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "jukwaa",
+    "howItWorks": "jinsi inavyofanya kazi",
+    "features": "vipengele",
+    "support": "msaada",
+    "launchApp": "kuzindua programu"
+  },
+  "hero": {
+    "headline1": "Lipwe leo.",
+    "headline2": "Sio ndani ya siku 90.",
+    "subtext": "Badilisha ankara ambazo hazijalipwa ziwe pesa taslimu kwa siku, sio miezi. Orodhesha ankara yako, waruhusu wafadhili washindane ili kuifadhili, na ulipwe mara tu zabuni iliyoshinda itakapotatuliwa - hakuna karatasi, hakuna benki, hakuna kusubiri.",
+    "launchApp": "Zindua Programu",
+    "seeHowItWorks": "Tazama jinsi inavyofanya kazi",
+    "stat1Label": "Kiwango cha Juu cha Mapema",
+    "stat2Label": "Dirisha la Mnada",
+    "stat3Label": "Usuluhishi wa Mnyororo"
+  },
+  "howItWorks": {
+    "badge": "JINSI INAFANYA KAZI",
+    "headline": "Kutoka ankara hadi pesa taslimu katika hatua nne",
+    "subtext": "Hakuna karatasi, hakuna kusubiri kwenye benki - njia ya haraka na ya uwazi kutoka kwa ankara isiyolipwa hadi pesa mkononi.",
+    "step1Tag": "Pakia",
+    "step1Title": "Pakia & Upate Bao",
+    "step1Desc": "Wasilisha ankara yako na upate alama na alama ya hatari ya papo hapo, isiyopendelea upande wowote - hakuna ukaguzi wa mikono, hakuna kusubiri kwa afisa wa mkopo.",
+    "step2Tag": "Orodha",
+    "step2Title": "Iorodheshe kwa Zabuni",
+    "step2Desc": "Ankara yako itaonyeshwa moja kwa moja kwa kundi la wafadhili - na inalindwa dhidi ya kuorodheshwa au kufadhiliwa mara mbili.",
+    "step3Tag": "Zabuni",
+    "step3Title": "Wafadhili Watoa Zabuni Wasioona",
+    "step3Desc": "Wafadhili hushindana kwa bei bila kuona ofa za wenzao, ili upate kiwango bora zaidi ambacho soko litapata - si cha kwanza.",
+    "step4Tag": "Lipwe",
+    "step4Title": "Lipwe Mara Moja",
+    "step4Desc": "Zabuni iliyoshinda inatatuliwa mara moja na bila kutenduliwa. Hakuna malipo kidogo, hakuna siku za kungojea ili pesa zifutwe."
+  },
+  "features": {
+    "badge": "VIPENGELE",
+    "headline": "Imetekelezwa na leja, sio mantiki ya programu",
+    "learnMore": "Jifunze zaidi",
+    "feature1Title": "Minada ya Zabuni Iliyofungwa",
+    "feature1Point1": "Zabuni zimefungwa hadi kufungwa",
+    "feature1Point2": "Muuzaji haoni chochote mapema",
+    "feature1Point3": "Inatekelezwa na Canton, si UI",
+    "feature2Title": "Makazi ya Atomiki",
+    "feature2Point1": "Muamala mmoja unasuluhisha yote",
+    "feature2Point2": "Zabuni zilizopotea zimekataliwa kwa faragha",
+    "feature2Point3": "Hakuna kujaza sehemu",
+    "feature3Title": "Usajili wa Kupambana na Ulaghai",
+    "feature3Point1": "Imeangaliwa kabla ya kila tangazo",
+    "feature3Point2": "Ankara sawa haiwezi kufadhiliwa mara mbili",
+    "feature3Point3": "Imetekelezwa kwenye mnyororo"
+  },
+  "platform": {
+    "label": "jukwaa",
+    "headline": "Mtiririko wa ankara ulioundwa kwa ajili ya timu zinazojali pesa.",
+    "intro": "Pakia ankara, ifanye iwe alama ya hatari, na uiorodheshe kwa ajili ya wafadhili kutoa zabuni - yote kupitia dashibodi moja iliyounganishwa moja kwa moja kwenye Mtandao wa Canton.",
+    "item1Title": "Uundaji wa ankara papo hapo",
+    "item1Text": "Tengeneza ankara na uwasilishe kwa Mtandao wa Canton kwa sekunde chache.",
+    "item2Title": "Ufuatiliaji wa hali halisi",
+    "item2Text": "Fuatilia mzunguko wa maisha ya ankara kutoka inayosubiri hadi kuthibitishwa, zabuni na kufadhiliwa.",
+    "item3Title": "Ufadhili unaotambua hatari",
+    "item3Text": "Kila ankara hupata alama bainifu za 0–100 na daraja la A–D kabla ya kuorodheshwa.",
+    "item4Title": "Usalama wa kiwango cha ukaguzi",
+    "item4Text": "Kila hatua - thibitisha, orodhesha, zabuni, suluhisha - ni shughuli halisi kwenye Canton."
+  },
+  "support": {
+    "label": "Msaada",
+    "headline": "Maswali? Tutumie ujumbe."
+  },
+  "contactForm": {
+    "namePlaceholder": "Jina lako",
+    "emailPlaceholder": "wewe@company.com",
+    "messagePlaceholder": "Tunawezaje kusaidia?",
+    "sending": "Inatuma...",
+    "send": "Tuma ujumbe",
+    "thanks": "Asante - tutawasiliana nawe hivi karibuni.",
+    "genericError": "Hitilafu fulani imetokea"
+  },
+  "footer": {
+    "rights": "Haki zote zimehifadhiwa."
+  }
+}

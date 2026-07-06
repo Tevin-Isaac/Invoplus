@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "plataforma",
+    "howItWorks": "como funciona",
+    "features": "características",
+    "support": "apoiar",
+    "launchApp": "iniciar aplicativo"
+  },
+  "hero": {
+    "headline1": "Seja pago hoje.",
+    "headline2": "Não em 90 dias.",
+    "subtext": "Transforme faturas não pagas em dinheiro em dias, não em meses. Liste sua fatura, deixe os financiadores competirem para financiá-la e receba o pagamento no instante em que o lance vencedor for liquidado - sem papelada, sem banco, sem espera.",
+    "launchApp": "Iniciar aplicativo",
+    "seeHowItWorks": "Veja como funciona",
+    "stat1Label": "Taxa máxima de avanço",
+    "stat2Label": "Janela de leilão",
+    "stat3Label": "Liquidação na cadeia"
+  },
+  "howItWorks": {
+    "badge": "COMO FUNCIONA",
+    "headline": "Da fatura ao dinheiro em quatro etapas",
+    "subtext": "Sem papelada, sem espera no banco – apenas um caminho rápido e transparente, desde a fatura não paga até o dinheiro em mãos.",
+    "step1Tag": "Carregar",
+    "step1Title": "Faça upload e receba pontuação",
+    "step1Desc": "Envie sua fatura e obtenha uma pontuação e classificação de risco instantânea e imparcial - sem revisão manual, sem espera por um agente de crédito.",
+    "step2Tag": "Lista",
+    "step2Title": "Liste-o para licitação",
+    "step2Desc": "Sua fatura vai ao ar para um grupo de financiadores - e fica protegida contra listagem ou financiamento duas vezes.",
+    "step3Tag": "Oferta",
+    "step3Title": "Financiadores oferecem lances cegos",
+    "step3Desc": "Os financiadores competem em preço sem ver as ofertas uns dos outros, de modo que você obtém a melhor taxa que o mercado pode suportar – e não a primeira.",
+    "step4Tag": "Seja pago",
+    "step4Title": "Seja pago instantaneamente",
+    "step4Desc": "A proposta vencedora é liquidada imediata e irreversivelmente. Sem pagamentos parciais, sem dias de espera para a liberação dos fundos."
+  },
+  "features": {
+    "badge": "CARACTERÍSTICAS",
+    "headline": "Aplicado pelo razão, não pela lógica do aplicativo",
+    "learnMore": "Saber mais",
+    "feature1Title": "Leilões de lance selado",
+    "feature1Point1": "Licitações seladas até o fechamento",
+    "feature1Point2": "O vendedor não vê nada antes",
+    "feature1Point3": "Aplicado por Canton, não pela IU",
+    "feature2Title": "Liquidação Atômica",
+    "feature2Point1": "Uma transação resolve tudo",
+    "feature2Point2": "Lances perdedores rejeitados de forma privada",
+    "feature2Point3": "Sem preenchimentos parciais",
+    "feature3Title": "Registro Antifraude",
+    "feature3Point1": "Verificado antes de cada listagem",
+    "feature3Point2": "A mesma fatura não pode ser financiada duas vezes",
+    "feature3Point3": "Aplicado na cadeia"
+  },
+  "platform": {
+    "label": "plataforma",
+    "headline": "Fluxo de fatura criado para equipes sensíveis ao dinheiro.",
+    "intro": "Carregue uma fatura, obtenha uma pontuação de risco e liste-a para os financiadores darem lances - tudo por meio de um painel conectado diretamente à Canton Network.",
+    "item1Title": "Criação instantânea de fatura",
+    "item1Text": "Gere faturas e envie-as para a Canton Network em segundos.",
+    "item2Title": "Rastreamento de status em tempo real",
+    "item2Text": "Acompanhe o ciclo de vida da fatura, desde pendente até verificada, licitação e financiada.",
+    "item3Title": "Financiamento consciente do risco",
+    "item3Text": "Cada fatura recebe uma pontuação determinística de 0 a 100 e uma nota A – D antes de ser listada.",
+    "item4Title": "Segurança de nível de auditoria",
+    "item4Text": "Cada etapa – verificar, listar, licitar, liquidar – é uma transação real em Canton."
+  },
+  "support": {
+    "label": "Apoiar",
+    "headline": "Questões? Envie-nos uma mensagem."
+  },
+  "contactForm": {
+    "namePlaceholder": "Seu nome",
+    "emailPlaceholder": "você@empresa.com",
+    "messagePlaceholder": "Como podemos ajudar?",
+    "sending": "Enviando…",
+    "send": "Enviar mensagem",
+    "thanks": "Obrigado. Entraremos em contato com você em breve.",
+    "genericError": "Algo deu errado"
+  },
+  "footer": {
+    "rights": "Todos os direitos reservados."
+  }
+}

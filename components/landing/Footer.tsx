@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { Logo } from '@/components/brand/Logo'
+import { useI18n } from '@/lib/i18n/I18nContext'
 
 export function Footer() {
+  const { t } = useI18n()
   const year = new Date().getFullYear()
 
   return (
@@ -13,13 +15,13 @@ export function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center gap-5 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="#platform" className="hover:text-slate-900 dark:hover:text-white transition-colors">platform</Link>
-          <Link href="#how-it-works" className="hover:text-slate-900 dark:hover:text-white transition-colors">how it works</Link>
-          <Link href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">features</Link>
-          <Link href="#support" className="hover:text-slate-900 dark:hover:text-white transition-colors">support</Link>
+          <Link href="#platform" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.platform')}</Link>
+          <Link href="#how-it-works" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.howItWorks')}</Link>
+          <Link href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.features')}</Link>
+          <Link href="#support" className="hover:text-slate-900 dark:hover:text-white transition-colors">{t('nav.support')}</Link>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">© {year} invoplus. All rights reserved.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">© {year} invoplus. {t('footer.rights')}</p>
       </div>
     </footer>
   )

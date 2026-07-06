@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
 import { FileText, Gavel, EyeOff, Zap, DollarSign, Receipt, Coins } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/I18nContext'
 
 // Fixed positions/delays (not random) so server- and client-rendered markup
 // match exactly — avoids hydration mismatches from Math.random().
@@ -18,41 +19,21 @@ const particles = [
 
 // Selling points, not technical descriptions — but every claim here is true
 // to how the deployed InvoPlus package actually behaves on Canton DevNet.
-const steps = [
-  {
-    number: '01',
-    tag: 'Upload',
-    title: 'Upload & Get Scored',
-    description: 'Submit your invoice and get an instant, unbiased risk score and grade — no manual review, no waiting on a loan officer.',
-    icon: FileText,
-  },
-  {
-    number: '02',
-    tag: 'List',
-    title: 'List It for Bidding',
-    description: 'Your invoice goes live to a pool of financiers — and is protected from ever being listed or financed twice.',
-    icon: Gavel,
-  },
-  {
-    number: '03',
-    tag: 'Bid',
-    title: 'Financiers Bid Blind',
-    description: 'Financiers compete on price without seeing each other’s offers, so you get the best rate the market will bear — not the first one.',
-    icon: EyeOff,
-  },
-  {
-    number: '04',
-    tag: 'Get Paid',
-    title: 'Get Paid Instantly',
-    description: 'The winning bid settles immediately and irreversibly. No partial payments, no waiting days for funds to clear.',
-    icon: Zap,
-  },
-]
+// Copy comes from the i18n dict (see useSteps below); icons stay fixed here.
+const stepIcons = [FileText, Gavel, EyeOff, Zap]
+
+interface Step {
+  number: string
+  tag: string
+  title: string
+  description: string
+  icon: typeof FileText
+}
 
 function StackCard({
   step, index, total, progress,
 }: {
-  step: typeof steps[number]
+  step: Step
   index: number
   total: number
   progress: MotionValue<number>
@@ -89,6 +70,14 @@ function StackCard({
 }
 
 export function HowItWorks() {
+  const { t } = useI18n()
+  const steps = [1, 2, 3, 4].map((n, i) => ({
+    number: `0${n}`,
+    tag: t(`howItWorks.step${n}Tag`),
+    title: t(`howItWorks.step${n}Title`),
+    description: t(`howItWorks.step${n}Desc`),
+    icon: stepIcons[i],
+  }))
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -132,13 +121,13 @@ export function HowItWorks() {
       <div className="relative max-w-7xl mx-auto px-6 lg:px-10 pt-12 lg:pt-16">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-6">
-            <span className="text-xs text-slate-300 font-medium">HOW IT WORKS</span>
+            <span className="text-xs text-slate-300 font-medium">{t('howItWorks.badge')}</span>
           </div>
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            From invoice to cash in four steps
+            {t('howItWorks.headline')}
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            No paperwork, no waiting on a bank — just a fast, transparent path from unpaid invoice to money in hand.
+            {t('howItWorks.subtext')}
           </p>
         </div>
       </div>

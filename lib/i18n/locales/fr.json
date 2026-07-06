@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "plate-forme",
+    "howItWorks": "comment ça marche",
+    "features": "caractéristiques",
+    "support": "soutien",
+    "launchApp": "lancer l'application"
+  },
+  "hero": {
+    "headline1": "Soyez payé aujourd'hui.",
+    "headline2": "Pas dans 90 jours.",
+    "subtext": "Transformez les factures impayées en espèces en quelques jours, et non en mois. Présentez votre facture, laissez les financiers rivaliser pour la financer et soyez payé dès que l'offre gagnante est réglée – pas de paperasse, pas de banque, pas d'attente.",
+    "launchApp": "Lancer l'application",
+    "seeHowItWorks": "Voyez comment ça marche",
+    "stat1Label": "Taux d'avance maximum",
+    "stat2Label": "Fenêtre d'enchères",
+    "stat3Label": "Règlement en chaîne"
+  },
+  "howItWorks": {
+    "badge": "COMMENT ÇA MARCHE",
+    "headline": "De la facture à l'encaissement en quatre étapes",
+    "subtext": "Pas de paperasse, pas d'attente auprès d'une banque : juste un chemin rapide et transparent depuis la facture impayée jusqu'à l'argent en main.",
+    "step1Tag": "Télécharger",
+    "step1Title": "Téléchargez et obtenez des scores",
+    "step1Desc": "Soumettez votre facture et obtenez un score et une note de risque instantanés et impartiaux - pas de révision manuelle, pas d'attente auprès d'un agent de crédit.",
+    "step2Tag": "Liste",
+    "step2Title": "Inscrivez-le pour enchérir",
+    "step2Desc": "Votre facture est transmise à un pool de financiers et est protégée contre toute inscription ou financement double.",
+    "step3Tag": "Offre",
+    "step3Title": "Les financiers font une offre aveugle",
+    "step3Desc": "Les financiers se font concurrence sur les prix sans voir les offres des autres, de sorte que vous obtenez le meilleur taux que le marché puisse offrir, et non le premier.",
+    "step4Tag": "Soyez payé",
+    "step4Title": "Soyez payé instantanément",
+    "step4Desc": "L’enchère gagnante est réglée immédiatement et de manière irréversible. Pas de paiements partiels, pas de jours d'attente pour que les fonds soient compensés."
+  },
+  "features": {
+    "badge": "CARACTÉRISTIQUES",
+    "headline": "Appliqué par le grand livre, et non par la logique de l'application",
+    "learnMore": "Apprendre encore plus",
+    "feature1Title": "Enchères à offres scellées",
+    "feature1Point1": "Offres scellées jusqu'à la clôture",
+    "feature1Point2": "Le vendeur ne voit rien tôt",
+    "feature1Point3": "Appliqué par Canton, pas par l'assurance-chômage",
+    "feature2Title": "Règlement atomique",
+    "feature2Point1": "Une transaction règle tout",
+    "feature2Point2": "Offres perdantes rejetées en privé",
+    "feature2Point3": "Pas de remplissage partiel",
+    "feature3Title": "Registre antifraude",
+    "feature3Point1": "Vérifié avant chaque annonce",
+    "feature3Point2": "La même facture ne peut pas être financée deux fois",
+    "feature3Point3": "Appliqué en chaîne"
+  },
+  "platform": {
+    "label": "plate-forme",
+    "headline": "Flux de factures conçu pour les équipes sensibles aux liquidités.",
+    "intro": "Téléchargez une facture, obtenez-la notée en termes de risque et répertoriez-la pour que les financiers puissent enchérir, le tout via un tableau de bord directement connecté à Canton Network.",
+    "item1Title": "Création de facture instantanée",
+    "item1Text": "Générez des factures et soumettez-les à Canton Network en quelques secondes.",
+    "item2Title": "Suivi de l'état en temps réel",
+    "item2Text": "Suivez le cycle de vie des factures, depuis l'attente jusqu'à la vérification, l'enchère et le financement.",
+    "item3Title": "Financement conscient des risques",
+    "item3Text": "Chaque facture obtient un score déterministe de 0 à 100 et une note A à D avant d'être répertoriée.",
+    "item4Title": "Sécurité de niveau audit",
+    "item4Text": "Chaque étape – vérifier, répertorier, enchérir, régler – est une véritable transaction sur Canton."
+  },
+  "support": {
+    "label": "Soutien",
+    "headline": "Des questions ? Envoyez-nous un message."
+  },
+  "contactForm": {
+    "namePlaceholder": "Votre nom",
+    "emailPlaceholder": "vous@entreprise.com",
+    "messagePlaceholder": "Comment pouvons-nous vous aider ?",
+    "sending": "Envoi…",
+    "send": "Envoyer un message",
+    "thanks": "Merci, nous vous répondrons bientôt.",
+    "genericError": "Quelque chose s'est mal passé"
+  },
+  "footer": {
+    "rights": "Tous droits réservés."
+  }
+}

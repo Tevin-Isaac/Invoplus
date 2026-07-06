@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "Plattform",
+    "howItWorks": "wie es funktioniert",
+    "features": "Merkmale",
+    "support": "Unterstützung",
+    "launchApp": "App starten"
+  },
+  "hero": {
+    "headline1": "Lassen Sie sich noch heute bezahlen.",
+    "headline2": "Nicht in 90 Tagen.",
+    "subtext": "Verwandeln Sie unbezahlte Rechnungen in wenigen Tagen, nicht in Monaten, in Bargeld. Listen Sie Ihre Rechnung auf, lassen Sie Finanziers um die Finanzierung konkurrieren und erhalten Sie Ihre Auszahlung, sobald das Gewinnergebot beglichen ist – kein Papierkram, keine Bank, kein Warten.",
+    "launchApp": "App starten",
+    "seeHowItWorks": "Sehen Sie, wie es funktioniert",
+    "stat1Label": "Maximale Vorschubrate",
+    "stat2Label": "Auktionsfenster",
+    "stat3Label": "On-Chain-Abwicklung"
+  },
+  "howItWorks": {
+    "badge": "WIE ES FUNKTIONIERT",
+    "headline": "In vier Schritten von der Rechnung zur Kasse",
+    "subtext": "Kein Papierkram, kein Warten auf eine Bank – nur ein schneller, transparenter Weg von der unbezahlten Rechnung zum Geld in der Hand.",
+    "step1Tag": "Hochladen",
+    "step1Title": "Hochladen und bewerten lassen",
+    "step1Desc": "Reichen Sie Ihre Rechnung ein und erhalten Sie sofort eine unvoreingenommene Risikobewertung und -einstufung – keine manuelle Überprüfung, kein Warten auf einen Kreditsachbearbeiter.",
+    "step2Tag": "Liste",
+    "step2Title": "Bieten Sie es an",
+    "step2Desc": "Ihre Rechnung geht an einen Pool von Finanziers weiter – und ist davor geschützt, jemals doppelt aufgeführt oder finanziert zu werden.",
+    "step3Tag": "Gebot",
+    "step3Title": "Finanziers bieten blind",
+    "step3Desc": "Finanziers konkurrieren um den Preis, ohne die Angebote der anderen zu sehen, sodass Sie den besten Zinssatz erhalten, den der Markt anbietet – und nicht den ersten.",
+    "step4Tag": "Bezahlt werden",
+    "step4Title": "Werden Sie sofort bezahlt",
+    "step4Desc": "Das Gewinnergebot wird sofort und unwiderruflich abgerechnet. Keine Teilzahlungen, keine Wartezeiten bis zur Auszahlung des Betrags."
+  },
+  "features": {
+    "badge": "MERKMALE",
+    "headline": "Wird durch das Hauptbuch erzwungen, nicht durch die Anwendungslogik",
+    "learnMore": "Erfahren Sie mehr",
+    "feature1Title": "Auktionen mit versiegeltem Gebot",
+    "feature1Point1": "Gebote bis zum Schluss unter Verschluss",
+    "feature1Point2": "Der Verkäufer sieht zunächst nichts",
+    "feature1Point3": "Wird vom Kanton erzwungen, nicht von der Benutzeroberfläche",
+    "feature2Title": "Atomsiedlung",
+    "feature2Point1": "Eine Transaktion regelt alles",
+    "feature2Point2": "Verlierergebote wurden privat abgelehnt",
+    "feature2Point3": "Keine Teilfüllungen",
+    "feature3Title": "Betrugsbekämpfungsregister",
+    "feature3Point1": "Wird vor jedem Eintrag überprüft",
+    "feature3Point2": "Dieselbe Rechnung kann nicht zweimal finanziert werden",
+    "feature3Point3": "In der Kette erzwungen"
+  },
+  "platform": {
+    "label": "Plattform",
+    "headline": "Rechnungsfluss für Teams, die auf Bargeld achten müssen.",
+    "intro": "Laden Sie eine Rechnung hoch, lassen Sie sie risikobewerten und stellen Sie sie zur Verfügung, damit Finanziers darauf bieten können – alles über ein Dashboard, das direkt mit dem Canton Network verbunden ist.",
+    "item1Title": "Sofortige Rechnungserstellung",
+    "item1Text": "Erstellen Sie Rechnungen und übermitteln Sie sie in Sekundenschnelle an Canton Network.",
+    "item2Title": "Statusverfolgung in Echtzeit",
+    "item2Text": "Verfolgen Sie den Rechnungslebenszyklus von der ausstehenden Rechnung bis zur Prüfung, Angebotserstellung und Finanzierung.",
+    "item3Title": "Risikobewusste Finanzierung",
+    "item3Text": "Jede Rechnung erhält vor der Auflistung eine deterministische Bewertung von 0–100 und die Note A–D.",
+    "item4Title": "Sicherheit auf Audit-Niveau",
+    "item4Text": "Jeder Schritt – überprüfen, auflisten, bieten, abwickeln – ist eine echte Transaktion auf Canton."
+  },
+  "support": {
+    "label": "Unterstützung",
+    "headline": "Fragen? Senden Sie uns eine Nachricht."
+  },
+  "contactForm": {
+    "namePlaceholder": "Ihr Name",
+    "emailPlaceholder": "you@company.com",
+    "messagePlaceholder": "Wie können wir helfen?",
+    "sending": "Senden…",
+    "send": "Nachricht senden",
+    "thanks": "Vielen Dank – wir werden uns bald bei Ihnen melden.",
+    "genericError": "Etwas ist schief gelaufen"
+  },
+  "footer": {
+    "rights": "Alle Rechte vorbehalten."
+  }
+}

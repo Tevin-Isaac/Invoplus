@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "platform",
+    "howItWorks": "how it works",
+    "features": "features",
+    "support": "support",
+    "launchApp": "launch app"
+  },
+  "hero": {
+    "headline1": "Get paid today.",
+    "headline2": "Not in 90 days.",
+    "subtext": "Turn unpaid invoices into cash in days, not months. List your invoice, let financiers compete to fund it, and get paid the instant the winning bid is settled — no paperwork, no bank, no waiting.",
+    "launchApp": "Launch App",
+    "seeHowItWorks": "See how it works",
+    "stat1Label": "Max Advance Rate",
+    "stat2Label": "Auction Window",
+    "stat3Label": "On-Chain Settlement"
+  },
+  "howItWorks": {
+    "badge": "HOW IT WORKS",
+    "headline": "From invoice to cash in four steps",
+    "subtext": "No paperwork, no waiting on a bank — just a fast, transparent path from unpaid invoice to money in hand.",
+    "step1Tag": "Upload",
+    "step1Title": "Upload & Get Scored",
+    "step1Desc": "Submit your invoice and get an instant, unbiased risk score and grade — no manual review, no waiting on a loan officer.",
+    "step2Tag": "List",
+    "step2Title": "List It for Bidding",
+    "step2Desc": "Your invoice goes live to a pool of financiers — and is protected from ever being listed or financed twice.",
+    "step3Tag": "Bid",
+    "step3Title": "Financiers Bid Blind",
+    "step3Desc": "Financiers compete on price without seeing each other's offers, so you get the best rate the market will bear — not the first one.",
+    "step4Tag": "Get Paid",
+    "step4Title": "Get Paid Instantly",
+    "step4Desc": "The winning bid settles immediately and irreversibly. No partial payments, no waiting days for funds to clear."
+  },
+  "features": {
+    "badge": "FEATURES",
+    "headline": "Enforced by the ledger, not application logic",
+    "learnMore": "Learn more",
+    "feature1Title": "Sealed-Bid Auctions",
+    "feature1Point1": "Bids sealed until close",
+    "feature1Point2": "Seller sees nothing early",
+    "feature1Point3": "Enforced by Canton, not the UI",
+    "feature2Title": "Atomic Settlement",
+    "feature2Point1": "One transaction settles all",
+    "feature2Point2": "Losing bids rejected privately",
+    "feature2Point3": "No partial fills",
+    "feature3Title": "Anti-Fraud Registry",
+    "feature3Point1": "Checked before every listing",
+    "feature3Point2": "Same invoice can't be financed twice",
+    "feature3Point3": "Enforced on-chain"
+  },
+  "platform": {
+    "label": "platform",
+    "headline": "Invoice flow built for cash-sensitive teams.",
+    "intro": "Upload an invoice, get it risk-scored, and list it for financiers to bid on — all through one dashboard connected directly to Canton Network.",
+    "item1Title": "Instant invoice creation",
+    "item1Text": "Generate invoices and submit them to Canton Network in seconds.",
+    "item2Title": "Real-time status tracking",
+    "item2Text": "Track invoice lifecycle from pending to verified, bidding, and funded.",
+    "item3Title": "Risk-aware financing",
+    "item3Text": "Every invoice gets a deterministic 0–100 score and A–D grade before listing.",
+    "item4Title": "Audit-grade security",
+    "item4Text": "Every step — verify, list, bid, settle — is a real transaction on Canton."
+  },
+  "support": {
+    "label": "Support",
+    "headline": "Questions? Send us a message."
+  },
+  "contactForm": {
+    "namePlaceholder": "Your name",
+    "emailPlaceholder": "you@company.com",
+    "messagePlaceholder": "How can we help?",
+    "sending": "Sending…",
+    "send": "Send message",
+    "thanks": "Thanks — we'll get back to you soon.",
+    "genericError": "Something went wrong"
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  }
+}

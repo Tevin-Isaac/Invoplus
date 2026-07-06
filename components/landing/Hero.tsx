@@ -5,24 +5,15 @@ import { useEffect, useState } from 'react'
 import { Fraunces } from 'next/font/google'
 import { Menu, X, Moon, Sun } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
+import { useI18n } from '@/lib/i18n/I18nContext'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['500'], style: ['italic'], display: 'swap' })
-
-const navLinks = [
-  { label: 'platform', href: '#platform' },
-  { label: 'how it works', href: '#how-it-works' },
-  { label: 'features', href: '#features' },
-  { label: 'support', href: '#support' },
-]
 
 // Real numbers pulled directly from the code: max advance rate is the
 // Grade A ceiling in lib/risk-engine.ts, auction window is the default
 // durationHours in the ListForAuction flow, settlement is 100% on-chain.
-const stats = [
-  { value: '93%', label: 'Max Advance Rate' },
-  { value: '72h', label: 'Auction Window' },
-  { value: '100%', label: 'On-Chain Settlement' },
-]
+const statValues = ['93%', '72h', '100%']
 
 // Rendered as separate always-mounted <video> elements crossfaded by opacity,
 // instead of swapping a single element's `key`/`src`. Swapping key/src forces
@@ -43,6 +34,18 @@ const HOLD_MS = 9000
 const PLAYBACK_RATE = 0.65 // slower, calmer motion than native speed
 
 export function Hero() {
+  const { t } = useI18n()
+  const navLinks = [
+    { label: t('nav.platform'), href: '#platform' },
+    { label: t('nav.howItWorks'), href: '#how-it-works' },
+    { label: t('nav.features'), href: '#features' },
+    { label: t('nav.support'), href: '#support' },
+  ]
+  const stats = [
+    { value: statValues[0], label: t('hero.stat1Label') },
+    { value: statValues[1], label: t('hero.stat2Label') },
+    { value: statValues[2], label: t('hero.stat3Label') },
+  ]
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [currentVideo, setCurrentVideo] = useState(0)
@@ -114,6 +117,7 @@ export function Hero() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSwitcher />
           <button
             type="button"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -126,7 +130,7 @@ export function Hero() {
             href="/dashboard"
             className="bg-white text-black text-sm font-semibold rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors"
           >
-            launch app
+            {t('nav.launchApp')}
           </Link>
         </div>
 
@@ -151,6 +155,9 @@ export function Hero() {
               {link.label}
             </a>
           ))}
+          <div className="flex justify-center">
+            <LanguageSwitcher />
+          </div>
           <button
             type="button"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -164,7 +171,7 @@ export function Hero() {
             className="block w-full text-center bg-white text-black text-sm font-semibold rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors"
             onClick={() => setMobileMenuOpen(false)}
           >
-            launch app
+            {t('nav.launchApp')}
           </Link>
         </div>
       )}
@@ -174,22 +181,20 @@ export function Hero() {
           balanced instead of glued to the very bottom edge. */}
       <div className="relative z-10 flex min-h-screen flex-col justify-center px-6 md:px-10 pt-32 pb-16 md:pb-20">
         <h1 className="max-w-3xl text-4xl md:text-6xl lg:text-[4.25rem] font-semibold leading-[1.05] tracking-tight text-white">
-          Get paid today.
+          {t('hero.headline1')}
           <br />
-          <span className={`${fraunces.className} italic font-normal text-violet-200`}>Not in 90 days.</span>
+          <span className={`${fraunces.className} italic font-normal text-violet-200`}>{t('hero.headline2')}</span>
         </h1>
 
         <p className="mt-6 max-w-xl text-base md:text-lg text-white/70 leading-relaxed">
-          Turn unpaid invoices into cash in days, not months. List your invoice, let financiers
-          compete to fund it, and get paid the instant the winning bid is settled — no paperwork,
-          no bank, no waiting.
+          {t('hero.subtext')}
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link href="/dashboard" className="bg-white text-black text-sm font-semibold rounded-full px-6 py-3.5 hover:bg-neutral-200 transition-colors">
-            Launch App
+            {t('hero.launchApp')}
           </Link>
-          <a href="#how-it-works" className="text-white/90 text-sm font-medium hover:underline">See how it works</a>
+          <a href="#how-it-works" className="text-white/90 text-sm font-medium hover:underline">{t('hero.seeHowItWorks')}</a>
         </div>
 
         {/* Stats — verified against the current Daml source tree */}

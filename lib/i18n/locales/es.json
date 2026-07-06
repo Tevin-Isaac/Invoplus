@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "platform": "plataforma",
+    "howItWorks": "como funciona",
+    "features": "características",
+    "support": "apoyo",
+    "launchApp": "iniciar la aplicación"
+  },
+  "hero": {
+    "headline1": "Reciba su pago hoy.",
+    "headline2": "No en 90 días.",
+    "subtext": "Convierta las facturas impagas en efectivo en días, no en meses. Incluya su factura, deje que los financieros compitan para financiarla y reciba su pago en el instante en que se liquide la oferta ganadora: sin papeleos, sin bancos, sin esperas.",
+    "launchApp": "Iniciar aplicación",
+    "seeHowItWorks": "Mira como funciona",
+    "stat1Label": "Tasa máxima de avance",
+    "stat2Label": "Ventana de subasta",
+    "stat3Label": "Liquidación en cadena"
+  },
+  "howItWorks": {
+    "badge": "CÓMO FUNCIONA",
+    "headline": "De la factura al cobro en cuatro pasos",
+    "subtext": "Sin papeleo, sin esperas en el banco: solo un camino rápido y transparente desde la factura impaga hasta el dinero en mano.",
+    "step1Tag": "Subir",
+    "step1Title": "Sube y obtén puntaje",
+    "step1Desc": "Envíe su factura y obtenga una puntuación y calificación de riesgo instantáneas e imparciales, sin revisión manual ni esperas de un oficial de préstamos.",
+    "step2Tag": "Lista",
+    "step2Title": "Incluirlo para licitar",
+    "step2Desc": "Su factura se envía a un grupo de financieros y está protegida para que nunca se incluya en la lista ni se financie dos veces.",
+    "step3Tag": "Licitación",
+    "step3Title": "Los financieros hacen ofertas a ciegas",
+    "step3Desc": "Los financieros compiten en precio sin ver las ofertas de los demás, por lo que usted obtiene la mejor tasa que el mercado admite, no la primera.",
+    "step4Tag": "recibir pago",
+    "step4Title": "Reciba pagos al instante",
+    "step4Desc": "La oferta ganadora se liquida de forma inmediata e irreversible. Sin pagos parciales, sin días de espera para que se liquiden los fondos."
+  },
+  "features": {
+    "badge": "CARACTERÍSTICAS",
+    "headline": "Aplicado por el libro mayor, no por la lógica de la aplicación",
+    "learnMore": "Más información",
+    "feature1Title": "Subastas de oferta sellada",
+    "feature1Point1": "Ofertas selladas hasta el cierre",
+    "feature1Point2": "El vendedor no ve nada temprano",
+    "feature1Point3": "Aplicado por Cantón, no por la UI",
+    "feature2Title": "Asentamiento atómico",
+    "feature2Point1": "Una transacción lo liquida todo",
+    "feature2Point2": "Ofertas perdedoras rechazadas en privado",
+    "feature2Point3": "Sin rellenos parciales",
+    "feature3Title": "Registro Antifraude",
+    "feature3Point1": "Comprobado antes de cada anuncio.",
+    "feature3Point2": "La misma factura no se puede financiar dos veces",
+    "feature3Point3": "Aplicado en cadena"
+  },
+  "platform": {
+    "label": "plataforma",
+    "headline": "Flujo de facturas creado para equipos sensibles al efectivo.",
+    "intro": "Cargue una factura, califique su riesgo y publíquela para que los financieros puedan ofertar, todo a través de un panel conectado directamente a Canton Network.",
+    "item1Title": "Creación de factura instantánea",
+    "item1Text": "Genere facturas y envíelas a Canton Network en segundos.",
+    "item2Title": "Seguimiento de estado en tiempo real",
+    "item2Text": "Realice un seguimiento del ciclo de vida de las facturas, desde pendientes hasta verificadas, licitadas y financiadas.",
+    "item3Title": "Financiamiento consciente del riesgo",
+    "item3Text": "Cada factura obtiene una puntuación determinista de 0 a 100 y una calificación de A a D antes de incluirse en la lista.",
+    "item4Title": "Seguridad de grado de auditoría",
+    "item4Text": "Cada paso (verificar, cotizar, ofertar, liquidar) es una transacción real en Canton."
+  },
+  "support": {
+    "label": "Apoyo",
+    "headline": "¿Preguntas? Envíanos un mensaje."
+  },
+  "contactForm": {
+    "namePlaceholder": "Su nombre",
+    "emailPlaceholder": "usted@empresa.com",
+    "messagePlaceholder": "¿Cómo podemos ayudar?",
+    "sending": "Envío…",
+    "send": "enviar mensaje",
+    "thanks": "Gracias, nos comunicaremos con usted pronto.",
+    "genericError": "algo salió mal"
+  },
+  "footer": {
+    "rights": "Reservados todos los derechos."
+  }
+}

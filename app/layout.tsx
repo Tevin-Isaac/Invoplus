@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { CantonProvider } from '@/lib/canton'
 import { AuthProvider } from '@/lib/auth-context'
+import { I18nProvider } from '@/lib/i18n/I18nContext'
 
 export const metadata: Metadata = {
   title: 'Invoplus — Fast Invoice & Payment Platform',
@@ -25,11 +26,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="color-scheme" content="light dark" />
       </head>
       <body>
-        <CantonProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </CantonProvider>
+        <I18nProvider>
+          <CantonProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </CantonProvider>
+        </I18nProvider>
       </body>
     </html>
   )

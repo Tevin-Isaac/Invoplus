@@ -1,39 +1,33 @@
 import Image from 'next/image'
 import { Lock, Zap, ShieldCheck, Check, ArrowRight } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/I18nContext'
 
 // Cross-checked against what InvoPlus actually does. The three core Canton
 // guarantees — matches the hero stats and the how-it-works pillars.
-const features = [
-  {
-    number: '01',
-    icon: Lock,
-    title: 'Sealed-Bid Auctions',
-    points: ['Bids sealed until close', 'Seller sees nothing early', 'Enforced by Canton, not the UI'],
-  },
-  {
-    number: '02',
-    icon: Zap,
-    title: 'Atomic Settlement',
-    points: ['One transaction settles all', 'Losing bids rejected privately', 'No partial fills'],
-  },
-  {
-    number: '03',
-    icon: ShieldCheck,
-    title: 'Anti-Fraud Registry',
-    points: ['Checked before every listing', "Same invoice can't be financed twice", 'Enforced on-chain'],
-  },
-]
+const featureIcons = [Lock, Zap, ShieldCheck]
 
 export function Features() {
+  const { t } = useI18n()
+  const features = [1, 2, 3].map((n, i) => ({
+    number: `0${n}`,
+    icon: featureIcons[i],
+    title: t(`features.feature${n}Title`),
+    points: [
+      t(`features.feature${n}Point1`),
+      t(`features.feature${n}Point2`),
+      t(`features.feature${n}Point3`),
+    ],
+  }))
+
   return (
     <section id="features" className="py-12 lg:py-16 bg-slate-950 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-4">
-            <span className="text-xs text-slate-300 font-medium">FEATURES</span>
+            <span className="text-xs text-slate-300 font-medium">{t('features.badge')}</span>
           </div>
           <h2 className="text-3xl lg:text-4xl font-bold text-white">
-            Enforced by the ledger, not application logic
+            {t('features.headline')}
           </h2>
         </div>
 
@@ -75,7 +69,7 @@ export function Features() {
                 </ul>
 
                 <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-white hover:text-violet-300 transition-colors group">
-                  Learn more
+                  {t('features.learnMore')}
                   <ArrowRight className="w-3.5 h-3.5 -rotate-45 group-hover:translate-x-0.5 transition-transform" />
                 </a>
               </div>
