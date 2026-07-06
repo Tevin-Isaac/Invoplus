@@ -92,12 +92,12 @@ export function HowItWorks() {
           sticky cards below — `overflow-hidden` on a shared ancestor breaks
           `position: sticky` on descendants, which is what happened before. */}
       <div className="sticky top-0 h-screen overflow-hidden pointer-events-none -z-10">
-        <div className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/20 blur-[120px]" />
-        <div className="absolute top-1/3 -right-1/4 w-[500px] h-[500px] rounded-full bg-violet-400/10 blur-[120px]" />
+        <div className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/20 blur-[120px] animate-drift-1" />
+        <div className="absolute top-1/3 -right-1/4 w-[500px] h-[500px] rounded-full bg-violet-400/10 blur-[120px] animate-drift-2" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-24 lg:pt-32">
-        <div className="text-center mb-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-12 lg:pt-16">
+        <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-6">
             <span className="text-xs text-slate-300 font-medium">HOW IT WORKS</span>
           </div>
@@ -110,13 +110,11 @@ export function HowItWorks() {
         </div>
       </div>
 
-      <div ref={containerRef} style={{ height: `${steps.length * 90}vh` }} className="relative max-w-4xl mx-auto px-6">
+      <div ref={containerRef} style={{ height: `${steps.length * 70}vh` }} className="relative max-w-4xl mx-auto px-6">
         {steps.map((step, i) => (
           <StackCard key={step.number} step={step} index={i} total={steps.length} progress={scrollYProgress} />
         ))}
       </div>
-
-      <div className="h-24 lg:h-32" />
     </section>
   )
 }

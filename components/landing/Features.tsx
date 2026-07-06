@@ -26,9 +26,9 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="py-20 lg:py-28 bg-slate-950 border-t border-slate-800">
+    <section id="features" className="py-12 lg:py-16 bg-slate-950 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-4">
             <span className="text-xs text-slate-300 font-medium">FEATURES</span>
           </div>

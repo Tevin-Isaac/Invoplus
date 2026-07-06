@@ -12,8 +12,8 @@ export default function HomePage() {
       <Hero />
       <HowItWorks />
 
-      <main className="space-y-12">
-        <section id="platform" className="px-6 py-16 md:px-10 bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
+      <main>
+        <section id="platform" className="px-6 py-12 md:px-10 bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
           <div className="max-w-6xl mx-auto grid gap-12 lg:grid-cols-[1fr_1fr] items-center">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">platform</p>
@@ -55,7 +55,7 @@ export default function HomePage() {
 
         <Features />
 
-        <section id="support" className="px-6 py-14 md:px-10 bg-slate-100 dark:bg-slate-900">
+        <section id="support" className="px-6 py-10 md:px-10 bg-slate-100 dark:bg-slate-900">
           <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8 items-center">
             <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 order-2 md:order-1">
               <Image src="/support.png" alt="Support" width={1536} height={1024} className="w-full h-auto object-cover" />
