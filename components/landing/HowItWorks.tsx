@@ -54,7 +54,7 @@ function StackCard({
     <div className="sticky top-24 md:top-28 h-[70vh] flex items-start justify-center" style={{ top: `${96 + index * 24}px` }}>
       <motion.div
         style={{ scale }}
-        className="w-full max-w-4xl rounded-[2.5rem] border-2 border-white/15 bg-slate-900 p-8 md:p-12 shadow-2xl origin-top"
+        className="w-full max-w-4xl rounded-[2.5rem] border border-white/15 bg-slate-900/70 backdrop-blur-xl p-8 md:p-12 shadow-2xl origin-top"
       >
         <div className="flex items-start justify-between gap-6 mb-8">
           <span className="font-data text-6xl md:text-7xl font-bold text-white/10">{step.number}</span>
@@ -84,7 +84,15 @@ export function HowItWorks() {
   })
 
   return (
-    <section id="how-it-works" className="bg-slate-950 border-t border-slate-800">
+    <section id="how-it-works" className="relative bg-slate-950 border-t border-slate-800 overflow-hidden">
+      {/* Ambient "liquid glass" glow — stays in view as a sticky backdrop for
+          the whole scroll-driven card stack below, instead of scrolling away
+          with the content. Brand teal, not the reference's blue. */}
+      <div className="sticky top-0 h-screen pointer-events-none -z-10">
+        <div className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/20 blur-[120px]" />
+        <div className="absolute top-1/3 -right-1/4 w-[500px] h-[500px] rounded-full bg-violet-400/10 blur-[120px]" />
+      </div>
+
       <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-24 lg:pt-32">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-slate-900/50 border border-slate-800 rounded-full px-4 py-2 mb-6">
