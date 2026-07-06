@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Lock, Zap, ShieldCheck, Check, ArrowRight } from 'lucide-react'
 
 // Cross-checked against what InvoPlus actually does. The three core Canton
@@ -36,7 +37,18 @@ export function Features() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Image card — dashboard preview, sits alongside the 3 checklist cards */}
+          <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 lg:row-span-1">
+            <Image
+              src="/platform-preview.png"
+              alt="InvoPlus dashboard preview"
+              width={1536}
+              height={1024}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
           {features.map((feature) => {
             const Icon = feature.icon
             return (
