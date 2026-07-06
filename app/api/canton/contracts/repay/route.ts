@@ -50,14 +50,14 @@ export async function POST(req: Request) {
 
     const result = await submitAndWait(
       [sellerPartyId],
-      [financierPartyId, platformPartyId ?? sellerPartyId],
+      [financierPartyId, process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId],
       [{
         CreateCommand: {
           templateId: `${packageId}:InvoPlus.Repayment:RepaymentRequest`,
           createArguments: {
             seller:       sellerPartyId,
             financier:    financierPartyId,
-            platform:     platformPartyId ?? sellerPartyId,
+            platform:     process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId,
             invoiceId,
             fundedAmount: fundedAmount.toString(),
             yieldAmount:  yieldAmount.toString(),

@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     // Reject the listing if an active RegistryEntry already exists for this hash.
     if (invoiceHash) {
       const existing = await queryACS(
-        [platformPartyId ?? sellerPartyId],
+        [process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId],
         [`${packageId}:InvoPlus.Registry:RegistryEntry`],
       )
       const duplicate = existing.some((line: any) => {
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
     const result = await submitAndWait(
       [sellerPartyId],
-      [platformPartyId ?? sellerPartyId],
+      [process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId],
       [{
         ExerciseCommand: {
           templateId: `${packageId}:InvoPlus.Invoice:InvoiceContract`,

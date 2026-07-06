@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     // Financier acts + reads; seller read-only (they can't see bid contents)
     const result = await submitAndWait(
       [financierPartyId],
-      [platformPartyId ?? sellerPartyId],
+      [process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId],
       [{
         ExerciseCommand: {
           templateId: `${packageId}:InvoPlus.Invoice:Auction`,

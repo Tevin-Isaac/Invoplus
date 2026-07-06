@@ -50,7 +50,17 @@ export async function POST(req: Request) {
       templateIds = [`${packageId}:${templatePath}`]
     }
 
-    const contracts = await queryACS(parties, templateIds)
+    // Auctions are public marketplace listings, but on Canton a party only
+    // sees contracts it's a stakeholder in — and Auction's stakeholders are
+    // just seller + platform. Without this, a financier's marketplace would
+    // always be empty. The shared platform party signs every auction, so
+    // reading through its view exposes all listings to every user, while
+    // invoices/bids/funded stay strictly per-party.
+    const queryParties = template === 'auction' && process.env.CANTON_PLATFORM_PARTY
+      ? [process.env.CANTON_PLATFORM_PARTY]
+      : parties
+
+    const contracts = await queryACS(queryParties, templateIds)
 
     // Each entry's real shape: { contractEntry: { JsActiveContract: { createdEvent: {...} } } }
     const active = contracts

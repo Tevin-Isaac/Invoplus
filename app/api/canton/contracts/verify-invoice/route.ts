@@ -58,10 +58,14 @@ export async function POST(req: Request) {
       dueDate: dueDate ?? today,
     })
 
-    // Write score to Canton ledger via VerifyInvoice choice
+    // Write score to Canton ledger via VerifyInvoice choice. The choice's
+    // controller is the invoice's `platform` party, so when a shared platform
+    // party is configured it must be the one acting — not whatever party the
+    // client happens to be connected as.
+    const platform = process.env.CANTON_PLATFORM_PARTY ?? platformPartyId
     const result = await submitAndWait(
-      [platformPartyId],
-      [platformPartyId],
+      [platform],
+      [platform],
       [{
         ExerciseCommand: {
           templateId: `${packageId}:InvoPlus.Invoice:InvoiceContract`,

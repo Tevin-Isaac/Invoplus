@@ -73,13 +73,13 @@ export async function POST(req: Request) {
 
     const result = await submitAndWait(
       [sellerPartyId],
-      [platformPartyId ?? sellerPartyId],
+      [process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId],
       [{
         CreateCommand: {
           templateId,
           createArguments: {
             seller: sellerPartyId,
-            platform: platformPartyId ?? sellerPartyId,
+            platform: process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId,
             invoiceId,
             debtorName,
             debtorTaxId: debtorTaxId ?? '',
