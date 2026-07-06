@@ -94,7 +94,7 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false, tr
       <DialogTrigger asChild>
         <Button variant={isConnected ? 'outline' : 'default'} className={triggerClassName}>
           <Wallet className="mr-2 h-4 w-4" />
-          {triggerLabel ?? (isConnected ? 'Wallet Connected' : 'Connect Wallet')}
+          {triggerLabel ?? (isConnected ? 'Connected' : 'Connect')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -113,7 +113,7 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false, tr
 
             <Button onClick={handleConnect} disabled={isConnecting} className="w-full">
               {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wallet className="mr-2 h-4 w-4" />}
-              {isConnecting ? 'Waiting for approval…' : 'Connect Wallet'}
+              {isConnecting ? 'Waiting for approval…' : 'Connect'}
             </Button>
 
             <a

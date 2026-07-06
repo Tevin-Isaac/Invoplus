@@ -21,6 +21,7 @@ function CopyBtn({ text }: { text: string }) {
 export function Header({ title }: { title: string }) {
   const { isConnected, party, connect, connectWithPartyId, connectWithWallet, disconnect, isConnecting, ledgerStatus } = useCanton()
   const [modal, setModal] = useState<'closed' | 'choose' | 'paste'>('closed')
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // "paste party ID" form state
   const [pasteId, setPasteId] = useState('')
@@ -42,7 +43,7 @@ export function Header({ title }: { title: string }) {
     window.localStorage.setItem('invoplus-theme', theme)
   }, [theme])
 
-  const openModal = () => { setModal('choose'); setValidateResult(null); setPasteId('') }
+  const openModal = () => { setModal('choose'); setShowAdvanced(false); setValidateResult(null); setPasteId('') }
 
   const handleProvision = async (r: 'business' | 'financier') => {
     setModal('closed')
@@ -145,84 +146,92 @@ export function Header({ title }: { title: string }) {
         </div>
       </header>
 
-      {/* ── Choose connection method ──────────────────────────────────────────── */}
+      {/* ── Get started: pick a role first, advanced options tucked away ──────── */}
       {modal === 'choose' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connect to Canton DevNet</h3>
-                <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Use your Seaport party or let us provision one</p>
-              </div>
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-950 dark:text-white">Get started on InvoPlus</h3>
               <button onClick={() => setModal('closed')} className="text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
+            <p className="mb-4 text-xs text-slate-600 dark:text-slate-400">
+              Pick how you'll use the app — we'll set up your Canton identity in seconds. Nothing to install.
+            </p>
+
+            {/* DevNet notice */}
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Test network — Canton DevNet. Free to try, no real money moves.
+              </p>
+            </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-center mb-2">
-                <WalletConnect 
-                  onConnect={connectWithWallet}
-                  onDisconnect={disconnect}
-                  isConnected={isConnected}
-                />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-                <span className="text-xs text-slate-500 dark:text-slate-400">or use traditional methods</span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-              </div>
-
-              <button
-                onClick={() => setModal('paste')}
-                className="w-full flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition-all hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-                  <ExternalLink className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-950 dark:text-white">Use my Seaport Party ID</p>
-                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Paste the party ID from your existing Canton wallet on Seaport IDE</p>
-                </div>
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-                <span className="text-xs text-slate-500 dark:text-slate-400">or</span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-              </div>
-
               <button
                 onClick={() => handleProvision('business')}
-                className="w-full flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-left transition-all hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
+                className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-                  <Building2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
+                  <Building2 className="w-5 h-5 text-violet-600 dark:text-violet-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-950 dark:text-white">Business / Seller</p>
-                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Provision a new party — upload invoices and receive financing</p>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">I'm a business</p>
+                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">I have unpaid invoices and want to turn them into cash now</p>
                 </div>
               </button>
 
               <button
                 onClick={() => handleProvision('financier')}
-                className="w-full flex items-start gap-3 rounded-xl border border-slate-200 p-4 text-left transition-all hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
+                className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-                  <Landmark className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
+                  <Landmark className="w-5 h-5 text-violet-600 dark:text-violet-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-950 dark:text-white">Financier / Buyer</p>
-                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Provision a new party — browse auctions and submit sealed bids</p>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">I'm a financier</p>
+                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">I want to fund invoices by bidding in sealed auctions and earn yield</p>
                 </div>
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 mt-4 text-center dark:text-slate-400">
-              All parties live on Canton DevNet sandbox (fivenorth.io)
-            </p>
+            {/* Advanced: existing Canton identity */}
+            <button
+              onClick={() => setShowAdvanced(v => !v)}
+              className="mt-4 flex w-full items-center justify-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
+            >
+              Already have a Canton identity?
+              <ChevronDown className={cn('h-3 w-3 transition-transform', showAdvanced && 'rotate-180')} />
+            </button>
+
+            {showAdvanced && (
+              <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-950 dark:text-white">Canton DevNet Wallet</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Connect the validator's built-in Splice Wallet</p>
+                  </div>
+                  <WalletConnect
+                    onConnect={connectWithWallet}
+                    onDisconnect={disconnect}
+                    isConnected={isConnected}
+                    triggerClassName="shrink-0"
+                  />
+                </div>
+                <div className="h-px bg-slate-200 dark:bg-slate-800" />
+                <button
+                  onClick={() => setModal('paste')}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-950 dark:text-white">Seaport Party ID</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Paste a party ID from Seaport IDE (for developers)</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
