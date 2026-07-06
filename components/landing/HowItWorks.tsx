@@ -104,7 +104,20 @@ export function HowItWorks() {
           read as "huge wasted blank space" scrolling in from the hero. An
           absolute layer spans the section's real (content-driven) height
           instead, so no gap is introduced. */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* works.png (invoice/shield/clock/cash icon strip) repeated as a
+            faint watermark down the whole scroll-jacked section, at low
+            opacity (no blend mode — the source art is nearly all white,
+            so `screen`/`multiply` wash it out to nothing over a dark bg). */}
+        <div
+          className="absolute inset-0 opacity-[0.14]"
+          style={{
+            backgroundImage: 'url(/works-bg.png)',
+            backgroundRepeat: 'repeat-y',
+            backgroundSize: '640px auto',
+            backgroundPosition: 'center top',
+          }}
+        />
         <div className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/20 blur-[120px] animate-drift-1" />
         <div className="absolute top-1/3 -right-1/4 w-[500px] h-[500px] rounded-full bg-violet-400/10 blur-[120px] animate-drift-2" />
         {particles.map((p, i) => (
