@@ -76,8 +76,9 @@ export function Header({ title }: { title: string }) {
 
   return (
     <>
-      <header className="h-16 shrink-0 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95">
-        <h1 className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h1>
+      {/* pl-16 on mobile clears the fixed hamburger button */}
+      <header className="h-16 shrink-0 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 pl-16 pr-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 lg:px-6">
+        <h1 className="truncate text-lg font-semibold text-slate-950 dark:text-white">{title}</h1>
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex w-52 items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
@@ -134,10 +135,11 @@ export function Header({ title }: { title: string }) {
             <button
               onClick={openModal}
               disabled={isConnecting}
-              className="flex items-center gap-2 rounded-xl border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 dark:border-white dark:bg-white dark:text-slate-950"
+              className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-950 bg-slate-950 px-3 py-2 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 dark:border-white dark:bg-white dark:text-slate-950 md:px-4"
             >
               <Wallet className="w-4 h-4" />
-              {isConnecting ? 'Connecting…' : 'Connect Canton Wallet'}
+              <span className="hidden sm:inline">{isConnecting ? 'Connecting…' : 'Connect Canton Wallet'}</span>
+              <span className="sm:hidden">{isConnecting ? '…' : 'Connect'}</span>
             </button>
           )}
         </div>

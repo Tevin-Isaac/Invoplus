@@ -19,6 +19,8 @@ interface Position {
   status: 'active' | 'pending'; cantonRef: string; returnAtRepayment: number
 }
 
+const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
+
 export default function PortfolioPage() {
   const { party } = useCanton()
   const [positions, setPositions] = useState<Position[]>([])
@@ -75,121 +77,120 @@ export default function PortfolioPage() {
   const ccy = positions[0]?.currency || 'USD'
 
   const stats = [
-    { label: 'Capital Deployed', value: money(capitalDeployed, ccy), icon: DollarSign, gold: false },
-    { label: 'Return at Repayment', value: money(totalReturn, ccy), icon: TrendingUp, gold: true },
-    { label: 'Funded Positions', value: String(active.length), icon: Award, gold: false },
-    { label: 'Avg Yield (APR)', value: `${(avgYield * 100).toFixed(1)}%`, icon: Clock, gold: true },
+    { label: 'Capital Deployed', value: money(capitalDeployed, ccy), icon: DollarSign },
+    { label: 'Return at Repayment', value: money(totalReturn, ccy), icon: TrendingUp, accent: true },
+    { label: 'Funded Positions', value: String(active.length), icon: Award },
+    { label: 'Avg Yield (APR)', value: `${(avgYield * 100).toFixed(1)}%`, icon: Clock, accent: true },
   ]
 
   const filtered = filter === 'all' ? positions : positions.filter(p => p.status === filter)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <Header title="Portfolio" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map(s => {
             const Icon = s.icon
             return (
-              <div key={s.label} className={cn(
-                'bg-dark-card border border-dark-border rounded-2xl p-5 border-t-2',
-                s.gold ? 'border-t-violet-400/70' : 'border-t-violet-500/50'
-              )}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-dark-muted">{s.label}</p>
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', s.gold ? 'bg-violet-500/15' : 'bg-violet-500/10')}>
-                    <Icon className={cn('w-4 h-4', s.gold ? 'text-violet-300' : 'text-violet-400')} />
+              <div key={s.label} className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                    <Icon className="h-4 w-4 text-violet-600 dark:text-violet-300" />
                   </div>
                 </div>
-                <p className={cn('text-2xl font-bold font-data', s.gold ? 'text-violet-300' : 'text-white')}>{loading ? '—' : s.value}</p>
+                <p className={cn('font-data text-2xl font-bold', s.accent ? 'text-violet-600 dark:text-violet-300' : 'text-slate-950 dark:text-white')}>{loading ? '—' : s.value}</p>
               </div>
             )
           })}
         </div>
 
-        <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-4 flex items-start gap-3">
-          <EyeOff className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4">
+          <EyeOff className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />
           <div>
-            <p className="text-sm font-medium text-white">Your sealed bids are private Canton contracts</p>
-            <p className="text-xs text-dark-muted mt-0.5">Pending bids are visible only to you and the InvoPlus platform, not to the seller or other financiers. Enforced cryptographically by Canton.</p>
+            <p className="text-sm font-medium text-slate-950 dark:text-white">Your sealed bids are private Canton contracts</p>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Pending bids are visible only to you and the InvoPlus platform, not to the seller or other financiers. Enforced by Canton.</p>
           </div>
         </div>
 
-        <div className="bg-dark-card border border-dark-border rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between p-5 border-b border-dark-border">
-            <h2 className="text-sm font-semibold text-white">Funded Positions</h2>
+        {/* Positions */}
+        <div className={cn(panel, 'overflow-hidden')}>
+          <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
+            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Funded Positions</h2>
             <div className="flex gap-1">
               {(['all', 'active', 'pending'] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)} className={cn(
-                  'px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all',
-                  filter === f ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30' : 'text-dark-muted hover:text-white'
+                  'rounded-lg px-3 py-1 text-xs font-medium capitalize transition-all',
+                  filter === f
+                    ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
+                    : 'text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white'
                 )}>{f}</button>
               ))}
             </div>
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-              <p className="text-sm text-dark-muted">Loading positions from Canton…</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading positions from Canton…</p>
             </div>
           ) : !party ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2 text-center px-6">
-              <Wallet className="w-6 h-6 text-dark-muted" />
-              <p className="text-sm font-medium text-white">Connect your Canton wallet</p>
-              <p className="text-xs text-dark-muted max-w-xs">Connect a financier party to see your funded positions and sealed bids.</p>
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+              <Wallet className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+              <p className="text-sm font-medium text-slate-950 dark:text-white">Connect your Canton wallet</p>
+              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Connect a financier party to see your funded positions and sealed bids.</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2 text-center px-6">
-              <TrendingUp className="w-6 h-6 text-dark-muted" />
-              <p className="text-sm font-medium text-white">No positions yet</p>
-              <p className="text-xs text-dark-muted max-w-xs">Win a sealed-bid auction in the marketplace and your funded positions will appear here.</p>
+            <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
+              <TrendingUp className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+              <p className="text-sm font-medium text-slate-950 dark:text-white">No positions yet</p>
+              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Win a sealed-bid auction in the marketplace and your funded positions will appear here.</p>
             </div>
           ) : (
-            <div className="divide-y divide-dark-border">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {filtered.map(pos => (
-                <div key={pos.id} className="p-5 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <span className={cn('shrink-0 text-xs font-bold px-2 py-1 rounded-md border',
-                        pos.status === 'active' ? 'bg-violet-500/15 text-violet-300 border-violet-400/40' : 'bg-violet-500/15 text-violet-400 border-violet-500/30')}>
+                <div key={pos.id} className="p-5 transition-colors hover:bg-violet-500/[0.03]">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className={cn('shrink-0 rounded-md border px-2 py-1 text-xs font-bold',
+                        pos.status === 'active'
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300')}>
                         {pos.status === 'active' ? 'Funded' : 'Sealed'}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white">{pos.invoiceRef}</p>
-                        <p className="text-xs text-dark-muted truncate">{pos.debtor}</p>
-                        {pos.dueDate && <p className="text-xs text-dark-muted mt-0.5">Due {pos.dueDate}</p>}
+                        <p className="text-sm font-semibold text-slate-950 dark:text-white">{pos.invoiceRef}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{pos.debtor}</p>
+                        {pos.dueDate && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Due {pos.dueDate}</p>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 shrink-0 text-right flex-wrap">
+                    <div className="flex shrink-0 flex-wrap items-center gap-6 text-right">
                       <div>
-                        <p className="text-xs text-dark-muted">Face Value</p>
-                        <p className="text-sm font-semibold text-white">{money(pos.faceAmount, pos.currency)}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Face Value</p>
+                        <p className="font-data text-sm font-semibold text-slate-950 dark:text-white">{money(pos.faceAmount, pos.currency)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-dark-muted">Advance Rate</p>
-                        <p className="text-sm font-semibold text-white">{(pos.advanceRate * 100).toFixed(0)}%</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Advance Rate</p>
+                        <p className="font-data text-sm font-semibold text-slate-950 dark:text-white">{(pos.advanceRate * 100).toFixed(0)}%</p>
                       </div>
                       <div>
-                        <p className="text-xs text-dark-muted">Annual Rate</p>
-                        <p className="text-sm font-semibold text-violet-300 font-data">{(pos.annualRate * 100).toFixed(1)}%</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Annual Rate</p>
+                        <p className="font-data text-sm font-semibold text-violet-600 dark:text-violet-300">{(pos.annualRate * 100).toFixed(1)}%</p>
                       </div>
                       {pos.status === 'active' && (
                         <div>
-                          <p className="text-xs text-dark-muted">Return at Repayment</p>
-                          <p className="text-sm font-semibold text-violet-300 font-data">{money(pos.returnAtRepayment, pos.currency)}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Return at Repayment</p>
+                          <p className="font-data text-sm font-semibold text-violet-600 dark:text-violet-300">{money(pos.returnAtRepayment, pos.currency)}</p>
                         </div>
                       )}
-                      <span className={cn('text-xs px-2 py-1 rounded-md font-medium',
-                        pos.status === 'active' ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-500/15 text-violet-400')}>
-                        {pos.status === 'pending' ? '🔒 sealed' : 'active'}
-                      </span>
                     </div>
                   </div>
                   <div className="mt-3 flex items-center gap-1.5">
-                    <span className="text-xs text-dark-muted font-mono truncate max-w-[280px]">{pos.cantonRef}</span>
-                    <ExternalLink className="w-3 h-3 text-dark-muted shrink-0" />
+                    <span className="font-data max-w-[280px] truncate text-xs text-slate-400 dark:text-slate-500">{pos.cantonRef}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 text-slate-400 dark:text-slate-500" />
                   </div>
                 </div>
               ))}

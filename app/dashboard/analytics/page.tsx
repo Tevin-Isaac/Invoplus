@@ -10,16 +10,18 @@ import { cn } from '@/lib/utils'
 const val = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 const num = (x: any) => Number(val(x) ?? 0) || 0
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const gradeColor: Record<string, string> = { A: '#64748b', B: '#475569', C: '#94a3b8', D: '#cbd5e1' }
+const gradeColor: Record<string, string> = { A: '#14B892', B: '#2FCDA0', C: '#F59E0B', D: '#EF4444' }
 const fmtUSD = (n: number) => n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${Math.round(n)}`
+
+const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-dark-card border border-dark-border rounded-xl p-3 text-xs shadow-xl">
-      <p className="text-dark-muted mb-1">{label}</p>
+    <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-800">
+      <p className="mb-1 text-slate-500 dark:text-slate-400">{label}</p>
       {payload.map((p: any) => (
-        <p key={p.name} style={{ color: p.color }} className="font-semibold">
+        <p key={p.name} style={{ color: p.color }} className="font-data font-semibold">
           {p.name}: {typeof p.value === 'number' && p.value > 1000 ? `$${(p.value / 1000).toFixed(0)}K` : p.value}
         </p>
       ))}
@@ -29,9 +31,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 function EmptyChart({ label }: { label: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-[180px] gap-2 text-center">
-      <BarChart3 className="w-5 h-5 text-dark-muted" />
-      <p className="text-xs text-dark-muted max-w-[240px]">{label}</p>
+    <div className="flex h-[180px] flex-col items-center justify-center gap-2 text-center">
+      <BarChart3 className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+      <p className="max-w-[240px] text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   )
 }
@@ -94,74 +96,74 @@ export default function AnalyticsPage() {
     gradeCounts[grade] = (gradeCounts[grade] || 0) + 1
   })
   const totalGraded = Object.values(gradeCounts).reduce((s, n) => s + n, 0)
-  const gradeBreakdown = Object.entries(gradeCounts).map(([g, n]) => ({ name: `Grade ${g}`, value: n, pct: totalGraded ? Math.round((n / totalGraded) * 100) : 0, color: gradeColor[g] || '#9898A6' }))
+  const gradeBreakdown = Object.entries(gradeCounts).map(([g, n]) => ({ name: `Grade ${g}`, value: n, pct: totalGraded ? Math.round((n / totalGraded) * 100) : 0, color: gradeColor[g] || '#94a3b8' }))
 
   const kpis = [
-    { label: 'Total Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length} funded position${funded.length === 1 ? '' : 's'}`, gold: true },
-    { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions', gold: false },
-    { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries', gold: false },
+    { label: 'Total Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length} funded position${funded.length === 1 ? '' : 's'}`, accent: true },
+    { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions' },
+    { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries' },
   ]
 
   const performance = [
-    { label: 'Total Contracts', value: String(totalContracts), note: 'Invoice + Auction + Funded', gold: false },
-    { label: 'Registry Entries', value: String(registry), note: 'Anti-fraud records on Canton', gold: false },
-    { label: 'Funded Positions', value: String(funded.length), note: 'Settled atomically on ledger', gold: true },
-    { label: 'Ledger Block', value: ledgerStatus?.offset != null ? ledgerStatus.offset.toLocaleString() : '—', note: ledgerStatus?.ok ? 'DevNet · live' : 'DevNet · offline', gold: false },
+    { label: 'Total Contracts', value: String(totalContracts), note: 'Invoice + Auction + Funded' },
+    { label: 'Registry Entries', value: String(registry), note: 'Anti-fraud records on Canton' },
+    { label: 'Funded Positions', value: String(funded.length), note: 'Settled atomically on ledger', accent: true },
+    { label: 'Ledger Block', value: ledgerStatus?.offset != null ? ledgerStatus.offset.toLocaleString() : '—', note: ledgerStatus?.ok ? 'DevNet · live' : 'DevNet · offline' },
   ]
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden">
         <Header title="Analytics" />
-        <div className="flex-1 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-          <p className="text-sm text-dark-muted">Loading analytics from Canton…</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading analytics from Canton…</p>
         </div>
       </div>
     )
   }
   if (!party) {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden">
         <Header title="Analytics" />
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
-          <Wallet className="w-6 h-6 text-dark-muted" />
-          <p className="text-sm font-medium text-white">Connect your Canton wallet</p>
-          <p className="text-xs text-dark-muted max-w-xs">Analytics are computed from your live contracts on the Canton ledger. Connect a party to populate them.</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+          <Wallet className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+          <p className="text-sm font-medium text-slate-950 dark:text-white">Connect your Canton wallet</p>
+          <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Analytics are computed from your live contracts on the Canton ledger. Connect a party to populate them.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <Header title="Analytics" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
-        <div className="grid grid-cols-3 gap-4">
+        {/* KPIs */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {kpis.map(k => (
-            <div key={k.label} className={cn('bg-dark-card border border-dark-border rounded-2xl p-5 border-t-2', k.gold ? 'border-t-violet-400/70' : 'border-t-violet-500/50')}>
-              <p className="text-xs text-dark-muted mb-1">{k.label}</p>
-              <p className={cn('text-3xl font-bold font-data', k.gold ? 'text-violet-300' : 'text-white')}>{k.value}</p>
-              <p className="text-xs text-dark-muted mt-1">{k.sub}</p>
+            <div key={k.label} className={cn(panel, 'p-5')}>
+              <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">{k.label}</p>
+              <p className={cn('font-data text-3xl font-bold', k.accent ? 'text-violet-600 dark:text-violet-300' : 'text-slate-950 dark:text-white')}>{k.value}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{k.sub}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-sm font-semibold text-white">Monthly Funding Volume</h3>
-              <p className="text-xs text-dark-muted mt-0.5">Disbursed to invoice sellers, by settlement month</p>
-            </div>
+        {/* Volume chart */}
+        <div className={cn(panel, 'p-5 md:p-6')}>
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-slate-950 dark:text-white">Monthly Funding Volume</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Disbursed to invoice sellers, by settlement month</p>
           </div>
           {volumeData.length ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={volumeData} barSize={32}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#252530" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}K`} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(245,158,11,0.06)' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b833" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}K`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(20,184,146,0.06)' }} />
                 <Bar dataKey="funded" name="Funded" fill="#14B892" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -170,16 +172,17 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-1">Avg Advance Rate Trend</h3>
-            <p className="text-xs text-dark-muted mb-6">Average advance rate across funded positions, by month</p>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {/* Advance rate trend */}
+          <div className={cn(panel, 'p-5 md:p-6')}>
+            <h3 className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Avg Advance Rate Trend</h3>
+            <p className="mb-6 text-xs text-slate-500 dark:text-slate-400">Average advance rate across funded positions, by month</p>
             {rateData.length ? (
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={rateData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#252530" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[70, 100]} tick={{ fill: '#9898A6', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b833" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[70, 100]} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="avgAdvance" name="Advance %" stroke="#14B892" strokeWidth={2} dot={{ fill: '#14B892', r: 4 }} />
                 </LineChart>
@@ -189,9 +192,10 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
-            <h3 className="text-sm font-semibold text-white mb-1">Invoice Grade Distribution</h3>
-            <p className="text-xs text-dark-muted mb-4">Your invoices by risk grade from the scoring engine</p>
+          {/* Grade distribution */}
+          <div className={cn(panel, 'p-5 md:p-6')}>
+            <h3 className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Invoice Grade Distribution</h3>
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">Your invoices by risk grade from the scoring engine</p>
             {gradeBreakdown.length ? (
               <div className="flex items-center gap-6">
                 <ResponsiveContainer width={160} height={160}>
@@ -204,10 +208,10 @@ export default function AnalyticsPage() {
                 <div className="space-y-3">
                   {gradeBreakdown.map(g => (
                     <div key={g.name} className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
                       <div>
-                        <p className="text-xs font-medium text-white">{g.name}</p>
-                        <p className="text-xs text-dark-muted">{g.value} invoice{g.value === 1 ? '' : 's'} · {g.pct}%</p>
+                        <p className="text-xs font-medium text-slate-950 dark:text-white">{g.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{g.value} invoice{g.value === 1 ? '' : 's'} · {g.pct}%</p>
                       </div>
                     </div>
                   ))}
@@ -219,14 +223,15 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Canton Network Performance</h3>
-          <div className="grid grid-cols-4 gap-4">
+        {/* Network performance */}
+        <div className={cn(panel, 'p-5 md:p-6')}>
+          <h3 className="mb-4 text-sm font-semibold text-slate-950 dark:text-white">Canton Network Performance</h3>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {performance.map(s => (
-              <div key={s.label} className={cn('p-4 rounded-xl bg-dark-bg border', s.gold ? 'border-violet-400/30' : 'border-dark-border')}>
-                <p className="text-xs text-dark-muted mb-1">{s.label}</p>
-                <p className={cn('text-lg font-bold font-data', s.gold ? 'text-violet-300' : 'text-white')}>{s.value}</p>
-                <p className="text-xs text-dark-muted mt-1">{s.note}</p>
+              <div key={s.label} className={cn('rounded-xl border p-4', s.accent ? 'border-violet-500/30 bg-violet-500/[0.04]' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950')}>
+                <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
+                <p className={cn('font-data text-lg font-bold', s.accent ? 'text-violet-600 dark:text-violet-300' : 'text-slate-950 dark:text-white')}>{s.value}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{s.note}</p>
               </div>
             ))}
           </div>

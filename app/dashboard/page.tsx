@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { FileText, TrendingUp, Lock, Shield, RefreshCw, ArrowUpRight } from 'lucide-react'
+import { FileText, TrendingUp, Lock, Shield, RefreshCw, ArrowUpRight, Store, Tag } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,8 @@ const pv = (payload: any, key: string) => {
 const num = (x: any) => Number(x ?? 0) || 0
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
+const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
+
 async function fetchContracts(partyId: string, template: string) {
   const res = await fetch('/api/canton/contracts/list', {
     method: 'POST',
@@ -30,18 +32,29 @@ async function fetchContracts(partyId: string, template: string) {
   return data.ok ? data.contracts : []
 }
 
-function MiniBars({ values, from, to }: { values: number[]; from: string; to: string }) {
+function MiniBars({ values }: { values: number[] }) {
   if (!values.length) return null
   const max = Math.max(...values, 1)
   return (
     <div className="flex h-9 items-end gap-1">
       {values.map((v, i) => (
-        <span key={i} className="w-1.5 rounded-sm" style={{
+        <span key={i} className="w-1.5 rounded-sm bg-gradient-to-t from-violet-600 to-violet-400" style={{
           height: `${Math.max((v / max) * 100, 8)}%`,
-          background: `linear-gradient(180deg, ${from}, ${to})`,
-          opacity: 0.55 + (i / values.length) * 0.45,
+          opacity: 0.5 + (i / values.length) * 0.5,
         }} />
       ))}
+    </div>
+  )
+}
+
+function ChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-800">
+      <p className="mb-1 text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="font-data font-semibold text-violet-600 dark:text-violet-300">
+        ${Number(payload[0].value).toLocaleString()}
+      </p>
     </div>
   )
 }
@@ -85,7 +98,6 @@ export default function DashboardPage() {
 
   const { invoices, auctions, bids, funded } = data
 
-  // Monthly funded series for the big chart + mini bars, from real settledAt
   const monthly = (() => {
     const m = new Map<number, { label: string; amount: number }>()
     funded.forEach((c: any) => {
@@ -105,52 +117,52 @@ export default function DashboardPage() {
   const stats = [
     {
       label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
-      sub: `${funded.length} positions`, from: '#6ADFC0', to: '#0E8C6F', accent: 'text-violet-300',
+      sub: `${funded.length} position${funded.length === 1 ? '' : 's'}`,
       bars: monthly.map(m => m.amount),
     },
     {
       label: isFin ? 'Open bids' : 'Invoices', big: String(isFin ? bids.length : invoices.length),
-      sub: isFin ? 'sealed on ledger' : 'uploaded', from: '#2FCDA0', to: '#085142', accent: 'text-violet-300',
+      sub: isFin ? 'sealed on ledger' : 'uploaded',
       bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
     },
     {
       label: 'Active auctions', big: String(auctions.filter((c: any) => !pv(c.payload, 'settled')).length),
-      sub: 'sealed-bid live', from: '#6EE7B7', to: '#047857', accent: 'text-emerald-300',
+      sub: 'sealed-bid live',
       bars: auctions.slice(0, 8).map((c: any) => num(pv(c.payload, 'bidCount')) + 1),
     },
   ]
 
   const activity = [...funded.map((c: any) => ({
     id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Funded', note: pv(c.payload, 'debtorName') || 'settled',
-    amount: num(pv(c.payload, 'fundedAmount')), tone: 'text-violet-300', chip: 'F',
+    amount: num(pv(c.payload, 'fundedAmount')), chip: 'F',
   })), ...invoices.map((c: any) => ({
     id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Invoice', note: pv(c.payload, 'debtorName') || 'uploaded',
-    amount: num(pv(c.payload, 'faceAmount')), tone: 'text-slate-200', chip: 'I',
+    amount: num(pv(c.payload, 'faceAmount')), chip: 'I',
   }))].slice(0, 7)
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <Header title="Dashboard" />
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
+    <div className="flex h-full flex-col overflow-hidden">
+      <Header title="Overview" />
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
 
           {/* ══ Main column ══ */}
-          <div className="space-y-5 min-w-0">
+          <div className="min-w-0 space-y-5">
 
-            {/* Stat cards with mini bars */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Stat cards */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {stats.map(s => (
-                <div key={s.label} className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+                <div key={s.label} className={cn(panel, 'p-5')}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className={cn('font-data text-3xl font-bold', s.accent)}>{loading ? '—' : s.big}</p>
-                      <p className="mt-1 text-xs text-slate-500">{s.sub}</p>
+                      <p className="font-data text-3xl font-bold text-slate-950 dark:text-white">{loading ? '—' : s.big}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{s.sub}</p>
                     </div>
-                    <span className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 font-data text-[10px] uppercase tracking-[0.16em] text-slate-400">{s.label}</span>
+                    <span className="rounded-lg bg-violet-500/10 px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">{s.label}</span>
                   </div>
                   <div className="mt-4">
-                    {s.bars.length ? <MiniBars values={s.bars} from={s.from} to={s.to} /> : (
-                      <p className="font-data text-[10px] text-slate-600">no ledger data yet</p>
+                    {s.bars.length ? <MiniBars values={s.bars} /> : (
+                      <p className="font-data text-[10px] text-slate-400 dark:text-slate-500">no ledger data yet</p>
                     )}
                   </div>
                 </div>
@@ -158,13 +170,13 @@ export default function DashboardPage() {
             </div>
 
             {/* Big funding chart */}
-            <div className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-6 shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+            <div className={cn(panel, 'p-5 md:p-6')}>
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <h2 className="font-display text-lg font-semibold text-white">Funding volume</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">disbursed to sellers, by settlement month</p>
+                  <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Funding volume</h2>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">disbursed to sellers, by settlement month</p>
                 </div>
-                <span className="font-data rounded-lg border border-violet-400/25 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-300">USD</span>
+                <span className="font-data rounded-lg bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-600 dark:text-violet-300">USD</span>
               </div>
               {monthly.length ? (
                 <ResponsiveContainer width="100%" height={230}>
@@ -175,36 +187,36 @@ export default function DashboardPage() {
                         <stop offset="100%" stopColor="#14B892" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#221B38" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fill: '#6B6486', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#6B6486', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v / 1000}K`} />
-                    <Tooltip contentStyle={{ background: '#181226', border: '1px solid #2C2344', borderRadius: 12, fontSize: 12 }} labelStyle={{ color: '#9c93bd' }} />
-                    <Area type="monotone" dataKey="amount" stroke="#2FCDA0" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#2FCDA0', r: 3 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#94a3b833" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v / 1000}K`} />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Area type="monotone" dataKey="amount" stroke="#14B892" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#14B892', r: 3 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-[230px] flex-col items-center justify-center gap-2 text-center">
-                  <TrendingUp className="h-5 w-5 text-slate-600" />
-                  <p className="max-w-[260px] text-xs text-slate-500">{party ? 'Settle an auction on Canton and the funding curve draws itself here.' : 'Connect a party to chart live funding volume.'}</p>
+                  <TrendingUp className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                  <p className="max-w-[260px] text-xs text-slate-500 dark:text-slate-400">{party ? 'Settle an auction on Canton and the funding curve draws itself here.' : 'Connect a party to chart live funding volume.'}</p>
                 </div>
               )}
             </div>
 
             {/* Guarantees */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {[
-                { icon: Lock, title: 'Sealed bids', desc: 'Only the bidder and platform can see a bid — Canton observers, not app code.', chip: 'bg-violet-500/15 text-violet-300' },
-                { icon: Shield, title: 'No double financing', desc: 'A ledger key makes financing the same invoice twice fail at the protocol.', chip: 'bg-violet-500/15 text-violet-300' },
-                { icon: FileText, title: 'Atomic settlement', desc: 'Winner, funding, and transfer commit in one transaction.', chip: 'bg-emerald-500/15 text-emerald-300' },
+                { icon: Lock, title: 'Sealed bids', desc: 'Only the bidder and platform can see a bid — Canton observers, not app code.' },
+                { icon: Shield, title: 'No double financing', desc: 'The anti-fraud registry makes financing the same invoice twice fail at the ledger.' },
+                { icon: FileText, title: 'Atomic settlement', desc: 'Winner, funding, and transfer commit in one transaction.' },
               ].map(c => {
                 const Icon = c.icon
                 return (
-                  <div key={c.title} className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-5">
+                  <div key={c.title} className={cn(panel, 'p-5')}>
                     <div className="flex items-center gap-3">
-                      <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl', c.chip)}><Icon className="h-4 w-4" /></span>
-                      <p className="font-display font-semibold text-white">{c.title}</p>
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300"><Icon className="h-4 w-4" /></span>
+                      <p className="font-semibold text-slate-950 dark:text-white">{c.title}</p>
                     </div>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-400">{c.desc}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{c.desc}</p>
                   </div>
                 )
               })}
@@ -215,47 +227,46 @@ export default function DashboardPage() {
           <div className="space-y-5">
 
             {/* Ledger card */}
-            <div className="rounded-3xl border border-white/[0.07] bg-[#120E1F] p-5 shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
+            <div className={cn(panel, 'p-5')}>
               <div className="flex items-center justify-between">
-                <p className="font-data text-[11px] uppercase tracking-[0.24em] text-violet-300">Canton DevNet</p>
-                <button onClick={refresh} disabled={refreshing} className="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-60">
+                <p className="font-data text-[11px] uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">Canton DevNet</p>
+                <button onClick={refresh} disabled={refreshing} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-white/5">
                   <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
                 </button>
               </div>
               <div className="mt-4 flex items-center gap-3">
-                <span className={cn('h-2.5 w-2.5 rounded-full', status?.ok ? 'bg-emerald-400 animate-pulse' : ledgerLoading ? 'bg-violet-400 animate-pulse' : 'bg-red-400')} />
-                <p className="font-data text-xl text-white">
+                <span className={cn('h-2.5 w-2.5 rounded-full', status?.ok ? 'bg-emerald-500 animate-pulse' : ledgerLoading ? 'bg-amber-400 animate-pulse' : 'bg-red-400')} />
+                <p className="font-data text-xl text-slate-950 dark:text-white">
                   {status?.ok ? <>#{status.offset?.toLocaleString()}</> : ledgerLoading ? 'connecting…' : 'offline'}
                 </p>
               </div>
               {status?.ok && (
-                <p className="mt-2 font-data text-[11px] text-slate-500">{status.packageCount} packages · live</p>
+                <p className="mt-2 font-data text-[11px] text-slate-500 dark:text-slate-400">{status.packageCount} packages · live</p>
               )}
             </div>
 
             {/* Activity list */}
-            <div className="rounded-3xl border border-white/[0.07] bg-[#120E1F] shadow-[0_10px_35px_rgba(0,0,0,0.45)]">
-              <div className="flex items-center justify-between border-b border-white/[0.06] p-5">
-                <h3 className="font-display font-semibold text-white">Activity</h3>
-                <Link href="/dashboard/invoices" className="flex items-center gap-1 text-xs text-violet-300 hover:text-violet-200">
+            <div className={cn(panel, 'overflow-hidden')}>
+              <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
+                <h3 className="font-semibold text-slate-950 dark:text-white">Activity</h3>
+                <Link href="/dashboard/invoices" className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-500 dark:text-violet-300 dark:hover:text-violet-200">
                   all <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
               {loading ? (
-                <p className="p-5 text-sm text-slate-500">Loading…</p>
+                <p className="p-5 text-sm text-slate-500 dark:text-slate-400">Loading…</p>
               ) : activity.length === 0 ? (
-                <p className="p-5 text-sm text-slate-500">{party ? 'No contracts yet — activity lands here as you list and fund.' : 'Connect a party to see ledger activity.'}</p>
+                <p className="p-5 text-sm text-slate-500 dark:text-slate-400">{party ? 'No contracts yet — activity lands here as you list and fund.' : 'Connect a party to see ledger activity.'}</p>
               ) : (
-                <div className="divide-y divide-white/[0.05]">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {activity.map(a => (
                     <div key={a.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-data text-xs',
-                        a.chip === 'F' ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-500/15 text-violet-300')}>{a.chip}</span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10 font-data text-xs text-violet-600 dark:text-violet-300">{a.chip}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white">{a.name}</p>
-                        <p className="truncate text-xs text-slate-500">{a.note}</p>
+                        <p className="truncate text-sm font-medium text-slate-950 dark:text-white">{a.name}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{a.note}</p>
                       </div>
-                      <p className={cn('font-data text-sm font-bold', a.tone)}>{a.amount ? `$${a.amount >= 1000 ? (a.amount / 1000).toFixed(1) + 'K' : Math.round(a.amount)}` : ''}</p>
+                      <p className="font-data text-sm font-bold text-violet-600 dark:text-violet-300">{a.amount ? `$${a.amount >= 1000 ? (a.amount / 1000).toFixed(1) + 'K' : Math.round(a.amount)}` : ''}</p>
                     </div>
                   ))}
                 </div>
@@ -266,15 +277,15 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Submit', href: '/dashboard/invoices', icon: FileText },
-                { label: 'Auctions', href: '/dashboard/marketplace', icon: Lock },
-                { label: 'Offers', href: '/dashboard/offers', icon: TrendingUp },
-                { label: 'Portfolio', href: '/dashboard/portfolio', icon: Shield },
+                { label: 'Auctions', href: '/dashboard/marketplace', icon: Store },
+                { label: 'Offers', href: '/dashboard/offers', icon: Tag },
+                { label: 'Portfolio', href: '/dashboard/portfolio', icon: TrendingUp },
               ].map(a => {
                 const Icon = a.icon
                 return (
-                  <Link key={a.label} href={a.href} className="group flex flex-col items-center gap-2 rounded-2xl border border-white/[0.07] bg-[#120E1F] py-4 transition-all hover:-translate-y-0.5 hover:border-violet-500/40">
-                    <Icon className="h-4 w-4 text-violet-300 transition-colors group-hover:text-violet-300" />
-                    <span className="text-xs font-medium text-slate-300">{a.label}</span>
+                  <Link key={a.label} href={a.href} className={cn(panel, 'group flex flex-col items-center gap-2 py-4 transition-all hover:-translate-y-0.5 hover:border-violet-500/40')}>
+                    <Icon className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{a.label}</span>
                   </Link>
                 )
               })}
@@ -284,7 +295,7 @@ export default function DashboardPage() {
       </div>
 
       {fetchError && (
-        <div className="mx-6 mb-4 rounded-2xl border border-rose-500/25 bg-rose-500/10 p-3 text-sm text-rose-100">{fetchError}</div>
+        <div className="mx-6 mb-4 rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">{fetchError}</div>
       )}
     </div>
   )
