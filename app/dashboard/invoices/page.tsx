@@ -20,6 +20,7 @@ interface ScoreResult {
   ok: boolean
   contractId?: string
   invoiceId?: string
+  invoiceHash?: string
   riskScore?: number
   riskGrade?: string
   advanceRateRange?: string
@@ -28,6 +29,15 @@ interface ScoreResult {
   riskFactors?: string[]
   positiveFactors?: string[]
   cantonTemplateId?: string
+  error?: string
+}
+
+interface ListOutcome {
+  ok: boolean
+  auctionContractId?: string
+  auctionEnd?: string
+  durationHours?: number
+  message?: string
   error?: string
 }
 
@@ -43,6 +53,8 @@ export default function InvoicesPage() {
   const [drag, setDrag] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<ScoreResult | null>(null)
+  const [listing, setListing] = useState(false)
+  const [listOutcome, setListOutcome] = useState<ListOutcome | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     invoiceId: '', debtorName: '', debtorTaxId: '', amount: '',
@@ -86,17 +98,79 @@ export default function InvoicesPage() {
     load()
   }, [party])
 
+  // Two ledger transactions, in the order the Daml contract enforces:
+  // 1. VerifyInvoice (platform choice) — archives the Pending invoice and
+  //    creates a Verified replacement (contracts are immutable on Canton).
+  // 2. ListForAuction on the NEW contract — atomically creates the Auction
+  //    plus the anti-fraud RegistryEntry. Listing an unverified invoice
+  //    fails on-ledger with "Invoice must be Verified".
+  const [listStage, setListStage] = useState<'verify' | 'list' | null>(null)
+  const handleListForAuction = async () => {
+    if (!result?.contractId || !party?.id) return
+    setListing(true)
+    setListOutcome(null)
+    try {
+      setListStage('verify')
+      const vres = await fetch('/api/canton/contracts/verify-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platformPartyId: party.id,
+          invoiceContractId: result.contractId,
+          invoiceNumber: result.invoiceId,
+          debtorName: form.debtorName,
+          amount: parseFloat(form.amount),
+          currency: form.currency,
+          issueDate: form.issueDate,
+          dueDate: form.dueDate,
+        }),
+      })
+      const vdata = await vres.json()
+      if (!vdata.ok || !vdata.newInvoiceContractId) {
+        setListOutcome({ ok: false, error: vdata.error ?? 'Verification failed on Canton' })
+        return
+      }
+
+      setListStage('list')
+      const res = await fetch('/api/canton/contracts/list-auction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sellerPartyId: party.id,
+          platformPartyId: party.id,
+          invoiceContractId: vdata.newInvoiceContractId,
+          invoiceHash: result.invoiceHash,
+          minAdvanceRate: 0.8,
+          maxAnnualRate: 0.18,
+          durationHours: 72,
+        }),
+      })
+      const data = await res.json()
+      setListOutcome(data)
+    } catch (e) {
+      setListOutcome({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
+    } finally {
+      setListing(false)
+      setListStage(null)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!form.debtorName || !form.amount || !form.dueDate) return
+    if (!party?.id) {
+      setResult({ ok: false, error: 'Connect your Canton identity first — the invoice is signed by your party on the ledger.' })
+      return
+    }
     setSubmitting(true)
     setResult(null)
+    setListOutcome(null)
     try {
       const res = await fetch('/api/canton/contracts/create-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sellerPartyId: party?.id ?? 'demo-seller',
-          platformPartyId: party?.id ?? 'demo-seller',
+          sellerPartyId: party.id,
+          platformPartyId: party.id,
           invoiceId: form.invoiceId || `INV-${Date.now()}`,
           debtorName: form.debtorName,
           debtorTaxId: form.debtorTaxId,
@@ -288,9 +362,45 @@ export default function InvoicesPage() {
                   <p className="font-data text-xs text-slate-500 dark:text-slate-400">{result.cantonTemplateId}</p>
                 </div>
 
-                <button className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600">
-                  List for Sealed-Bid Auction →
-                </button>
+                {listOutcome?.ok ? (
+                  <div className="space-y-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">Listed for sealed-bid auction</p>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Auction runs {listOutcome.durationHours ?? 72}h — financiers can now bid blind. Auction + anti-fraud registry entry created in one atomic Canton transaction.
+                    </p>
+                    {listOutcome.auctionContractId && (
+                      <p className="font-data truncate text-xs text-slate-400 dark:text-slate-500">{listOutcome.auctionContractId}</p>
+                    )}
+                    <a href="/dashboard/marketplace" className="inline-block text-xs font-semibold text-violet-600 hover:underline dark:text-violet-300">
+                      View it in the marketplace →
+                    </a>
+                  </div>
+                ) : (
+                  <>
+                    {listOutcome && !listOutcome.ok && (
+                      <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                        <div>
+                          <p className="text-xs font-medium text-red-600 dark:text-red-300">Listing failed</p>
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{listOutcome.error}</p>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleListForAuction}
+                      disabled={listing || !party}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600 disabled:opacity-60"
+                    >
+                      {listing && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {listing
+                        ? (listStage === 'verify' ? 'Verifying invoice on Canton…' : 'Creating auction + registry entry…')
+                        : 'List for Sealed-Bid Auction →'}
+                    </button>
+                  </>
+                )}
               </>
             ) : (
               <div className="flex items-start gap-3">

@@ -82,6 +82,34 @@ export async function allocateParty(displayName: string, partyIdHint: string) {
   return res.json()
 }
 
+/**
+ * Grant the M2M user (the identity all our server-side commands run as —
+ * its ledger user id is the token's `sub` claim) CanActAs/CanReadAs on a
+ * party. Without this, commands submitted on behalf of a freshly allocated
+ * party fail with a permission error: allocation alone does NOT link the
+ * party to the submitting user.
+ */
+export async function grantM2MRights(party: string) {
+  const token = await getCantonToken()
+  const userId = String(JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub)
+  const res = await fetch(`${LEDGER_URL}/v2/users/${userId}/rights`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      // Note the extra `value` nesting — the v2 JSON API wraps each right's
+      // oneof payload, unlike the flatter shape /v2/users accepts on create.
+      rights: [
+        { kind: { CanActAs: { value: { party } } } },
+        { kind: { CanReadAs: { value: { party } } } },
+      ],
+    }),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`grantM2MRights failed: ${res.status} ${await res.text().catch(() => '')}`)
+  return res.json()
+}
+
 export async function createUser(userId: string, primaryParty: string) {
   const token = await getCantonToken()
   const res = await fetch(`${LEDGER_URL}/v2/users`, {

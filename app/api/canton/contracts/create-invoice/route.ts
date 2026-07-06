@@ -8,6 +8,7 @@
  * Daml template: InvoPlus.Invoice:InvoiceContract
  */
 import { NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { submitAndWait, getCantonToken } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
 import { scoreInvoice } from '@/lib/risk-engine'
@@ -58,6 +59,16 @@ export async function POST(req: Request) {
     // Compute invoice hash for anti-fraud registry
     const invoiceHash = `hash:${invoiceId}:${debtorTaxId ?? debtorName}:${faceAmount}`
 
+    // The Daml VerifyInvoice choice asserts validateHash on docHash (10–128
+    // chars), so an empty default fails at verification time. With no file
+    // upload in the flow, the "document" is the structured invoice record —
+    // fingerprint it deterministically.
+    const effectiveDocHash = docHash && String(docHash).length >= 10
+      ? docHash
+      : 'sha256:' + createHash('sha256')
+          .update(`${invoiceId}|${debtorName}|${debtorTaxId ?? ''}|${faceAmount}|${dueDate}`)
+          .digest('hex')
+
     const templateId = `${packageId}:InvoPlus.Invoice:InvoiceContract`
 
     const result = await submitAndWait(
@@ -76,7 +87,7 @@ export async function POST(req: Request) {
             currency: currency ?? 'USD',
             issueDate: issueDate ?? today,
             dueDate,
-            docHash: docHash ?? '',
+            docHash: effectiveDocHash,
             invoiceHash,
             aiScore: risk.score.toString(),
             riskGrade: `Grade_${risk.grade}`,
@@ -93,6 +104,9 @@ export async function POST(req: Request) {
       ok: true,
       contractId,
       invoiceId,
+      // Returned so the client can pass it straight to list-auction's
+      // anti-double-financing check without recomputing it.
+      invoiceHash,
       riskScore: risk.score,
       riskGrade: risk.grade,
       advanceRateRange: `${(risk.advanceRateMin * 100).toFixed(0)}–${(risk.advanceRateMax * 100).toFixed(0)}%`,

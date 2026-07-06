@@ -43,6 +43,7 @@ export default function OffersPage() {
   const totalYield = won.reduce((s, o) => s + o.estimatedYield, 0)
 
   const handleWithdraw = async (offer: MyOffer) => {
+    if (!party?.id) { setWithdrawError('Connect your Canton identity first.'); return }
     setWithdrawing(offer.id)
     setWithdrawError(null)
     try {
@@ -50,7 +51,7 @@ export default function OffersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          financierPartyId: party?.id ?? 'demo-financier',
+          financierPartyId: party.id,
           bidContractId: offer.bidContractId,
         }),
       })

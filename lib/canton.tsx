@@ -2,12 +2,17 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react'
 import type { Wallet as CantonAccount } from '@canton-network/core-wallet-dapp-rpc-client'
+import { useAuth } from '@/lib/auth-context'
 
 export interface CantonParty {
   id: string
   displayName: string
   type: 'business' | 'financier'
-  source: 'provisioned' | 'seaport' | 'wallet'  // how the party was connected
+  // account     = the party allocated when the user registered (auto-connected)
+  // provisioned = created on demand from the connect modal's role picker
+  // seaport     = existing party ID pasted from Seaport IDE
+  // wallet      = connected through a CIP-103 wallet
+  source: 'account' | 'provisioned' | 'seaport' | 'wallet'
 }
 
 export interface LedgerStatus {
@@ -18,15 +23,23 @@ export interface LedgerStatus {
   timestamp?: string
 }
 
+export interface ConnectOutcome {
+  ok: boolean
+  party?: CantonParty
+  error?: string
+}
+
 interface CantonContextType {
   isConnected: boolean
   party: CantonParty | null
   /** Provision a new Canton party via the platform M2M credentials */
-  connect: (role?: 'business' | 'financier') => Promise<void>
+  connect: (role?: 'business' | 'financier') => Promise<ConnectOutcome>
   /** Use an existing Seaport party ID directly */
   connectWithPartyId: (partyId: string, displayName: string, role: 'business' | 'financier') => Promise<void>
   /** Connect via the Canton DevNet Wallet (CIP-103, see components/wallet-connect.tsx) */
   connectWithWallet: (account: CantonAccount) => Promise<void>
+  /** Set the app-level role after connecting (wallet-first flow: connect, then pick role) */
+  updateRole: (role: 'business' | 'financier') => void
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
@@ -35,12 +48,62 @@ interface CantonContextType {
 
 const CantonContext = createContext<CantonContextType | null>(null)
 
+// Manual connections (role-provisioned, Seaport, wallet) survive page
+// reloads via localStorage. Account parties are re-derived from the session
+// instead, so they always track the logged-in user.
+const STORAGE_KEY = 'invoplus-party'
+
+function loadStoredParty(): CantonParty | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    if (p && typeof p.id === 'string' && p.source !== 'account') return p as CantonParty
+  } catch { /* corrupted -> ignore */ }
+  return null
+}
+
 export function CantonProvider({ children }: { children: ReactNode }) {
-  const [isConnected, setIsConnected] = useState(false)
-  const [party, setParty] = useState<CantonParty | null>(null)
+  const { user, loading: authLoading } = useAuth()
+  const [party, setPartyState] = useState<CantonParty | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [ledgerStatus, setLedgerStatus] = useState<LedgerStatus | null>(null)
   const [ledgerLoading, setLedgerLoading] = useState(true)
+
+  const setParty = useCallback((p: CantonParty | null) => {
+    setPartyState(p)
+    try {
+      if (p && p.source !== 'account') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(p))
+      else window.localStorage.removeItem(STORAGE_KEY)
+    } catch { /* storage unavailable */ }
+  }, [])
+
+  // Restore a manual connection from a previous visit.
+  useEffect(() => {
+    setPartyState(prev => prev ?? loadStoredParty())
+  }, [])
+
+  // The party allocated at registration IS the user's ledger identity —
+  // auto-connect it so a logged-in user never has to "connect" manually.
+  // A manual connection (provisioned/seaport/wallet) deliberately overrides it.
+  useEffect(() => {
+    if (authLoading) return
+    if (user?.party) {
+      setPartyState(prev => {
+        if (prev && prev.source !== 'account') return prev // manual override wins
+        if (prev?.id === user.party) return prev
+        return {
+          id: user.party!,
+          displayName: user.displayName || user.email.split('@')[0],
+          type: user.role === 'financier' ? 'financier' : 'business',
+          source: 'account',
+        }
+      })
+    } else {
+      // Logged out (or no party on the account): drop only account-sourced parties.
+      setPartyState(prev => (prev?.source === 'account' ? null : prev))
+    }
+  }, [user, authLoading])
 
   // Poll real Canton ledger status every 30s
   useEffect(() => {
@@ -62,46 +125,36 @@ export function CantonProvider({ children }: { children: ReactNode }) {
 
   /**
    * Provision a brand-new Canton party via platform M2M credentials.
-   * Used when the user doesn't have an existing Seaport party.
+   * Used when the user doesn't have an existing party. Fails loudly —
+   * no fake "demo party" fallback that pretends to be connected.
    */
-  const connect = useCallback(async (role: 'business' | 'financier' = 'business') => {
+  const connect = useCallback(async (role: 'business' | 'financier' = 'business'): Promise<ConnectOutcome> => {
     setIsConnecting(true)
     try {
       const res = await fetch('/api/canton/provision-party', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          displayName: role === 'business' ? 'InvoPlus Business' : 'InvoPlus Financier',
+          // Neutral name: in the wallet-first flow the role is picked AFTER
+          // connecting, so the on-ledger hint shouldn't bake a role in.
+          displayName: 'InvoPlus User',
           role,
         }),
       })
       const data = await res.json()
 
       if (data.ok) {
-        setParty({ id: data.partyId, displayName: data.displayName, type: role, source: 'provisioned' })
-        setIsConnected(true)
-      } else {
-        // Fallback to offline demo party so the UI still works
-        setParty({
-          id: `demo_${role}::${Date.now()}`,
-          displayName: role === 'business' ? 'Demo Business' : 'Demo Financier',
-          type: role,
-          source: 'provisioned',
-        })
-        setIsConnected(true)
+        const p: CantonParty = { id: data.partyId, displayName: data.displayName, type: role, source: 'provisioned' }
+        setParty(p)
+        return { ok: true, party: p }
       }
-    } catch {
-      setParty({
-        id: `demo_${role}::offline`,
-        displayName: 'Demo Party (offline)',
-        type: role,
-        source: 'provisioned',
-      })
-      setIsConnected(true)
+      return { ok: false, error: data.error ?? 'The Canton validator rejected the request. Try again in a moment.' }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Could not reach Canton DevNet. Check your connection and try again.' }
     } finally {
       setIsConnecting(false)
     }
-  }, [])
+  }, [setParty])
 
   /**
    * Connect using an existing Seaport party ID that the user pasted.
@@ -116,15 +169,32 @@ export function CantonProvider({ children }: { children: ReactNode }) {
     setIsConnecting(true)
     try {
       setParty({ id: partyId, displayName, type: role, source: 'seaport' })
-      setIsConnected(true)
     } finally {
       setIsConnecting(false)
     }
-  }, [])
+  }, [setParty])
 
   const disconnect = useCallback(() => {
     setParty(null)
-    setIsConnected(false)
+  }, [setParty])
+
+  /**
+   * Set the app-level role after connecting. The role never lives on the
+   * ledger — it only decides which UI the user sees (seller vs financier),
+   * so it's safe to pick it after the party is already connected.
+   */
+  const updateRole = useCallback((role: 'business' | 'financier') => {
+    setPartyState(prev => {
+      if (!prev) return prev
+      const displayName = prev.displayName === 'InvoPlus User'
+        ? (role === 'business' ? 'InvoPlus Business' : 'InvoPlus Financier')
+        : prev.displayName
+      const next = { ...prev, type: role, displayName }
+      try {
+        if (next.source !== 'account') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      } catch { /* storage unavailable */ }
+      return next
+    })
   }, [])
 
   /**
@@ -141,15 +211,14 @@ export function CantonProvider({ children }: { children: ReactNode }) {
         type: 'business',
         source: 'wallet',
       })
-      setIsConnected(true)
     } finally {
       setIsConnecting(false)
     }
-  }, [])
+  }, [setParty])
 
   return (
     <CantonContext.Provider value={{
-      isConnected, party, connect, connectWithPartyId, connectWithWallet, disconnect,
+      isConnected: party !== null, party, connect, connectWithPartyId, connectWithWallet, updateRole, disconnect,
       isConnecting, ledgerStatus, ledgerLoading,
     }}>
       {children}

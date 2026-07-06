@@ -10,6 +10,7 @@ interface Auction {
   id: string
   invoiceId: string
   buyer: string
+  seller: string          // Canton party ID of the invoice seller, from the Auction payload
   amount: number
   currency: string
   dueDate: string
@@ -54,15 +55,19 @@ function BidModal({ auction, onClose, onBidPlaced }: {
   const yieldAmount = Math.round(netAmount * annualRate / 100)
 
   const handleSubmit = async () => {
+    if (!party?.id) {
+      setResult({ ok: false, error: 'Connect your Canton identity first.' })
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/canton/contracts/submit-bid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          financierPartyId: party?.id ?? 'demo-financier',
-          sellerPartyId: 'demo-seller',
-          platformPartyId: party?.id ?? 'demo-financier',
+          financierPartyId: party.id,
+          sellerPartyId: auction.seller,
+          platformPartyId: party.id,
           auctionContractId: auction.auctionContractId,
           advanceRate: advance / 100,
           annualRate: annualRate / 100,
@@ -185,6 +190,7 @@ export default function MarketplacePage() {
             return {
               id: c.contractId.slice(0, 12),
               invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
+              seller: p.seller?.value ?? p.seller ?? '',
               buyer: p.debtorName?.value ?? p.debtorName ?? 'Unknown',
               amount: Number(p.faceAmount?.value ?? p.faceAmount ?? 0),
               currency: p.currency?.value ?? p.currency ?? 'USD',

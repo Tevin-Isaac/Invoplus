@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { allocateParty, createUser } from '@/lib/canton-server'
+import { allocateParty, createUser, grantM2MRights } from '@/lib/canton-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +18,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Party allocation failed', raw: partyResult }, { status: 500 })
     }
 
-    // Try to create a user for this party (best-effort)
+    // REQUIRED, not best-effort: all contract submissions run as the M2M
+    // user, which can only act for parties it has explicit rights on.
+    // Skipping this leaves a party that can connect but not transact.
+    await grantM2MRights(partyId)
+
+    // Try to create a dedicated ledger user for this party (best-effort)
     try {
       await createUser(`${hint}@invoplus`, partyId)
     } catch { /* may already exist */ }

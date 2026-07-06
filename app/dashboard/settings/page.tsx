@@ -78,7 +78,11 @@ export default function SettingsPage() {
                   <p className={cn(cell, 'px-3 py-2 text-xs text-slate-950 dark:text-white')}>
                     {(party as any).source === 'seaport'
                       ? 'Seaport IDE — your existing Canton wallet party'
-                      : 'Provisioned by InvoPlus platform on Canton DevNet'}
+                      : (party as any).source === 'wallet'
+                        ? 'Connected via Canton wallet'
+                        : (party as any).source === 'account'
+                          ? 'Your InvoPlus account — created when you registered'
+                          : 'Provisioned by InvoPlus platform on Canton DevNet'}
                   </p>
                 </div>
                 <div>

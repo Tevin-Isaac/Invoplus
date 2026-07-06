@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Shield, Moon, Sun } from 'lucide-react'
+import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
 import { WalletConnect } from '@/components/wallet-connect'
@@ -11,21 +11,27 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-      className="p-1 rounded hover:bg-white/10 text-dark-muted hover:text-white transition-colors"
+      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-950 transition-colors dark:hover:bg-white/10 dark:hover:text-white"
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
     </button>
   )
 }
 
+// Wallet-first wizard, like any web3 app:
+//   connect (pick HOW to connect) -> role (pick how you'll USE the app) -> done
+// The role is app-level only — it never lives on the ledger — so it's picked
+// after the party is connected, whatever the connection method was.
+type ModalStep = 'closed' | 'connect' | 'paste' | 'role' | 'done'
+
 export function Header({ title }: { title: string }) {
-  const { isConnected, party, connect, connectWithPartyId, connectWithWallet, disconnect, isConnecting, ledgerStatus } = useCanton()
-  const [modal, setModal] = useState<'closed' | 'choose' | 'paste'>('closed')
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const { isConnected, party, connect, connectWithPartyId, connectWithWallet, updateRole, disconnect, isConnecting, ledgerStatus } = useCanton()
+  const [modal, setModal] = useState<ModalStep>('closed')
+  const [provisioning, setProvisioning] = useState(false)
+  const [connectError, setConnectError] = useState<string | null>(null)
 
   // "paste party ID" form state
   const [pasteId, setPasteId] = useState('')
-  const [role, setRole] = useState<'business' | 'financier'>('business')
   const [validating, setValidating] = useState(false)
   const [validateResult, setValidateResult] = useState<{ ok: boolean; displayName?: string; error?: string } | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
@@ -43,11 +49,37 @@ export function Header({ title }: { title: string }) {
     window.localStorage.setItem('invoplus-theme', theme)
   }, [theme])
 
-  const openModal = () => { setModal('choose'); setShowAdvanced(false); setValidateResult(null); setPasteId('') }
+  const openModal = () => {
+    setModal('connect')
+    setConnectError(null)
+    setValidateResult(null)
+    setPasteId('')
+  }
 
-  const handleProvision = async (r: 'business' | 'financier') => {
-    setModal('closed')
-    await connect(r)
+  /** Method 1: instant identity — provision a fresh party on DevNet. */
+  const handleInstant = async () => {
+    setProvisioning(true)
+    setConnectError(null)
+    const result = await connect()
+    setProvisioning(false)
+    if (result.ok) {
+      setModal('role')
+    } else {
+      setConnectError(result.error ?? 'Could not create your identity. Try again.')
+    }
+  }
+
+  /** Method 2: CIP-103 wallet (hosted or browser extension) connected. */
+  const handleWalletConnected = async (account: Parameters<typeof connectWithWallet>[0]) => {
+    await connectWithWallet(account)
+    setModal('role')
+  }
+
+  /** Method 3: pasted Seaport party validated + connected. */
+  const handlePasteConnect = async () => {
+    if (!validateResult?.ok || !pasteId.trim()) return
+    await connectWithPartyId(pasteId.trim(), validateResult.displayName ?? pasteId.split('::')[0], 'business')
+    setModal('role')
   }
 
   const handleValidate = async () => {
@@ -69,10 +101,9 @@ export function Header({ title }: { title: string }) {
     }
   }
 
-  const handleConnect = async () => {
-    if (!validateResult?.ok || !pasteId.trim()) return
-    setModal('closed')
-    await connectWithPartyId(pasteId.trim(), validateResult.displayName ?? pasteId.split('::')[0], role)
+  const chooseRole = (role: 'business' | 'financier') => {
+    updateRole(role)
+    setModal('done')
   }
 
   return (
@@ -90,14 +121,11 @@ export function Header({ title }: { title: string }) {
           {ledgerStatus?.ok ? (
             <div className="hidden md:flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
               <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="font-data text-[11px] tracking-wider text-slate-600 uppercase dark:text-slate-400">DevNet</span>
               </span>
               <span className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
               <span className="font-data text-[11px] text-slate-600 dark:text-slate-400">block <span className="text-slate-950 dark:text-white">{ledgerStatus.offset?.toLocaleString()}</span></span>
-              {ledgerStatus.packageCount != null && (
-                <span className="font-data text-[11px] text-slate-600 dark:text-slate-400">pkgs <span className="text-slate-950 dark:text-white">{ledgerStatus.packageCount}</span></span>
-              )}
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
@@ -121,17 +149,30 @@ export function Header({ title }: { title: string }) {
           </button>
 
           {isConnected && party ? (
-            <button
-              onClick={disconnect}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
-              title="Click to disconnect"
-            >
-              <Wallet className="w-4 h-4" />
-              <span className="flex items-center gap-1.5 max-w-[140px] truncate">
-                {party.displayName}
-                <ChevronDown className="w-3 h-3 shrink-0" />
-              </span>
-            </button>
+            party.source === 'account' ? (
+              /* Account identity can't be "disconnected" — it IS the login.
+                 Link to Settings where the party details live instead. */
+              <a
+                href="/dashboard/settings"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+                title="Your account's Canton identity — view in Settings"
+              >
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="max-w-[140px] truncate">{party.displayName}</span>
+              </a>
+            ) : (
+              <button
+                onClick={disconnect}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+                title="Click to disconnect"
+              >
+                <Wallet className="w-4 h-4" />
+                <span className="flex items-center gap-1.5 max-w-[140px] truncate">
+                  {party.displayName}
+                  <ChevronDown className="w-3 h-3 shrink-0" />
+                </span>
+              </button>
+            )
           ) : (
             <button
               onClick={openModal}
@@ -145,21 +186,20 @@ export function Header({ title }: { title: string }) {
         </div>
       </header>
 
-      {/* ── Get started: pick a role first, advanced options tucked away ──────── */}
-      {modal === 'choose' && (
+      {/* ── Step 1: pick a connection method (web3 wallet-picker style) ───────── */}
+      {modal === 'connect' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-950 dark:text-white">Get started on InvoPlus</h3>
+              <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connect to InvoPlus</h3>
               <button onClick={() => setModal('closed')} className="text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="mb-4 text-xs text-slate-600 dark:text-slate-400">
-              Pick how you'll use the app — we'll set up your Canton identity in seconds. Nothing to install.
+              Your identity on Canton signs every invoice, bid, and settlement you make.
             </p>
 
-            {/* DevNet notice */}
             <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
               <p className="text-xs text-amber-700 dark:text-amber-300">
@@ -167,9 +207,89 @@ export function Header({ title }: { title: string }) {
               </p>
             </div>
 
+            {connectError && (
+              <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                <div>
+                  <p className="text-xs font-medium text-red-600 dark:text-red-300">Connection failed</p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{connectError}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              {/* Instant identity — the zero-friction default */}
+              <button
+                onClick={handleInstant}
+                disabled={provisioning}
+                className="group w-full flex items-center gap-3 rounded-xl border-2 border-violet-500/60 bg-violet-500/[0.04] p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.08] disabled:opacity-60"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15">
+                  {provisioning
+                    ? <Loader2 className="w-5 h-5 animate-spin text-violet-600 dark:text-violet-300" />
+                    : <Zap className="w-5 h-5 text-violet-600 dark:text-violet-300" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white">
+                    Instant identity
+                    <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-semibold text-white">Recommended</span>
+                  </p>
+                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">
+                    {provisioning ? 'Creating your Canton identity on DevNet…' : 'New here? We create your Canton identity in seconds — nothing to install.'}
+                  </p>
+                </div>
+              </button>
+
+              {/* Hosted wallet / browser extensions */}
+              <div className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
+                  <Wallet className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">Canton wallet</p>
+                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Hosted DevNet wallet or a browser extension</p>
+                </div>
+                <WalletConnect
+                  onConnect={handleWalletConnected}
+                  onDisconnect={disconnect}
+                  isConnected={false}
+                  triggerClassName="shrink-0"
+                />
+              </div>
+
+              {/* Seaport party (developers) */}
+              <button
+                onClick={() => setModal('paste')}
+                className="w-full flex items-center gap-3 rounded-xl border border-slate-200 p-4 text-left transition-all hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800/50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
+                  <ExternalLink className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">Seaport party ID</p>
+                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">For developers — paste an existing Canton party</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 2: how will you use the app? ─────────────────────────────────── */}
+      {modal === 'role' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-1 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-emerald-500" />
+              <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connected — one more thing</h3>
+            </div>
+            <p className="mb-5 text-xs text-slate-600 dark:text-slate-400">
+              How will you use InvoPlus? This just picks which dashboard you see — you can switch anytime.
+            </p>
+
             <div className="space-y-3">
               <button
-                onClick={() => handleProvision('business')}
+                onClick={() => chooseRole('business')}
                 className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
@@ -182,7 +302,7 @@ export function Header({ title }: { title: string }) {
               </button>
 
               <button
-                onClick={() => handleProvision('financier')}
+                onClick={() => chooseRole('financier')}
                 className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
@@ -194,48 +314,47 @@ export function Header({ title }: { title: string }) {
                 </div>
               </button>
             </div>
-
-            {/* Advanced: existing Canton identity */}
-            <button
-              onClick={() => setShowAdvanced(v => !v)}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-950 dark:text-slate-400 dark:hover:text-white"
-            >
-              Already have a Canton identity?
-              <ChevronDown className={cn('h-3 w-3 transition-transform', showAdvanced && 'rotate-180')} />
-            </button>
-
-            {showAdvanced && (
-              <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-950 dark:text-white">Canton DevNet Wallet</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Connect the validator's built-in Splice Wallet</p>
-                  </div>
-                  <WalletConnect
-                    onConnect={connectWithWallet}
-                    onDisconnect={disconnect}
-                    isConnected={isConnected}
-                    triggerClassName="shrink-0"
-                  />
-                </div>
-                <div className="h-px bg-slate-200 dark:bg-slate-800" />
-                <button
-                  onClick={() => setModal('paste')}
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-950 dark:text-white">Seaport Party ID</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Paste a party ID from Seaport IDE (for developers)</p>
-                  </div>
-                  <ExternalLink className="h-4 w-4 shrink-0 text-slate-400" />
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* ── Paste Seaport party ID ────────────────────────────────────────────── */}
+      {/* ── Step 3: done — show exactly what you're connected as ──────────────── */}
+      {modal === 'done' && party && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl text-center dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15">
+              <CheckCircle className="h-7 w-7 text-emerald-500" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-950 dark:text-white">You're all set</h3>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              {party.type === 'business'
+                ? 'Submit an invoice from the Invoices page and list it for financiers to bid on.'
+                : 'Browse live auctions in the Marketplace and place your first sealed bid.'}
+            </p>
+            <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-700 dark:bg-slate-950">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Connected as</p>
+                <p className="text-sm font-medium text-slate-950 dark:text-white">{party.displayName} · <span className="capitalize text-violet-600 dark:text-violet-300">{party.type}</span></p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Canton Party ID</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-data flex-1 truncate text-xs text-slate-500 dark:text-slate-400">{party.id}</p>
+                  <CopyBtn text={party.id} />
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setModal('closed')}
+              className="mt-4 w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600"
+            >
+              {party.type === 'business' ? 'Go to my dashboard' : 'Browse the marketplace'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Seaport party ID (developer path) ─────────────────────────────────── */}
       {modal === 'paste' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
@@ -244,7 +363,7 @@ export function Header({ title }: { title: string }) {
                 <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connect Seaport Party</h3>
                 <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Validate your Canton party on the DevNet ledger</p>
               </div>
-              <button onClick={() => setModal('choose')} className="text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
+              <button onClick={() => setModal('connect')} className="text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -283,12 +402,12 @@ export function Header({ title }: { title: string }) {
                 <div className={cn(
                   'rounded-xl p-3 flex items-start gap-2.5 text-sm border',
                   validateResult.ok
-                    ? 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'
-                    : 'border-slate-300 bg-slate-100 dark:border-slate-600 dark:bg-slate-800'
+                    ? 'border-emerald-500/30 bg-emerald-500/10'
+                    : 'border-red-500/30 bg-red-500/10'
                 )}>
                   {validateResult.ok
-                    ? <CheckCircle className="w-4 h-4 text-slate-700 shrink-0 mt-0.5 dark:text-slate-300" />
-                    : <AlertTriangle className="w-4 h-4 text-slate-700 shrink-0 mt-0.5 dark:text-slate-300" />
+                    ? <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    : <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   }
                   <div>
                     {validateResult.ok ? (
@@ -305,40 +424,17 @@ export function Header({ title }: { title: string }) {
                   </div>
                 </div>
               )}
-
-              {validateResult?.ok && (
-                <div>
-                  <label className="text-xs text-slate-600 mb-2 block dark:text-slate-400">Connect as</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['business', 'financier'] as const).map(r => (
-                      <button
-                        key={r}
-                        onClick={() => setRole(r)}
-                        className={cn(
-                          'flex items-center gap-2 p-3 rounded-xl border text-sm font-medium transition-all',
-                          role === r
-                            ? 'border-slate-950 bg-slate-100 text-slate-950 dark:border-white dark:bg-slate-800 dark:text-white'
-                            : 'border-slate-200 text-slate-600 hover:text-slate-950 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400 dark:hover:text-white'
-                        )}
-                      >
-                        {r === 'business' ? <Building2 className="w-4 h-4" /> : <Landmark className="w-4 h-4" />}
-                        {r === 'business' ? 'Business' : 'Financier'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="flex gap-3 mt-5">
               <button
-                onClick={() => setModal('choose')}
+                onClick={() => setModal('connect')}
                 className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-medium text-slate-600 transition-colors hover:text-slate-950 dark:border-slate-700 dark:text-slate-400 dark:hover:text-white"
               >
                 Back
               </button>
               <button
-                onClick={handleConnect}
+                onClick={handlePasteConnect}
                 disabled={!validateResult?.ok}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-950 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-40 dark:bg-white dark:text-slate-950"
               >

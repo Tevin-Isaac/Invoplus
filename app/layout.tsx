@@ -27,11 +27,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <I18nProvider>
-          <CantonProvider>
-            <AuthProvider>
+          {/* AuthProvider outside CantonProvider: the Canton context reads the
+              logged-in user to auto-connect the party allocated at registration. */}
+          <AuthProvider>
+            <CantonProvider>
               {children}
-            </AuthProvider>
-          </CantonProvider>
+            </CantonProvider>
+          </AuthProvider>
         </I18nProvider>
       </body>
     </html>
