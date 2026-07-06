@@ -34,6 +34,15 @@ interface WalletConnectProps {
 
 // Lazily loaded: the SDK touches browser storage at module-init time, which
 // errors during Next.js's server-side prerendering if imported at the top level.
+//
+// Two adapters are registered:
+// - RemoteAdapter: FiveNorth's hosted Splice Wallet (works with zero install)
+// - ExtensionAdapter: discovers any CIP-103 Canton wallet browser extension
+//   the user has installed (announced via postMessage, same pattern as
+//   EIP-6963 on Ethereum)
+// When more than one is detected, the SDK's built-in picker opens on
+// connect() and lets the user choose; otherwise it connects to the one
+// available wallet directly.
 let initialized = false
 async function getDappSdk() {
   const mod = await import('@canton-network/dapp-sdk')
@@ -44,6 +53,10 @@ async function getDappSdk() {
           rpcUrl: WALLET_GATEWAY_URL,
           providerId: 'fivenorth-splice-wallet',
           name: 'Canton DevNet Wallet',
+        }),
+        new mod.ExtensionAdapter({
+          name: 'Browser Extension Wallet',
+          description: 'A CIP-103 Canton wallet extension installed in this browser',
         }),
       ],
     })
@@ -103,7 +116,7 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected = false, tr
           <DialogDescription>
             {isConnected
               ? 'Your wallet is connected. You can disconnect below.'
-              : "InvoPlus connects to FiveNorth's Splice Wallet — no install required."}
+              : 'Connects to the hosted DevNet wallet (no install), or any Canton wallet extension in your browser.'}
           </DialogDescription>
         </DialogHeader>
 

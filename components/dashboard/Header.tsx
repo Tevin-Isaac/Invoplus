@@ -139,8 +139,7 @@ export function Header({ title }: { title: string }) {
               className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-slate-950 bg-slate-950 px-3 py-2 text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-60 dark:border-white dark:bg-white dark:text-slate-950 md:px-4"
             >
               <Wallet className="w-4 h-4" />
-              <span className="hidden sm:inline">{isConnecting ? 'Connecting…' : 'Connect Canton Wallet'}</span>
-              <span className="sm:hidden">{isConnecting ? '…' : 'Connect'}</span>
+              {isConnecting ? 'Connecting…' : 'Connect'}
             </button>
           )}
         </div>
