@@ -15,12 +15,13 @@ const navLinks = [
   { label: 'support', href: '#support' },
 ]
 
-// Outcome-oriented, not implementation detail — each is still a real,
-// verifiable guarantee (see HowItWorks for the contracts behind them).
+// Real numbers pulled directly from the code: max advance rate is the
+// Grade A ceiling in lib/risk-engine.ts, auction window is the default
+// durationHours in the ListForAuction flow, settlement is 100% on-chain.
 const stats = [
-  { value: 'Sealed', label: 'Bid Privacy' },
-  { value: 'Atomic', label: 'Settlement' },
-  { value: '0', label: 'Double-Financing Risk' },
+  { value: '93%', label: 'Max Advance Rate' },
+  { value: '72h', label: 'Auction Window' },
+  { value: '100%', label: 'On-Chain Settlement' },
 ]
 
 // Rendered as separate always-mounted <video> elements crossfaded by opacity,

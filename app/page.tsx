@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { Hero } from '@/components/landing/Hero'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { Features } from '@/components/landing/Features'
+import { ContactForm } from '@/components/landing/ContactForm'
 import { Footer } from '@/components/landing/Footer'
 import { Check } from 'lucide-react'
 
@@ -53,40 +54,17 @@ export default function HomePage() {
 
         <Features />
 
-        <section id="support" className="px-6 py-16 md:px-10 bg-slate-100 text-slate-950 dark:bg-slate-900 dark:text-white relative overflow-hidden">
-          {/* Background decorations */}
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-slate-200/40 dark:bg-slate-800/30 -translate-y-1/3 translate-x-1/3 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-slate-200/30 dark:bg-slate-800/20 translate-y-1/3 -translate-x-1/3 blur-3xl" />
-          
-          <div className="max-w-4xl mx-auto relative">
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 mb-6">
-                <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">SUPPORT</span>
-              </div>
-              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-slate-950 dark:text-white">Launch with confidence.</h2>
-              <p className="mt-6 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-8">
-                Our team is ready to help you onboard quickly, answer questions, and connect your first invoices to funding in one dashboard.
-              </p>
+        <section id="support" className="px-6 py-14 md:px-10 bg-slate-100 dark:bg-slate-900">
+          <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+            <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 order-2 md:order-1">
+              <Image src="/support.png" alt="Support" width={1536} height={1024} className="w-full h-auto object-cover" />
             </div>
-            
-            {/* Contact CTA Card */}
-            <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 p-10 md:p-12 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-slate-200/50 dark:bg-slate-800/30 -translate-y-1/2 translate-x-1/2 blur-2xl" />
-              <div className="relative grid md:grid-cols-2 gap-8 items-center">
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 uppercase tracking-[0.25em] mb-4">Ready to start?</p>
-                  <p className="text-3xl md:text-4xl font-semibold text-slate-950 dark:text-white mb-3">hello@invoplus.com</p>
-                  <p className="text-slate-600 dark:text-slate-400 leading-7">Have questions? We'll help you get set up and supported from day one.</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4 md:justify-end">
-                  <a href="/dashboard" className="inline-flex items-center justify-center bg-slate-950 dark:bg-white text-white dark:text-slate-950 text-sm font-semibold rounded-full px-8 py-4 hover:opacity-90 transition shadow-lg hover:shadow-xl">
-                    Open Dashboard
-                  </a>
-                  <a href="#platform" className="inline-flex items-center justify-center border border-slate-200 dark:border-slate-800 bg-transparent text-slate-950 dark:text-white text-sm font-semibold rounded-full px-8 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                    Learn More
-                  </a>
-                </div>
-              </div>
+            <div className="order-1 md:order-2">
+              <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400 mb-3">Support</p>
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-950 dark:text-white mb-4">
+                Questions? Send us a message.
+              </h2>
+              <ContactForm />
             </div>
           </div>
         </section>
