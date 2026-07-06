@@ -1,16 +1,8 @@
-import { BarChart3, Lock, Zap, ShieldCheck, Wallet, LineChart } from 'lucide-react'
+import { Lock, Zap, ShieldCheck } from 'lucide-react'
 
-// Cross-checked against what InvoPlus actually does — no "instant funding"
-// (funding happens through a sealed-bid auction, not instantly), no client
-// portal (there's no debtor-facing UI at all), no "auto-fill templates"
-// (the invoice form is a plain manual form). Every feature below maps to a
-// real page, API route, or Daml contract in this codebase.
+// Cross-checked against what InvoPlus actually does. The three core Canton
+// guarantees — matches the hero stats and the original pillar messaging.
 const features = [
-  {
-    icon: BarChart3,
-    title: 'Deterministic Risk Scoring',
-    description: 'Every invoice gets a 0–100 score and A–D grade from tenor, amount, currency, and debtor profile — computed server-side, no external API, no black box.',
-  },
   {
     icon: Lock,
     title: 'Sealed-Bid Auctions',
@@ -25,16 +17,6 @@ const features = [
     icon: ShieldCheck,
     title: 'Anti-Fraud Registry',
     description: 'A registry entry is checked before every listing — the same invoice can never be financed twice.',
-  },
-  {
-    icon: LineChart,
-    title: 'Live Analytics',
-    description: 'Funding volume, advance rate trends, and grade distribution — computed from your actual contracts on Canton, not sample data.',
-  },
-  {
-    icon: Wallet,
-    title: 'Canton Wallet Connect',
-    description: "Connect with FiveNorth's Splice Wallet — no browser extension to install, no separate account to create.",
   },
 ]
 
@@ -54,7 +36,7 @@ export function Features() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((feature, i) => {
             const Icon = feature.icon
             return (

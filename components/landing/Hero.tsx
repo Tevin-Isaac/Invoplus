@@ -15,12 +15,12 @@ const navLinks = [
   { label: 'support', href: '#support' },
 ]
 
-// Verified against the current daml/InvoPlus source tree — update these if
-// the module/template count changes.
+// Outcome-oriented, not implementation detail — each is still a real,
+// verifiable guarantee (see HowItWorks for the contracts behind them).
 const stats = [
-  { value: '8', label: 'Daml Modules' },
-  { value: '26', label: 'Contract Templates' },
-  { value: '100%', label: 'On-Chain Settlement' },
+  { value: 'Sealed', label: 'Bid Privacy' },
+  { value: 'Atomic', label: 'Settlement' },
+  { value: '0', label: 'Double-Financing Risk' },
 ]
 
 // Rendered as separate always-mounted <video> elements crossfaded by opacity,
@@ -155,23 +155,16 @@ export function Hero() {
           on short viewports; justify-center (not justify-end) keeps the block
           balanced instead of glued to the very bottom edge. */}
       <div className="relative z-10 flex min-h-screen flex-col justify-center px-6 md:px-10 pt-32 pb-16 md:pb-20">
-        <p className="text-xs md:text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300/90 mb-4">
-          Live on Canton Network
-        </p>
-
         <h1 className="max-w-3xl text-4xl md:text-6xl lg:text-[4.25rem] font-semibold leading-[1.05] tracking-tight text-white">
-          Get paid today.{' '}
+          Get paid today.
+          <br />
           <span className={`${fraunces.className} italic font-normal text-violet-200`}>Not in 90 days.</span>
         </h1>
 
-        <p className="mt-4 text-lg md:text-xl text-white/80 font-medium">
-          Sealed-bid invoice financing on Canton Network
-        </p>
-
-        <p className="mt-4 max-w-xl text-base md:text-lg text-white/70 leading-relaxed">
-          Financiers compete blind for your invoice — sealed bids on Canton that nobody else can see,
-          not even you, until the auction closes. One atomic transaction settles everything at once:
-          no partial fills, no double-financing, no waiting on trust.
+        <p className="mt-6 max-w-xl text-base md:text-lg text-white/70 leading-relaxed">
+          Sell your invoice to the highest bidder — blind. Every offer is a private Canton contract
+          you can't see until the auction closes, and settlement happens in one atomic transaction:
+          no partial fills, no double-financing.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">

@@ -14,8 +14,8 @@ export function Footer() {
 
         <div className="flex flex-wrap items-center gap-5 text-sm text-slate-500 dark:text-slate-400">
           <Link href="#platform" className="hover:text-slate-900 dark:hover:text-white transition-colors">platform</Link>
+          <Link href="#how-it-works" className="hover:text-slate-900 dark:hover:text-white transition-colors">how it works</Link>
           <Link href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors">features</Link>
-          <Link href="#company" className="hover:text-slate-900 dark:hover:text-white transition-colors">company</Link>
           <Link href="#support" className="hover:text-slate-900 dark:hover:text-white transition-colors">support</Link>
           <a
             href="https://x.com/invoplus"
