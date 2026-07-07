@@ -1,12 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
+import { useNotifications } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 import { WalletConnect } from '@/components/wallet-connect'
+
+function timeAgo(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
 
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -29,12 +38,28 @@ type ModalStep = 'closed' | 'connect' | 'paste' | 'role' | 'done'
 export function Header({ title }: { title: string }) {
   const { isConnected, party, connect, connectWithPartyId, connectWithWallet, updateRole, disconnect, isConnecting, ledgerStatus } = useCanton()
   const { user, logout } = useAuth()
+  const { notifications, unreadCount, notify, markAllRead, clearAll } = useNotifications()
   const router = useRouter()
   const [modal, setModal] = useState<ModalStep>('closed')
   const [provisioning, setProvisioning] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const [orgName, setOrgName] = useState('')
+  const profileRef = useRef<HTMLDivElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdowns on outside click. A `fixed inset-0` backdrop can't do
+  // this here: the header's backdrop-blur creates a containing block, so
+  // "fixed" children only span the header strip, not the viewport.
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false)
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
 
   // "paste party ID" form state
   const [pasteId, setPasteId] = useState('')
@@ -110,6 +135,7 @@ export function Header({ title }: { title: string }) {
   const chooseRole = (role: 'business' | 'financier') => {
     updateRole(role, orgName)
     setModal('done')
+    notify('connect', 'Connected to Canton', `You're set up as a ${role}${orgName.trim() ? ` — ${orgName.trim()}` : ''}. Every action you take is signed by your party on DevNet.`)
   }
 
   const handleAccountLogout = async () => {
@@ -142,10 +168,53 @@ export function Header({ title }: { title: string }) {
             </span>
           </div>
 
-          <button className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
-            <Bell className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-slate-500" />
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => { setNotifOpen(o => !o); if (!notifOpen) markAllRead() }}
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+              aria-label="Notifications"
+              aria-expanded={notifOpen}
+            >
+              <Bell className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 font-data text-[9px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <>
+                <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-white">Notifications</p>
+                    {notifications.length > 0 && (
+                      <button onClick={clearAll} className="text-xs text-slate-400 transition-colors hover:text-red-500">Clear all</button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
+                        No notifications yet — activity like invoices, listings, and bids lands here.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {notifications.map(n => (
+                          <div key={n.id} className={cn('px-4 py-3', !n.read && 'bg-violet-500/[0.05]')}>
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-xs font-semibold text-slate-950 dark:text-white">{n.title}</p>
+                              <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(n.ts)}</span>
+                            </div>
+                            <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{n.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           <button
             type="button"
@@ -159,7 +228,7 @@ export function Header({ title }: { title: string }) {
           {isConnected && party ? (
             /* Profile chip opens a dropdown — never disconnects on click.
                Copy the party ID, jump to Settings, or explicitly disconnect. */
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(o => !o)}
                 className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
@@ -172,7 +241,6 @@ export function Header({ title }: { title: string }) {
 
               {profileOpen && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
                   <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-3">
                       <p className="text-sm font-semibold text-slate-950 dark:text-white">{party.displayName}</p>

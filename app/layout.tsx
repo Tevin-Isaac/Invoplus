@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { CantonProvider } from '@/lib/canton'
 import { AuthProvider } from '@/lib/auth-context'
+import { NotificationsProvider } from '@/lib/notifications'
 import { I18nProvider } from '@/lib/i18n/I18nContext'
 
 export const metadata: Metadata = {
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               logged-in user to auto-connect the party allocated at registration. */}
           <AuthProvider>
             <CantonProvider>
-              {children}
+              <NotificationsProvider>
+                {children}
+              </NotificationsProvider>
             </CantonProvider>
           </AuthProvider>
         </I18nProvider>

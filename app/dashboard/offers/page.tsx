@@ -5,6 +5,7 @@ import { Header } from '@/components/dashboard/Header'
 import { Lock, CheckCircle, Clock, XCircle, EyeOff, Zap, Loader2, AlertTriangle, Tag, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
+import { useNotifications } from '@/lib/notifications'
 
 interface MyOffer {
   id: string
@@ -32,6 +33,7 @@ const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:borde
 
 export default function OffersPage() {
   const { party } = useCanton()
+  const { notify } = useNotifications()
   // Real ledger contracts only — starts empty until a party connects.
   const [offers, setOffers] = useState<MyOffer[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,6 +60,7 @@ export default function OffersPage() {
       const data = await res.json()
       if (data.ok) {
         setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, status: 'withdrawn' as const } : o))
+        notify('withdraw', 'Bid withdrawn', `Your sealed bid on ${offer.auctionId} was withdrawn on Canton before settlement.`)
       } else {
         setWithdrawError(data.error ?? 'Withdrawal failed')
       }

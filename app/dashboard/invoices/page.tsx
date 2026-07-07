@@ -5,6 +5,7 @@ import { Header } from '@/components/dashboard/Header'
 import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
+import { useNotifications } from '@/lib/notifications'
 
 type InvoiceStatus = 'funded' | 'bidding' | 'verified' | 'pending' | 'rejected'
 
@@ -47,6 +48,7 @@ const inputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-
 
 export default function InvoicesPage() {
   const { party } = useCanton()
+  const { notify } = useNotifications()
   const [invoices, setInvoices] = useState<any[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -147,6 +149,9 @@ export default function InvoicesPage() {
       })
       const data = await res.json()
       setListOutcome(data)
+      if (data.ok) {
+        notify('auction', 'Listed for sealed-bid auction', `${result.invoiceId ?? 'Your invoice'} is live in the marketplace for ${data.durationHours ?? 72}h. You'll be notified as sealed bids arrive.`)
+      }
     } catch (e) {
       setListOutcome({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
     } finally {
@@ -182,7 +187,10 @@ export default function InvoicesPage() {
       })
       const data = await res.json()
       setResult(data)
-      if (data.ok) setShowForm(false)
+      if (data.ok) {
+        setShowForm(false)
+        notify('invoice', 'Invoice created on Canton', `${data.invoiceId} · ${form.debtorName} · risk grade ${data.riskGrade} (score ${data.riskScore}/100).`)
+      }
     } catch (e) {
       setResult({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
     } finally {

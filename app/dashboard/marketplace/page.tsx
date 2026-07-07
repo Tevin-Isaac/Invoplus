@@ -5,6 +5,7 @@ import { Header } from '@/components/dashboard/Header'
 import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
+import { useNotifications } from '@/lib/notifications'
 
 interface Auction {
   id: string
@@ -46,6 +47,7 @@ function BidModal({ auction, onClose, onBidPlaced }: {
   onBidPlaced: (auctionId: string, advanceRate: number) => void
 }) {
   const { party } = useCanton()
+  const { notify } = useNotifications()
   const [advance, setAdvance] = useState(85)
   const [annualRate, setAnnualRate] = useState(11.5)
   const [submitting, setSubmitting] = useState(false)
@@ -75,7 +77,10 @@ function BidModal({ auction, onClose, onBidPlaced }: {
       })
       const data = await res.json()
       setResult(data)
-      if (data.ok) onBidPlaced(auction.id, advance)
+      if (data.ok) {
+        onBidPlaced(auction.id, advance)
+        notify('bid', 'Sealed bid submitted', `${auction.invoiceId || 'Auction'} · ${advance}% advance at ${annualRate}% APR. Only you and the platform can see it.`)
+      }
     } catch (e) {
       setResult({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
     } finally {
