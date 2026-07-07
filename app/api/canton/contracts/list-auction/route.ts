@@ -51,7 +51,10 @@ export async function POST(req: Request) {
         [`${packageId}:InvoPlus.Registry:RegistryEntry`],
       )
       const duplicate = existing.some((line: any) => {
-        const payload = line?.contractEntry?.v1?.contract?.payload
+        // Same JsActiveContract shape as everywhere else — the old
+        // `contractEntry.v1.contract` path never matched, which silently
+        // disabled this duplicate check entirely.
+        const payload = line?.contractEntry?.JsActiveContract?.createdEvent?.createArgument
         return payload?.invoiceHash === invoiceHash
       })
       if (duplicate) {

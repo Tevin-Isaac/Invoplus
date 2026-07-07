@@ -30,12 +30,17 @@ const tid = (template: string) => `${packageId()}:InvoPlus.Auth:${template}`
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex')
 
+// Real shape from this validator: { contractEntry: { JsActiveContract:
+// { createdEvent: { contractId, createArgument, ... } } } }. The old
+// `contractEntry.v1.contract` shape never matched, which made every
+// credential lookup return empty — register "worked" (its duplicate
+// check found nothing) but login always failed with Invalid credentials.
 function parseAcs(lines: any[]): { contractId: string; payload: any }[] {
   return (lines || [])
-    .filter((l: any) => l?.contractEntry?.v1?.contract)
+    .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
     .map((l: any) => {
-      const c = l.contractEntry.v1.contract
-      return { contractId: c.contractId, payload: c.payload }
+      const e = l.contractEntry.JsActiveContract.createdEvent
+      return { contractId: e.contractId, payload: e.createArgument }
     })
 }
 
