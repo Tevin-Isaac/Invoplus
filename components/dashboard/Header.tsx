@@ -317,8 +317,8 @@ export function Header({ title }: { title: string }) {
                   <ExternalLink className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-950 dark:text-white">Seaport party ID</p>
-                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">For developers — paste an existing Canton party</p>
+                  <p className="text-sm font-semibold text-slate-950 dark:text-white">I have a party ID</p>
+                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Reconnect an identity you created before — here or on Seaport</p>
                 </div>
               </button>
             </div>
@@ -405,6 +405,10 @@ export function Header({ title }: { title: string }) {
                 </div>
               </div>
             </div>
+            <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Save this ID</span> — it's your account.
+              You stay signed in on this browser; on another device, paste it under Connect → "I have a party ID" to pick up right where you left off.
+            </p>
             <button
               onClick={() => setModal('closed')}
               className="mt-4 w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600"
@@ -421,8 +425,8 @@ export function Header({ title }: { title: string }) {
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connect Seaport Party</h3>
-                <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Validate your Canton party on the DevNet ledger</p>
+                <h3 className="text-base font-semibold text-slate-950 dark:text-white">Reconnect with a party ID</h3>
+                <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">We'll verify it on the DevNet ledger before connecting</p>
               </div>
               <button onClick={() => setModal('connect')} className="text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
                 <X className="w-4 h-4" />
@@ -430,10 +434,9 @@ export function Header({ title }: { title: string }) {
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-5 text-xs text-slate-600 space-y-1.5 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-              <p className="font-semibold text-slate-950 mb-2 dark:text-white">How to find your party ID on Seaport:</p>
-              <p>1. Go to <span className="text-slate-950 dark:text-white">app.devnet.seaport.to</span> and sign in</p>
-              <p>2. Open any Daml script or the party panel</p>
-              <p>3. Copy the full party ID — looks like:</p>
+              <p className="font-semibold text-slate-950 mb-2 dark:text-white">Where's my party ID?</p>
+              <p>· <span className="text-slate-950 dark:text-white">Created it here?</span> It was shown when you connected — also in your profile menu (top right) and Settings. Same ID reconnects you with all your invoices and bids intact.</p>
+              <p>· <span className="text-slate-950 dark:text-white">Using Seaport?</span> Copy it from the party panel at app.devnet.seaport.to</p>
               <p className="mt-1 rounded bg-white px-2 py-1 font-mono text-slate-950 dark:bg-slate-900 dark:text-white">
                 YourName::122057f3a8b2c4d1e6f9...
               </p>
