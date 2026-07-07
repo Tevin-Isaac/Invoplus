@@ -200,13 +200,6 @@ export function Header({ title }: { title: string }) {
               Your identity on Canton signs every invoice, bid, and settlement you make.
             </p>
 
-            <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                Test network — Canton DevNet. Free to try, no real money moves.
-              </p>
-            </div>
-
             {connectError && (
               <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />

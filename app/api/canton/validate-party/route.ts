@@ -28,9 +28,13 @@ export async function POST(req: Request) {
     const id = partyId.trim()
     const token = await getCantonToken()
 
-    // Query the Canton ledger for this specific party
+    // Query the Canton ledger for this specific party. Must be the
+    // path-style single-party endpoint: this validator IGNORES the
+    // ?partyIds= filter on GET /v2/parties and returns the full paginated
+    // list instead, so the old filter-based lookup only ever "found"
+    // parties that happened to sort onto page 1.
     const res = await fetch(
-      `${LEDGER_URL}/v2/parties?partyIds=${encodeURIComponent(id)}`,
+      `${LEDGER_URL}/v2/parties/${encodeURIComponent(id)}`,
       {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
