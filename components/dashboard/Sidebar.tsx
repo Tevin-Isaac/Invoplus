@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/brand/Logo'
 import {
   LayoutDashboard, FileText, Store, Tag, BarChart3,
-  Settings, Menu, X, TrendingUp, LogOut, PanelLeftOpen, PanelLeftClose,
+  Settings, Menu, X, TrendingUp, PanelLeftOpen, PanelLeftClose,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -29,9 +29,7 @@ export function Sidebar() {
   const [expanded, setExpanded] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const { ledgerStatus, ledgerLoading, party } = useCanton()
-  const { user, logout } = useAuth()
-  const router = useRouter()
-  const handleLogout = async () => { await logout(); router.push('/login') }
+  const { user } = useAuth()
 
   useEffect(() => {
     setExpanded(window.localStorage.getItem('invoplus-sidebar') === 'expanded')
@@ -155,7 +153,9 @@ export function Sidebar() {
 
         <NavList showLabels={expanded} />
 
-        {/* Bottom: ledger status, profile, logout */}
+        {/* Bottom: ledger status + profile (display only — all identity
+            actions, including logout/disconnect, live in the header
+            profile menu so there's exactly one place for them) */}
         <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
           <LedgerDot showLabel={expanded} />
           <div className={cn('mt-1 flex items-center gap-2.5 py-2', expanded ? 'px-3' : 'justify-center px-0')}>
@@ -171,30 +171,7 @@ export function Sidebar() {
                 <p className="truncate text-[10px] uppercase tracking-wider text-violet-600 dark:text-violet-400">{role}</p>
               </div>
             )}
-            {/* Log out only applies to an email/password session — showing it
-                to party-only users just dumped them on a login form they
-                never signed into. Party disconnect lives in the header menu. */}
-            {expanded && user && (
-              <button
-                onClick={handleLogout}
-                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
-                aria-label="Log out"
-                title="Log out of your account"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            )}
           </div>
-          {!expanded && user && (
-            <button
-              onClick={handleLogout}
-              className="mt-1 flex w-full items-center justify-center rounded-xl py-2 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
-              aria-label="Log out"
-              title="Log out of your account"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          )}
         </div>
       </aside>
 
@@ -223,16 +200,6 @@ export function Sidebar() {
               <p className="truncate text-xs font-semibold text-slate-950 dark:text-white">{displayName}</p>
               <p className="truncate text-[10px] uppercase tracking-wider text-violet-600 dark:text-violet-400">{role}</p>
             </div>
-            {user && (
-              <button
-                onClick={handleLogout}
-                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
-                aria-label="Log out"
-                title="Log out of your account"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            )}
           </div>
         </div>
       </aside>

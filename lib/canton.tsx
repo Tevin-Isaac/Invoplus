@@ -38,8 +38,8 @@ interface CantonContextType {
   connectWithPartyId: (partyId: string, displayName: string, role: 'business' | 'financier') => Promise<void>
   /** Connect via the Canton DevNet Wallet (CIP-103, see components/wallet-connect.tsx) */
   connectWithWallet: (account: CantonAccount) => Promise<void>
-  /** Set the app-level role after connecting (wallet-first flow: connect, then pick role) */
-  updateRole: (role: 'business' | 'financier') => void
+  /** Set the app-level role (and optionally a display name) after connecting */
+  updateRole: (role: 'business' | 'financier', displayName?: string) => void
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
@@ -191,13 +191,15 @@ export function CantonProvider({ children }: { children: ReactNode }) {
    * ledger — it only decides which UI the user sees (seller vs financier),
    * so it's safe to pick it after the party is already connected.
    */
-  const updateRole = useCallback((role: 'business' | 'financier') => {
+  const updateRole = useCallback((role: 'business' | 'financier', displayName?: string) => {
     setPartyState(prev => {
       if (!prev) return prev
-      const displayName = prev.displayName === 'InvoPlus User'
-        ? (role === 'business' ? 'InvoPlus Business' : 'InvoPlus Financier')
-        : prev.displayName
-      const next = { ...prev, type: role, displayName }
+      const name = displayName?.trim()
+        ? displayName.trim()
+        : prev.displayName === 'InvoPlus User'
+          ? (role === 'business' ? 'InvoPlus Business' : 'InvoPlus Financier')
+          : prev.displayName
+      const next = { ...prev, type: role, displayName: name }
       try {
         if (next.source !== 'account') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       } catch { /* storage unavailable */ }
