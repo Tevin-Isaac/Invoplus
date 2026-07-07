@@ -168,6 +168,14 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   ) => {
     setIsConnecting(true)
     try {
+      // External party: our backend needs actAs/readAs rights on it before
+      // any contract submission can succeed (provisioned parties get these
+      // at allocation; external ones don't).
+      await fetch('/api/canton/grant-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partyId }),
+      }).catch(() => { /* surfaced on first submission if it mattered */ })
       setParty({ id: partyId, displayName, type: role, source: 'seaport' })
     } finally {
       setIsConnecting(false)
@@ -205,6 +213,13 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   const connectWithWallet = useCallback(async (account: CantonAccount) => {
     setIsConnecting(true)
     try {
+      // Wallet-created party — grant our backend submission rights on it
+      // (see connectWithPartyId for why).
+      await fetch('/api/canton/grant-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partyId: account.partyId }),
+      }).catch(() => { /* surfaced on first submission if it mattered */ })
       setParty({
         id: account.partyId,
         displayName: account.hint || 'Wallet User',
