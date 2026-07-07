@@ -171,23 +171,26 @@ export function Sidebar() {
                 <p className="truncate text-[10px] uppercase tracking-wider text-violet-600 dark:text-violet-400">{role}</p>
               </div>
             )}
-            {expanded && (
+            {/* Log out only applies to an email/password session — showing it
+                to party-only users just dumped them on a login form they
+                never signed into. Party disconnect lives in the header menu. */}
+            {expanded && user && (
               <button
                 onClick={handleLogout}
                 className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
                 aria-label="Log out"
-                title="Log out"
+                title="Log out of your account"
               >
                 <LogOut className="h-4 w-4" />
               </button>
             )}
           </div>
-          {!expanded && (
+          {!expanded && user && (
             <button
               onClick={handleLogout}
               className="mt-1 flex w-full items-center justify-center rounded-xl py-2 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
               aria-label="Log out"
-              title="Log out"
+              title="Log out of your account"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -220,13 +223,16 @@ export function Sidebar() {
               <p className="truncate text-xs font-semibold text-slate-950 dark:text-white">{displayName}</p>
               <p className="truncate text-[10px] uppercase tracking-wider text-violet-600 dark:text-violet-400">{role}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
-              aria-label="Log out"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-500"
+                aria-label="Log out"
+                title="Log out of your account"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       </aside>

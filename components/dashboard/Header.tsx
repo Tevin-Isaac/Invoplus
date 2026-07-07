@@ -29,6 +29,7 @@ export function Header({ title }: { title: string }) {
   const [modal, setModal] = useState<ModalStep>('closed')
   const [provisioning, setProvisioning] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   // "paste party ID" form state
   const [pasteId, setPasteId] = useState('')
@@ -149,30 +150,58 @@ export function Header({ title }: { title: string }) {
           </button>
 
           {isConnected && party ? (
-            party.source === 'account' ? (
-              /* Account identity can't be "disconnected" — it IS the login.
-                 Link to Settings where the party details live instead. */
-              <a
-                href="/dashboard/settings"
+            /* Profile chip opens a dropdown — never disconnects on click.
+               Copy the party ID, jump to Settings, or explicitly disconnect. */
+            <div className="relative">
+              <button
+                onClick={() => setProfileOpen(o => !o)}
                 className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
-                title="Your account's Canton identity — view in Settings"
+                aria-expanded={profileOpen}
               >
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span className="max-w-[140px] truncate">{party.displayName}</span>
-              </a>
-            ) : (
-              <button
-                onClick={disconnect}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-medium text-slate-950 transition-all hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
-                title="Click to disconnect"
-              >
-                <Wallet className="w-4 h-4" />
-                <span className="flex items-center gap-1.5 max-w-[140px] truncate">
-                  {party.displayName}
-                  <ChevronDown className="w-3 h-3 shrink-0" />
-                </span>
+                <ChevronDown className={cn('w-3 h-3 shrink-0 transition-transform', profileOpen && 'rotate-180')} />
               </button>
-            )
+
+              {profileOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
+                  <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">{party.displayName}</p>
+                      <p className="text-xs capitalize text-violet-600 dark:text-violet-300">{party.type}
+                        <span className="ml-1.5 text-slate-400 dark:text-slate-500">
+                          · {party.source === 'account' ? 'account identity' : party.source === 'wallet' ? 'wallet' : party.source === 'seaport' ? 'Seaport party' : 'instant identity'}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+                      <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Canton Party ID</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-data flex-1 break-all text-xs text-slate-600 dark:text-slate-300">{party.id}</p>
+                        <CopyBtn text={party.id} />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <a
+                        href="/dashboard/settings"
+                        className="flex-1 rounded-xl border border-slate-200 py-2 text-center text-xs font-medium text-slate-600 transition-colors hover:text-slate-950 dark:border-slate-700 dark:text-slate-400 dark:hover:text-white"
+                      >
+                        View in Settings
+                      </a>
+                      {party.source !== 'account' && (
+                        <button
+                          onClick={() => { setProfileOpen(false); disconnect() }}
+                          className="flex-1 rounded-xl border border-red-500/30 py-2 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/10"
+                        >
+                          Disconnect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <button
               onClick={openModal}
@@ -234,20 +263,29 @@ export function Header({ title }: { title: string }) {
               </button>
 
               {/* Hosted wallet / browser extensions */}
-              <div className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
-                  <Wallet className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <div className="w-full rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
+                    <Wallet className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-white">Canton wallet</p>
+                    <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Requires an existing wallet account — you approve the connection in the wallet</p>
+                  </div>
+                  <WalletConnect
+                    onConnect={handleWalletConnected}
+                    onDisconnect={disconnect}
+                    isConnected={false}
+                    triggerClassName="shrink-0"
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-950 dark:text-white">Canton wallet</p>
-                  <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Hosted DevNet wallet or a browser extension</p>
-                </div>
-                <WalletConnect
-                  onConnect={handleWalletConnected}
-                  onDisconnect={disconnect}
-                  isConnected={false}
-                  triggerClassName="shrink-0"
-                />
+                <p className="mt-2.5 border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  Don't have one? Create a free account on the{' '}
+                  <a href="https://wallet.validator.devnet.sandbox.fivenorth.io" target="_blank" rel="noreferrer" className="font-medium text-violet-600 hover:underline dark:text-violet-300">
+                    hosted Canton DevNet wallet
+                  </a>{' '}
+                  first, then connect here. CIP-103 browser extensions are detected automatically if installed — none are widely released yet, so most users should use <span className="font-medium text-slate-700 dark:text-slate-300">Instant identity</span> above.
+                </p>
               </div>
 
               {/* Seaport party (developers) */}
