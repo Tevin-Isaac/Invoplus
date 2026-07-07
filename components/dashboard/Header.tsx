@@ -130,21 +130,17 @@ export function Header({ title }: { title: string }) {
             <span>Search invoices...</span>
           </div>
 
-          {ledgerStatus?.ok ? (
-            <div className="hidden md:flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-data text-[11px] tracking-wider text-slate-600 uppercase dark:text-slate-400">DevNet</span>
-              </span>
-              <span className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
-              <span className="font-data text-[11px] text-slate-600 dark:text-slate-400">block <span className="text-slate-950 dark:text-white">{ledgerStatus.offset?.toLocaleString()}</span></span>
-            </div>
-          ) : (
-            <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-              <span className="font-data text-[11px] text-slate-600 dark:text-slate-400">DevNet offline</span>
-            </div>
-          )}
+          {/* Connection status only — block heights and package counts are
+              network trivia, not app metrics. Full details live in Settings. */}
+          <div
+            className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900"
+            title={ledgerStatus?.ok ? 'Connected to Canton DevNet' : 'Canton DevNet unreachable'}
+          >
+            <span className={cn('w-1.5 h-1.5 rounded-full', ledgerStatus?.ok ? 'bg-emerald-500 animate-pulse' : 'bg-red-400')} />
+            <span className="font-data text-[11px] tracking-wider text-slate-600 uppercase dark:text-slate-400">
+              {ledgerStatus?.ok ? 'Live on Canton' : 'Canton offline'}
+            </span>
+          </div>
 
           <button className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
             <Bell className="w-4 h-4 text-slate-600 dark:text-slate-400" />

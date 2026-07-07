@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { FileText, TrendingUp, Lock, Shield, RefreshCw, ArrowUpRight, Store, Tag } from 'lucide-react'
+import { FileText, TrendingUp, Lock, Shield, ArrowUpRight, Store, Tag } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-
-interface LedgerStats { ok: boolean; offset?: number; packageCount?: number; network?: string; timestamp?: string }
 
 const pv = (payload: any, key: string) => {
   if (!payload) return ''
@@ -60,22 +58,10 @@ function ChartTooltip({ active, payload, label }: any) {
 }
 
 export default function DashboardPage() {
-  const { ledgerStatus, ledgerLoading, party } = useCanton()
-  const [refreshing, setRefreshing] = useState(false)
-  const [localStatus, setLocalStatus] = useState<LedgerStats | null>(null)
+  const { party } = useCanton()
   const [data, setData] = useState<{ invoices: any[]; auctions: any[]; bids: any[]; funded: any[] }>({ invoices: [], auctions: [], bids: [], funded: [] })
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
-
-  const status = localStatus ?? ledgerStatus
-
-  const refresh = async () => {
-    setRefreshing(true)
-    try {
-      const res = await fetch('/api/canton/ledger-status')
-      setLocalStatus(await res.json())
-    } catch { /* ignore */ } finally { setRefreshing(false) }
-  }
 
   useEffect(() => {
     if (!party?.id) { setData({ invoices: [], auctions: [], bids: [], funded: [] }); return }
@@ -224,26 +210,10 @@ export default function DashboardPage() {
           </div>
 
           {/* ══ Right column ══ */}
+          {/* Network internals (block height, packages) deliberately absent —
+              they're Canton trivia, not InvoPlus stats. Connection status
+              lives in the header; full network details in Settings. */}
           <div className="space-y-5">
-
-            {/* Ledger card */}
-            <div className={cn(panel, 'p-5')}>
-              <div className="flex items-center justify-between">
-                <p className="font-data text-[11px] uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">Canton DevNet</p>
-                <button onClick={refresh} disabled={refreshing} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-white/5">
-                  <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
-                </button>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <span className={cn('h-2.5 w-2.5 rounded-full', status?.ok ? 'bg-emerald-500 animate-pulse' : ledgerLoading ? 'bg-amber-400 animate-pulse' : 'bg-red-400')} />
-                <p className="font-data text-xl text-slate-950 dark:text-white">
-                  {status?.ok ? <>#{status.offset?.toLocaleString()}</> : ledgerLoading ? 'connecting…' : 'offline'}
-                </p>
-              </div>
-              {status?.ok && (
-                <p className="mt-2 font-data text-[11px] text-slate-500 dark:text-slate-400">{status.packageCount} packages · live</p>
-              )}
-            </div>
 
             {/* Activity list */}
             <div className={cn(panel, 'overflow-hidden')}>

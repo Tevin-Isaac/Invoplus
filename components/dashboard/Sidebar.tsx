@@ -98,7 +98,7 @@ export function Sidebar() {
   const LedgerDot = ({ showLabel }: { showLabel: boolean }) => (
     <div
       className={cn('flex items-center gap-2.5 py-2', showLabel ? 'px-3' : 'justify-center px-0')}
-      title={ledgerLoading ? 'Connecting to Canton…' : ledgerStatus?.ok ? `Canton DevNet · Block ${ledgerStatus.offset?.toLocaleString()}` : 'Canton DevNet · Offline'}
+      title={ledgerLoading ? 'Connecting to Canton…' : ledgerStatus?.ok ? 'Connected to Canton DevNet' : 'Canton DevNet unreachable'}
     >
       <span className={cn(
         'h-2 w-2 shrink-0 rounded-full',
@@ -108,7 +108,7 @@ export function Sidebar() {
         <div className="min-w-0">
           <p className="text-xs font-medium text-slate-950 dark:text-white">Canton Network</p>
           <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-            {ledgerLoading ? 'Connecting…' : ledgerStatus?.ok ? `DevNet · #${ledgerStatus.offset?.toLocaleString()}` : 'DevNet · Offline'}
+            {ledgerLoading ? 'Connecting…' : ledgerStatus?.ok ? 'DevNet · connected' : 'DevNet · offline'}
           </p>
         </div>
       )}

@@ -39,7 +39,7 @@ function EmptyChart({ label }: { label: string }) {
 }
 
 export default function AnalyticsPage() {
-  const { party, ledgerStatus } = useCanton()
+  const { party } = useCanton()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; registry: number }>({ invoices: [], auctions: [], funded: [], registry: 0 })
 
@@ -104,11 +104,13 @@ export default function AnalyticsPage() {
     { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries' },
   ]
 
+  // Your on-ledger footprint — app statistics only. Network internals like
+  // block height belong in Settings, not analytics.
   const performance = [
     { label: 'Total Contracts', value: String(totalContracts), note: 'Invoice + Auction + Funded' },
     { label: 'Registry Entries', value: String(registry), note: 'Anti-fraud records on Canton' },
     { label: 'Funded Positions', value: String(funded.length), note: 'Settled atomically on ledger', accent: true },
-    { label: 'Ledger Block', value: ledgerStatus?.offset != null ? ledgerStatus.offset.toLocaleString() : '—', note: ledgerStatus?.ok ? 'DevNet · live' : 'DevNet · offline' },
+    { label: 'Invoices Scored', value: String(invoices.length), note: 'Risk-graded by the engine' },
   ]
 
   if (loading) {
@@ -225,7 +227,7 @@ export default function AnalyticsPage() {
 
         {/* Network performance */}
         <div className={cn(panel, 'p-5 md:p-6')}>
-          <h3 className="mb-4 text-sm font-semibold text-slate-950 dark:text-white">Canton Network Performance</h3>
+          <h3 className="mb-4 text-sm font-semibold text-slate-950 dark:text-white">Your On-Ledger Footprint</h3>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {performance.map(s => (
               <div key={s.label} className={cn('rounded-xl border p-4', s.accent ? 'border-violet-500/30 bg-violet-500/[0.04]' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950')}>
