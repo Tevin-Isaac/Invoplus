@@ -37,6 +37,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Fail fast: the Daml VerifyInvoice choice asserts validateTaxId
+    // (8–30 chars). Creating an invoice with a bad tax ID succeeds but
+    // makes listing impossible later — reject it here with a clear reason.
+    const taxId = String(debtorTaxId ?? '').trim()
+    if (taxId.length < 8 || taxId.length > 30) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Debtor tax ID must be 8–30 characters — the on-ledger anti-fraud check requires it.',
+      }, { status: 400 })
+    }
+
     const packageId = process.env.INVOPLUS_PACKAGE_ID
     if (!packageId) {
       return NextResponse.json({

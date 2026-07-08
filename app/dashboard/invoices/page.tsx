@@ -64,6 +64,10 @@ export default function InvoicesPage() {
   })
 
   const lc = (s: string) => (s || '').toLowerCase()
+  // Mirrors the Daml validateTaxId rule (Types.daml): 8–30 chars, enforced
+  // on-ledger at VerifyInvoice. Checking here means users can't create an
+  // invoice that will inevitably fail when they try to list it.
+  const taxIdValid = form.debtorTaxId.trim().length >= 8 && form.debtorTaxId.trim().length <= 30
   const filtered = invoices
     .filter(i => filter === 'all' || lc(i.status) === filter)
     .filter(i => !search || i.buyer.toLowerCase().includes(search.toLowerCase()) || i.id.toLowerCase().includes(search.toLowerCase()))
@@ -161,7 +165,7 @@ export default function InvoicesPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.debtorName || !form.amount || !form.dueDate) return
+    if (!form.debtorName || !form.amount || !form.dueDate || !taxIdValid) return
     if (!party?.id) {
       setResult({ ok: false, error: 'Connect your Canton identity first — the invoice is signed by your party on the ledger.' })
       return
@@ -252,7 +256,7 @@ export default function InvoicesPage() {
               {[
                 { label: 'Invoice Number', key: 'invoiceId', placeholder: 'INV-2026-0043' },
                 { label: 'Debtor Company (who owes you)', key: 'debtorName', placeholder: 'GlobalTech Solutions Ltd' },
-                { label: 'Debtor Tax ID (for fraud check)', key: 'debtorTaxId', placeholder: 'GB123456789' },
+                { label: 'Debtor Tax ID (8–30 characters, for fraud check)', key: 'debtorTaxId', placeholder: 'GB123456789' },
                 { label: 'Amount', key: 'amount', placeholder: '125000', type: 'number' },
               ].map(f => (
                 <div key={f.key}>
@@ -264,6 +268,13 @@ export default function InvoicesPage() {
                     type={f.type ?? 'text'}
                     className={inputCls}
                   />
+                  {/* The Daml contract enforces 8–30 chars at verification —
+                      surface the rule here instead of failing at listing time. */}
+                  {f.key === 'debtorTaxId' && form.debtorTaxId.length > 0 && !taxIdValid && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      Tax ID must be 8–30 characters ({form.debtorTaxId.length} so far)
+                    </p>
+                  )}
                 </div>
               ))}
               <div>
@@ -302,7 +313,7 @@ export default function InvoicesPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={!form.debtorName || !form.amount || !form.dueDate}
+              disabled={!form.debtorName || !form.amount || !form.dueDate || !taxIdValid}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600 disabled:opacity-50"
             >
               <ShieldCheck className="h-4 w-4" />

@@ -147,7 +147,10 @@ export function Header({ title }: { title: string }) {
   return (
     <>
       {/* pl-16 on mobile clears the fixed hamburger button */}
-      <header className="h-16 shrink-0 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 pl-16 pr-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 lg:px-6">
+      {/* relative z-40: without an explicit z-index the header's dropdowns
+          (notifications, profile) paint UNDER page cards that create their
+          own stacking contexts (hover transforms, shadows). */}
+      <header className="relative z-40 h-16 shrink-0 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 pl-16 pr-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 lg:px-6">
         <h1 className="truncate text-lg font-semibold text-slate-950 dark:text-white">{title}</h1>
 
         <div className="flex items-center gap-3">
