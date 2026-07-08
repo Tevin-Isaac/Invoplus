@@ -37,16 +37,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Fail fast: the Daml VerifyInvoice choice asserts validateTaxId
-    // (8–30 chars). Creating an invoice with a bad tax ID succeeds but
-    // makes listing impossible later — reject it here with a clear reason.
-    const taxId = String(debtorTaxId ?? '').trim()
-    if (taxId.length < 8 || taxId.length > 30) {
-      return NextResponse.json({
-        ok: false,
-        error: 'Debtor tax ID must be 8–30 characters — the on-ledger anti-fraud check requires it.',
-      }, { status: 400 })
+    // The Daml VerifyInvoice choice asserts validateTaxId (8–30 chars), but
+    // many invoices worldwide simply don't carry a tax ID. When it's absent
+    // or too short we derive a deterministic reference from the invoice
+    // itself — deterministic so re-creating the same invoice produces the
+    // same anti-double-financing hash. Over 30 chars is still a user error.
+    const providedTaxId = String(debtorTaxId ?? '').trim()
+    if (providedTaxId.length > 30) {
+      return NextResponse.json({ ok: false, error: 'Debtor tax ID must be at most 30 characters.' }, { status: 400 })
     }
+    const autoRef = 'REF-' + createHash('sha256').update(`${invoiceId}|${debtorName}`).digest('hex').slice(0, 12).toUpperCase()
+    const effectiveTaxId = providedTaxId.length >= 8 ? providedTaxId
+      : providedTaxId.length > 0 ? `${providedTaxId}-${autoRef.slice(4, 12)}`
+      : autoRef
 
     const packageId = process.env.INVOPLUS_PACKAGE_ID
     if (!packageId) {
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
     })
 
     // Compute invoice hash for anti-fraud registry
-    const invoiceHash = `hash:${invoiceId}:${debtorTaxId ?? debtorName}:${faceAmount}`
+    const invoiceHash = `hash:${invoiceId}:${effectiveTaxId}:${faceAmount}`
 
     // The Daml VerifyInvoice choice asserts validateHash on docHash (10–128
     // chars), so an empty default fails at verification time. With no file
@@ -77,7 +80,7 @@ export async function POST(req: Request) {
     const effectiveDocHash = docHash && String(docHash).length >= 10
       ? docHash
       : 'sha256:' + createHash('sha256')
-          .update(`${invoiceId}|${debtorName}|${debtorTaxId ?? ''}|${faceAmount}|${dueDate}`)
+          .update(`${invoiceId}|${debtorName}|${effectiveTaxId}|${faceAmount}|${dueDate}`)
           .digest('hex')
 
     const templateId = `${packageId}:InvoPlus.Invoice:InvoiceContract`
@@ -93,7 +96,7 @@ export async function POST(req: Request) {
             platform: process.env.CANTON_PLATFORM_PARTY ?? platformPartyId ?? sellerPartyId,
             invoiceId,
             debtorName,
-            debtorTaxId: debtorTaxId ?? '',
+            debtorTaxId: effectiveTaxId,
             faceAmount: faceAmount.toString(),
             currency: currency ?? 'USD',
             issueDate: issueDate ?? today,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck } from 'lucide-react'
+import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -64,10 +64,10 @@ export default function InvoicesPage() {
   })
 
   const lc = (s: string) => (s || '').toLowerCase()
-  // Mirrors the Daml validateTaxId rule (Types.daml): 8–30 chars, enforced
-  // on-ledger at VerifyInvoice. Checking here means users can't create an
-  // invoice that will inevitably fail when they try to list it.
-  const taxIdValid = form.debtorTaxId.trim().length >= 8 && form.debtorTaxId.trim().length <= 30
+  // Tax ID is optional (most invoices worldwide don't carry one) — the
+  // server derives a deterministic reference when it's blank or short.
+  // Only a hard on-ledger limit (>30 chars) blocks submission.
+  const taxIdValid = form.debtorTaxId.trim().length <= 30
   const filtered = invoices
     .filter(i => filter === 'all' || lc(i.status) === filter)
     .filter(i => !search || i.buyer.toLowerCase().includes(search.toLowerCase()) || i.id.toLowerCase().includes(search.toLowerCase()))
@@ -88,9 +88,12 @@ export default function InvoicesPage() {
             const face = p.faceAmount && (p.faceAmount.value ?? p.faceAmount) ? Number(p.faceAmount.value ?? p.faceAmount) : 0
             return {
               id: c.contractId,
+              invoiceId: (p.invoiceId?.value ?? p.invoiceId) || '',
               buyer: (p.debtorName?.value ?? p.debtorName) || 'Unknown',
+              taxId: (p.debtorTaxId?.value ?? p.debtorTaxId) || '',
               amount: face,
               currency: (p.currency?.value ?? p.currency) || 'USD',
+              issueDate: (p.issueDate?.value ?? p.issueDate) || '',
               dueDate: (p.dueDate?.value ?? p.dueDate) || '',
               status: (p.status?.value ?? p.status) || (p.settled ? 'funded' : 'pending'),
               grade: (p.riskGrade?.value ?? p.riskGrade) || '—',
@@ -103,6 +106,54 @@ export default function InvoicesPage() {
     }
     load()
   }, [party])
+
+  // Edit = archive + recreate atomically on-ledger (contracts are
+  // immutable); the form is reused in "edit mode" targeting this contract.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [rowError, setRowError] = useState<string | null>(null)
+
+  const startEdit = (inv: any) => {
+    setForm({
+      invoiceId: inv.invoiceId,
+      debtorName: inv.buyer,
+      debtorTaxId: inv.taxId,
+      amount: String(inv.amount),
+      currency: inv.currency,
+      issueDate: inv.issueDate || today,
+      dueDate: inv.dueDate,
+    })
+    setEditingId(inv.id)
+    setResult(null)
+    setListOutcome(null)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleDelete = async (inv: any) => {
+    if (!party?.id) return
+    if (!window.confirm(`Delete invoice ${inv.invoiceId || ''} (${inv.buyer})? This archives it on the ledger.`)) return
+    setDeletingId(inv.id)
+    setRowError(null)
+    try {
+      const res = await fetch('/api/canton/contracts/delete-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sellerPartyId: party.id, invoiceContractId: inv.id }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setInvoices(prev => prev.filter(i => i.id !== inv.id))
+        notify('info', 'Invoice deleted', `${inv.invoiceId || inv.buyer} was archived on Canton.`)
+      } else {
+        setRowError(data.error ?? 'Delete failed')
+      }
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : 'Network error')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   // Two ledger transactions, in the order the Daml contract enforces:
   // 1. VerifyInvoice (platform choice) — archives the Pending invoice and
@@ -174,12 +225,16 @@ export default function InvoicesPage() {
     setResult(null)
     setListOutcome(null)
     try {
-      const res = await fetch('/api/canton/contracts/create-invoice', {
+      // Same form drives create and edit; edit hits update-invoice which
+      // archives the old contract and creates the replacement atomically.
+      const endpoint = editingId ? '/api/canton/contracts/update-invoice' : '/api/canton/contracts/create-invoice'
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sellerPartyId: party.id,
           platformPartyId: party.id,
+          ...(editingId ? { invoiceContractId: editingId } : {}),
           invoiceId: form.invoiceId || `INV-${Date.now()}`,
           debtorName: form.debtorName,
           debtorTaxId: form.debtorTaxId,
@@ -193,7 +248,18 @@ export default function InvoicesPage() {
       setResult(data)
       if (data.ok) {
         setShowForm(false)
-        notify('invoice', 'Invoice created on Canton', `${data.invoiceId} · ${form.debtorName} · risk grade ${data.riskGrade} (score ${data.riskScore}/100).`)
+        if (editingId) {
+          setInvoices(prev => prev.map(i => i.id === editingId ? {
+            ...i, id: data.contractId, invoiceId: data.invoiceId, buyer: form.debtorName,
+            taxId: form.debtorTaxId, amount: parseFloat(form.amount), currency: form.currency,
+            issueDate: form.issueDate, dueDate: form.dueDate, status: 'pending',
+            grade: data.riskGrade ?? i.grade, aiScore: data.riskScore ?? i.aiScore,
+          } : i))
+          notify('invoice', 'Invoice updated on Canton', `${data.invoiceId} re-scored: grade ${data.riskGrade} (${data.riskScore}/100). Status reset to Pending.`)
+          setEditingId(null)
+        } else {
+          notify('invoice', 'Invoice created on Canton', `${data.invoiceId} · ${form.debtorName} · risk grade ${data.riskGrade} (score ${data.riskScore}/100).`)
+        }
       }
     } catch (e) {
       setResult({ ok: false, error: e instanceof Error ? e.message : 'Network error' })
@@ -248,15 +314,15 @@ export default function InvoicesPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-300" />
-                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">New Invoice → Canton InvoiceContract</h3>
+                <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{editingId ? 'Edit Invoice — archives & recreates on Canton' : 'New Invoice → Canton InvoiceContract'}</h3>
               </div>
-              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-950 dark:hover:text-white"><X className="h-4 w-4" /></button>
+              <button onClick={() => { setShowForm(false); setEditingId(null) }} className="text-slate-400 hover:text-slate-950 dark:hover:text-white"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {[
                 { label: 'Invoice Number', key: 'invoiceId', placeholder: 'INV-2026-0043' },
                 { label: 'Debtor Company (who owes you)', key: 'debtorName', placeholder: 'GlobalTech Solutions Ltd' },
-                { label: 'Debtor Tax ID (8–30 characters, for fraud check)', key: 'debtorTaxId', placeholder: 'GB123456789' },
+                { label: 'Debtor Tax ID (optional — we generate a reference if blank)', key: 'debtorTaxId', placeholder: 'GB123456789' },
                 { label: 'Amount', key: 'amount', placeholder: '125000', type: 'number' },
               ].map(f => (
                 <div key={f.key}>
@@ -268,11 +334,9 @@ export default function InvoicesPage() {
                     type={f.type ?? 'text'}
                     className={inputCls}
                   />
-                  {/* The Daml contract enforces 8–30 chars at verification —
-                      surface the rule here instead of failing at listing time. */}
-                  {f.key === 'debtorTaxId' && form.debtorTaxId.length > 0 && !taxIdValid && (
+                  {f.key === 'debtorTaxId' && !taxIdValid && (
                     <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                      Tax ID must be 8–30 characters ({form.debtorTaxId.length} so far)
+                      Tax ID can be at most 30 characters
                     </p>
                   )}
                 </div>
@@ -317,7 +381,7 @@ export default function InvoicesPage() {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600 disabled:opacity-50"
             >
               <ShieldCheck className="h-4 w-4" />
-              Create InvoiceContract on Canton
+              {editingId ? 'Save Changes on Canton' : 'Create InvoiceContract on Canton'}
             </button>
           </div>
         )}
@@ -457,6 +521,13 @@ export default function InvoicesPage() {
           </div>
         </div>
 
+        {rowError && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+            <p className="text-xs text-red-600 dark:text-red-300">{rowError}</p>
+          </div>
+        )}
+
         {/* Invoice list — table on desktop, cards on mobile */}
         <div className={cn(panel, 'overflow-hidden')}>
           <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 border-b border-slate-200 px-5 py-3.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:border-slate-800 dark:text-slate-400 md:grid">
@@ -504,14 +575,32 @@ export default function InvoicesPage() {
                     <span className={cn('inline-flex w-fit items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium', sc.color)}>
                       <Icon className="h-3 w-3" />{sc.label}
                     </span>
-                    <div>
-                      {lc(inv.status) === 'verified' && (
-                        <a href="/dashboard/marketplace" className="rounded-lg bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-600 transition-all hover:bg-violet-500 hover:text-white dark:text-violet-300">List for Bids</a>
-                      )}
+                    <div className="flex items-center gap-1.5">
                       {lc(inv.status) === 'bidding' && (
                         <a href="/dashboard/marketplace" className="rounded-lg bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-600 transition-all hover:bg-violet-500 hover:text-white dark:text-violet-300">View Offers</a>
                       )}
-                      {['funded', 'pending'].includes(lc(inv.status)) && <span className="hidden text-xs text-slate-400 md:inline">—</span>}
+                      {/* Pending/Verified invoices are still the seller's to
+                          manage — editable (archive+recreate) and deletable. */}
+                      {['pending', 'verified'].includes(lc(inv.status)) && (
+                        <>
+                          <button
+                            onClick={() => startEdit(inv)}
+                            className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition-colors hover:border-violet-500 hover:text-violet-500 dark:border-slate-700"
+                            aria-label="Edit invoice" title="Edit invoice"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(inv)}
+                            disabled={deletingId === inv.id}
+                            className="rounded-lg border border-slate-200 p-1.5 text-slate-400 transition-colors hover:border-red-500 hover:text-red-500 disabled:opacity-50 dark:border-slate-700"
+                            aria-label="Delete invoice" title="Delete invoice"
+                          >
+                            {deletingId === inv.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        </>
+                      )}
+                      {lc(inv.status) === 'funded' && <span className="hidden text-xs text-slate-400 md:inline">—</span>}
                     </div>
                   </div>
                 )

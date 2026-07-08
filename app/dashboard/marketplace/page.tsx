@@ -176,6 +176,7 @@ export default function MarketplacePage() {
   const [gradeFilter, setGradeFilter] = useState<string>('all')
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
   const { party } = useCanton()
+  const { notify: notifyCancel } = useNotifications()
 
   useEffect(() => {
     if (!party?.id) { setAuctions([]); setLoading(false); return }
@@ -220,6 +221,48 @@ export default function MarketplacePage() {
 
   const handleBidPlaced = (auctionId: string, advanceRate: number) => {
     setAuctions(prev => prev.map(a => a.id === auctionId ? { ...a, myBid: advanceRate, bidsReceived: a.bidsReceived + 1 } : a))
+  }
+
+  // Sellers can pull their own listing: CancelAuction archives the Auction
+  // + RegistryEntry and recreates the invoice as Verified (relist anytime).
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const handleCancelListing = async (a: Auction) => {
+    if (!party?.id) return
+    if (!window.confirm(`Cancel the listing for ${a.invoiceId}? Bids received so far are discarded and the invoice returns to your Invoices page.`)) return
+    setCancellingId(a.id)
+    try {
+      // The registry entry lives with the same hash prefix as the invoice —
+      // look it up by invoiceId through the party's own view.
+      const regRes = await fetch('/api/canton/contracts/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parties: [party.id], template: 'registry' }),
+      })
+      const regData = await regRes.json()
+      const pv2 = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+      const reg = (regData.contracts || []).find((c: any) => String(pv2(c.payload?.invoiceHash) ?? '').includes(a.invoiceId))
+      if (!reg) throw new Error('Could not find the registry entry for this listing')
+      const res = await fetch('/api/canton/contracts/cancel-auction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sellerPartyId: party.id,
+          auctionContractId: a.auctionContractId,
+          registryEntryContractId: reg.contractId,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setAuctions(prev => prev.filter(x => x.id !== a.id))
+        notifyCancel('auction', 'Listing cancelled', `${a.invoiceId} was withdrawn from the marketplace. Find it back under Invoices (Verified).`)
+      } else {
+        window.alert(data.error ?? 'Cancel failed')
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Network error')
+    } finally {
+      setCancellingId(null)
+    }
   }
 
   const open = auctions.filter(a => a.status === 'open')
@@ -357,16 +400,27 @@ export default function MarketplacePage() {
                       <span className="font-data font-semibold text-slate-950 dark:text-white">{a.bidsReceived}</span> sealed bid{a.bidsReceived === 1 ? '' : 's'}
                       {a.myBid != null && <span className="font-data ml-1 text-violet-600 dark:text-violet-300">· yours: {a.myBid}%</span>}
                     </span>
-                    <button
-                      onClick={() => a.status === 'open' && setSelectedAuction(a)}
-                      disabled={a.status !== 'open'}
-                      className={cn('rounded-xl px-4 py-2 text-xs font-semibold transition-colors',
-                        a.status === 'open'
-                          ? 'bg-violet-500 text-white hover:bg-violet-600'
-                          : 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500')}
-                    >
-                      {a.status === 'open' ? 'Place bid' : 'Settled'}
-                    </button>
+                    {party?.id === a.seller ? (
+                      /* Your own listing: you can't bid on it, but you can pull it */
+                      <button
+                        onClick={() => handleCancelListing(a)}
+                        disabled={cancellingId === a.id}
+                        className="rounded-xl border border-red-500/40 px-4 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-60"
+                      >
+                        {cancellingId === a.id ? 'Cancelling…' : 'Cancel listing'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => a.status === 'open' && setSelectedAuction(a)}
+                        disabled={a.status !== 'open'}
+                        className={cn('rounded-xl px-4 py-2 text-xs font-semibold transition-colors',
+                          a.status === 'open'
+                            ? 'bg-violet-500 text-white hover:bg-violet-600'
+                            : 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500')}
+                      >
+                        {a.status === 'open' ? 'Place bid' : 'Settled'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )

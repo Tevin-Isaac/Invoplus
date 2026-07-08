@@ -29,6 +29,10 @@ export interface ConnectOutcome {
   error?: string
 }
 
+export interface RecentParty extends CantonParty {
+  lastUsed: number
+}
+
 interface CantonContextType {
   isConnected: boolean
   party: CantonParty | null
@@ -40,6 +44,10 @@ interface CantonContextType {
   connectWithWallet: (account: CantonAccount) => Promise<void>
   /** Set the app-level role (and optionally a display name) after connecting */
   updateRole: (role: 'business' | 'financier', displayName?: string) => void
+  /** Identities used before in this browser — enables one-click re-login */
+  recentParties: RecentParty[]
+  /** Reconnect a previously used identity (rights already granted on-ledger) */
+  reconnectRecent: (party: RecentParty) => void
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
@@ -52,6 +60,26 @@ const CantonContext = createContext<CantonContextType | null>(null)
 // reloads via localStorage. Account parties are re-derived from the session
 // instead, so they always track the logged-in user.
 const STORAGE_KEY = 'invoplus-party'
+// Every identity ever connected in this browser, newest first — lets users
+// hop between their business and financier accounts with one click.
+const RECENTS_KEY = 'invoplus-recent-parties'
+const MAX_RECENTS = 6
+
+function loadRecents(): RecentParty[] {
+  try {
+    const raw = window.localStorage.getItem(RECENTS_KEY)
+    const list = raw ? JSON.parse(raw) : []
+    return Array.isArray(list) ? list : []
+  } catch { return [] }
+}
+
+function saveRecent(p: CantonParty) {
+  try {
+    const list = loadRecents().filter(r => r.id !== p.id)
+    list.unshift({ ...p, lastUsed: Date.now() })
+    window.localStorage.setItem(RECENTS_KEY, JSON.stringify(list.slice(0, MAX_RECENTS)))
+  } catch { /* storage unavailable */ }
+}
 
 function loadStoredParty(): CantonParty | null {
   try {
@@ -70,12 +98,20 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   const [ledgerStatus, setLedgerStatus] = useState<LedgerStatus | null>(null)
   const [ledgerLoading, setLedgerLoading] = useState(true)
 
+  const [recentParties, setRecentParties] = useState<RecentParty[]>([])
+
+  useEffect(() => { setRecentParties(loadRecents()) }, [])
+
   const setParty = useCallback((p: CantonParty | null) => {
     setPartyState(p)
     try {
       if (p && p.source !== 'account') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(p))
       else window.localStorage.removeItem(STORAGE_KEY)
     } catch { /* storage unavailable */ }
+    if (p) {
+      saveRecent(p)
+      setRecentParties(loadRecents())
+    }
   }, [])
 
   // Restore a manual connection from a previous visit.
@@ -187,6 +223,21 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   }, [setParty])
 
   /**
+   * One-click re-login with a previously used identity. The on-ledger
+   * rights granted at first connect persist on the party, so transactions
+   * work immediately; the grant call re-runs as a no-op safety net.
+   */
+  const reconnectRecent = useCallback((p: RecentParty) => {
+    const { lastUsed: _drop, ...core } = p
+    fetch('/api/canton/grant-rights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partyId: core.id }),
+    }).catch(() => { /* already granted */ })
+    setParty(core.source === 'account' ? { ...core, source: 'provisioned' } : core)
+  }, [setParty])
+
+  /**
    * Set the app-level role after connecting. The role never lives on the
    * ledger — it only decides which UI the user sees (seller vs financier),
    * so it's safe to pick it after the party is already connected.
@@ -203,6 +254,10 @@ export function CantonProvider({ children }: { children: ReactNode }) {
       try {
         if (next.source !== 'account') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       } catch { /* storage unavailable */ }
+      // Keep the recents entry in sync with the final role + company name —
+      // otherwise "Welcome back" lists the pre-rename placeholder identity.
+      saveRecent(next)
+      setTimeout(() => setRecentParties(loadRecents()), 0)
       return next
     })
   }, [])
@@ -235,7 +290,8 @@ export function CantonProvider({ children }: { children: ReactNode }) {
 
   return (
     <CantonContext.Provider value={{
-      isConnected: party !== null, party, connect, connectWithPartyId, connectWithWallet, updateRole, disconnect,
+      isConnected: party !== null, party, connect, connectWithPartyId, connectWithWallet, updateRole,
+      recentParties, reconnectRecent, disconnect,
       isConnecting, ledgerStatus, ledgerLoading,
     }}>
       {children}

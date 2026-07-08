@@ -41,7 +41,7 @@ function EmptyChart({ label }: { label: string }) {
 export default function AnalyticsPage() {
   const { party } = useCanton()
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; registry: number }>({ invoices: [], auctions: [], funded: [], registry: 0 })
+  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; bids: any[]; registry: number }>({ invoices: [], auctions: [], funded: [], bids: [], registry: 0 })
 
   useEffect(() => {
     if (!party?.id) { setLoading(false); return }
@@ -57,15 +57,18 @@ export default function AnalyticsPage() {
         return d.ok ? (d.contracts || []) : []
       } catch { return [] }
     }
-    Promise.all([post('invoice'), post('auction'), post('funded'), post('registry')]).then(([invoices, auctions, funded, registry]) => {
+    Promise.all([post('invoice'), post('auction'), post('funded'), post('bid'), post('registry')]).then(([invoices, auctions, funded, bids, registry]) => {
       if (cancelled) return
-      setData({ invoices, auctions, funded, registry: registry.length })
+      setData({ invoices, auctions, funded, bids, registry: registry.length })
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [party])
 
-  const { invoices, auctions, funded, registry } = data
+  const { invoices, auctions, funded, bids, registry } = data
+  const isFinancier = party?.type === 'financier'
+  const openBids = bids.filter(c => !val(c.payload?.isRevealed))
+  const capitalAtStake = openBids.reduce((s, c) => s + num(c.payload?.faceAmount) * num(c.payload?.advanceRate), 0)
   const totalVolume = funded.reduce((s, c) => s + num(c.payload?.fundedAmount), 0)
   const activeAuctions = auctions.filter(c => !val(c.payload?.settled)).length
   const totalContracts = invoices.length + auctions.length + funded.length
@@ -98,7 +101,13 @@ export default function AnalyticsPage() {
   const totalGraded = Object.values(gradeCounts).reduce((s, n) => s + n, 0)
   const gradeBreakdown = Object.entries(gradeCounts).map(([g, n]) => ({ name: `Grade ${g}`, value: n, pct: totalGraded ? Math.round((n / totalGraded) * 100) : 0, color: gradeColor[g] || '#94a3b8' }))
 
-  const kpis = [
+  // KPIs follow the connected role: financiers care about their bid book,
+  // sellers about their invoices and registry protection.
+  const kpis = isFinancier ? [
+    { label: 'Total Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length} funded position${funded.length === 1 ? '' : 's'}`, accent: true },
+    { label: 'Open Sealed Bids', value: String(openBids.length), sub: 'Awaiting auction close' },
+    { label: 'Capital at Stake', value: fmtUSD(capitalAtStake), sub: 'Committed across open bids' },
+  ] : [
     { label: 'Total Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length} funded position${funded.length === 1 ? '' : 's'}`, accent: true },
     { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions' },
     { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries' },

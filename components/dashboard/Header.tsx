@@ -36,7 +36,7 @@ function CopyBtn({ text }: { text: string }) {
 type ModalStep = 'closed' | 'connect' | 'paste' | 'role' | 'done'
 
 export function Header({ title }: { title: string }) {
-  const { isConnected, party, connect, connectWithPartyId, connectWithWallet, updateRole, disconnect, isConnecting, ledgerStatus } = useCanton()
+  const { isConnected, party, connect, connectWithPartyId, connectWithWallet, updateRole, recentParties, reconnectRecent, disconnect, isConnecting, ledgerStatus } = useCanton()
   const { user, logout } = useAuth()
   const { notifications, unreadCount, notify, markAllRead, clearAll } = useNotifications()
   const router = useRouter()
@@ -188,27 +188,36 @@ export function Header({ title }: { title: string }) {
 
             {notifOpen && (
               <>
-                <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-                    <p className="text-sm font-semibold text-slate-950 dark:text-white">Notifications</p>
+                <div className="absolute right-0 top-full z-40 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2 dark:border-slate-800">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Notifications</p>
                     {notifications.length > 0 && (
-                      <button onClick={clearAll} className="text-xs text-slate-400 transition-colors hover:text-red-500">Clear all</button>
+                      <button onClick={clearAll} className="text-[11px] text-slate-400 transition-colors hover:text-red-500">Clear all</button>
                     )}
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <p className="px-4 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-                        No notifications yet — activity like invoices, listings, and bids lands here.
-                      </p>
+                      <div className="flex flex-col items-center gap-1.5 px-4 py-5 text-center">
+                        <Bell className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Invoices, listings, and bids land here.</p>
+                      </div>
                     ) : (
                       <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {notifications.map(n => (
-                          <div key={n.id} className={cn('px-4 py-3', !n.read && 'bg-violet-500/[0.05]')}>
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-xs font-semibold text-slate-950 dark:text-white">{n.title}</p>
-                              <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(n.ts)}</span>
+                          <div key={n.id} className={cn('flex gap-2.5 px-3.5 py-2.5', !n.read && 'bg-violet-500/[0.05]')}>
+                            <span className={cn('mt-1 h-2 w-2 shrink-0 rounded-full',
+                              n.type === 'bid' ? 'bg-violet-500'
+                              : n.type === 'invoice' ? 'bg-sky-500'
+                              : n.type === 'auction' ? 'bg-emerald-500'
+                              : n.type === 'withdraw' ? 'bg-amber-500'
+                              : 'bg-slate-400')} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <p className="truncate text-xs font-semibold text-slate-950 dark:text-white">{n.title}</p>
+                                <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{timeAgo(n.ts)}</span>
+                              </div>
+                              <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">{n.body}</p>
                             </div>
-                            <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{n.body}</p>
                           </div>
                         ))}
                       </div>
@@ -315,6 +324,37 @@ export function Header({ title }: { title: string }) {
             <p className="mb-4 text-xs text-slate-600 dark:text-slate-400">
               Your identity on Canton signs every invoice, bid, and settlement you make.
             </p>
+
+            {/* Welcome back: identities used before in this browser — one tap
+                to log back in as your business or financier account. */}
+            {recentParties.length > 0 && (
+              <div className="mb-4">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Welcome back — your accounts</p>
+                <div className="space-y-1.5">
+                  {recentParties.slice(0, 4).map(rp => (
+                    <button
+                      key={rp.id}
+                      onClick={() => { reconnectRecent(rp); setModal('done') }}
+                      className="w-full flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2.5 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
+                    >
+                      <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white', rp.type === 'business' ? 'bg-violet-500' : 'bg-emerald-500')}>
+                        {rp.displayName[0]?.toUpperCase() ?? '?'}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-slate-950 dark:text-white">{rp.displayName}</span>
+                        <span className="block text-[10px] capitalize text-slate-400 dark:text-slate-500">{rp.type} · {rp.id.slice(0, 18)}…</span>
+                      </span>
+                      <span className="text-[10px] font-medium text-violet-600 dark:text-violet-300">Log in →</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="my-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">or connect new</span>
+                  <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                </div>
+              </div>
+            )}
 
             {connectError && (
               <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
