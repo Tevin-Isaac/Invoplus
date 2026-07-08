@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { BalanceCard } from '@/components/dashboard/BalanceCard'
 import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -383,8 +382,6 @@ export default function InvoicesPage() {
         </div>
       )}
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
-
-        <BalanceCard />
 
         {/* Upload zone */}
         <div

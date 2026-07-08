@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { BalanceCard } from '@/components/dashboard/BalanceCard'
 import { Lock, CheckCircle, XCircle, EyeOff, Zap, Loader2, AlertTriangle, Tag, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -122,8 +121,6 @@ export default function OffersPage() {
     <div className="flex h-full flex-col overflow-hidden">
       <Header title="My Offers" />
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
-
-        <BalanceCard />
 
         <div className="flex items-center gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] px-5 py-3">
           <EyeOff className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />

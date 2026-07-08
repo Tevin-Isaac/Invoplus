@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { useCanton } from '@/lib/canton'
-import { Copy, Check, RefreshCw, Shield, Wallet, Bell, Globe } from 'lucide-react'
+import { Copy, Check, RefreshCw, Shield, Wallet, Bell, Globe, CircleDollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const [notifyVerify, setNotifyVerify] = useState(true)
   const [users, setUsers] = useState<any[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
 
   const fetchUsers = async () => {
     setLoadingUsers(true)
@@ -42,6 +43,23 @@ export default function SettingsPage() {
   }
 
   useEffect(() => { fetchUsers() }, [])
+
+  useEffect(() => {
+    if (!party?.id) { setBalance(null); return }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partyId: party.id, role: party.type }),
+        })
+        const data = await res.json()
+        if (!cancelled && data.ok) setBalance(data.amount)
+      } catch { /* keep last known value */ }
+    }
+    load()
+  }, [party?.id, party?.type])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -98,6 +116,15 @@ export default function SettingsPage() {
                   )}>
                     {party.type === 'business' ? 'Business / Invoice Seller' : 'Financier / Bid Submitter'}
                   </span>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">Balance</p>
+                  <div className={cn(cell, 'flex items-center gap-2 px-3 py-2.5')}>
+                    <CircleDollarSign className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <span className="font-data flex-1 text-sm font-semibold text-slate-950 dark:text-white">
+                      {balance === null ? '—' : `$${balance.toLocaleString()} USD`}
+                    </span>
+                  </div>
                 </div>
               </>
             ) : (
