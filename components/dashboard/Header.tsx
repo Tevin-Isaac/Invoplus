@@ -62,7 +62,7 @@ export function Header({ title }: { title: string }) {
         const res = await fetch('/api/canton/contracts/balance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ partyId: party.id }),
+          body: JSON.stringify({ partyId: party.id, role: party.type }),
         })
         const data = await res.json()
         if (!cancelled && data.ok) setBalance(data.amount)
@@ -198,7 +198,7 @@ export function Header({ title }: { title: string }) {
           {isConnected && balance !== null && (
             <div
               className="hidden md:flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-1.5"
-              title="Your InvoPlus balance — a real Canton contract, moved on settlement and repayment"
+              title="Your InvoPlus demo balance — not real currency or USDC, but a real Canton contract: it moves atomically on settlement and repayment"
             >
               <CircleDollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
               <span className="font-data text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
