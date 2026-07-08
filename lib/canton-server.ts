@@ -99,9 +99,12 @@ export async function grantM2MRights(party: string) {
       userId,
       // Note the extra `value` nesting — the v2 JSON API wraps each right's
       // oneof payload, unlike the flatter shape /v2/users accepts on create.
+      // CanActAs only: acting as a party implies reading as it, and the
+      // shared M2M user has a hard 1000-rights cap on this validator
+      // (TOO_MANY_USER_RIGHTS) — granting both per party burned 2 slots
+      // per connect for no benefit.
       rights: [
         { kind: { CanActAs: { value: { party } } } },
-        { kind: { CanReadAs: { value: { party } } } },
       ],
     }),
     cache: 'no-store',

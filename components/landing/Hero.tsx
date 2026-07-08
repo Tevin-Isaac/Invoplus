@@ -143,8 +143,10 @@ export function Hero() {
         </button>
       </nav>
 
+      {/* Menu at z-30: must sit above both the nav (z-20) and the hero copy
+          (z-10) — at z-10 the later-painted hero content intercepted taps. */}
       {mobileMenuOpen && (
-        <div className="absolute top-20 left-0 right-0 z-10 bg-slate-950/95 backdrop-blur border-b border-white/10 px-6 py-4 space-y-3 md:hidden">
+        <div className="absolute top-20 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur border-b border-white/10 px-6 py-4 space-y-3 md:hidden">
           {navLinks.map((link) => (
             <a
               key={link.href}

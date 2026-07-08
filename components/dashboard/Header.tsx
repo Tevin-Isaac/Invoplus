@@ -474,10 +474,14 @@ export function Header({ title }: { title: string }) {
               You stay signed in on this browser; on another device, paste it under Connect → "I have a party ID" to pick up right where you left off.
             </p>
             <button
-              onClick={() => setModal('closed')}
+              onClick={() => {
+                setModal('closed')
+                // The label promises navigation — deliver it.
+                router.push(party.type === 'business' ? '/dashboard/invoices' : '/dashboard/marketplace')
+              }}
               className="mt-4 w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600"
             >
-              {party.type === 'business' ? 'Go to my dashboard' : 'Browse the marketplace'}
+              {party.type === 'business' ? 'Submit my first invoice' : 'Browse the marketplace'}
             </button>
           </div>
         </div>
