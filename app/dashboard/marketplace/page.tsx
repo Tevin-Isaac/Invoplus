@@ -328,8 +328,14 @@ export default function MarketplacePage() {
               {settleResult.data.fundedInvoiceContractId && (
                 <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">FundedInvoice</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{settleResult.data.fundedInvoiceContractId.slice(0, 20)}…</span></div>
               )}
-              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Canton Tx</span><span className="font-data max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">{settleResult.data.transactionId?.slice(0, 20)}…</span></div>
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Settlement Tx</span><span className="font-data max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">{settleResult.data.transactionId?.slice(0, 20)}…</span></div>
+              {settleResult.data.balanceTransferTransactionId && (
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Balance Transfer Tx</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{settleResult.data.balanceTransferTransactionId.slice(0, 20)}…</span></div>
+              )}
             </div>
+            {settleResult.data.balanceTransferTransactionId && (
+              <p className="mb-2 text-xs font-medium text-emerald-600 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable Canton transaction from the settlement itself.</p>
+            )}
             <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">Find it under Invoices as Funded — you can request repayment once the debtor pays you.</p>
             <button onClick={() => setSettleResult(null)} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600">Done</button>
           </div>

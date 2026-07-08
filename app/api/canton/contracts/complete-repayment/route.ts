@@ -113,6 +113,7 @@ export async function POST(req: Request) {
     // the seller, but the *outbound* leg to the financier is a genuine,
     // atomic, ledger-verifiable Canton transfer.
     let balanceTransferred = false
+    let balanceTransferTransactionId: string | undefined
     if (totalDue) {
       try {
         const sellerBalanceCid = await findBalanceContractId(platform, sellerPartyId, packageId)
@@ -132,7 +133,7 @@ export async function POST(req: Request) {
           const mintedSellerBalanceCid = mintResult?.contractId
           const financierBalanceCid = await findBalanceContractId(platform, financierPartyId, packageId)
           if (mintedSellerBalanceCid && financierBalanceCid) {
-            await submitAndWait(
+            const transferResult = await submitAndWait(
               [sellerPartyId, platform],
               [financierPartyId],
               [{
@@ -145,6 +146,7 @@ export async function POST(req: Request) {
               }],
             )
             balanceTransferred = true
+            balanceTransferTransactionId = transferResult?.transactionId
           }
         }
       } catch { /* balance not provisioned for this party yet — repayment confirmation still stands */ }
@@ -154,6 +156,7 @@ export async function POST(req: Request) {
       ok: true,
       confirmationContractId,
       transactionId: completeResult?.transactionId,
+      balanceTransferTransactionId,
       message: balanceTransferred
         ? `Repayment complete — $${totalDue} moved from the seller's balance to the financier's, on-ledger.`
         : 'Repayment complete — principal and yield settled to the financier on Canton.',

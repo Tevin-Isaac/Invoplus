@@ -370,8 +370,14 @@ export default function InvoicesPage() {
             </p>
             <div className="mb-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm dark:border-slate-700 dark:bg-slate-950">
               <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Principal + Yield</span><span className="font-data font-semibold text-slate-950 dark:text-white">${repayResult.inv.amount.toLocaleString()}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Canton Tx</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{repayResult.data.transactionId?.slice(0, 20)}…</span></div>
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Confirmation Tx</span><span className="font-data max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">{repayResult.data.transactionId?.slice(0, 20)}…</span></div>
+              {repayResult.data.balanceTransferTransactionId && (
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Balance Transfer Tx</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{repayResult.data.balanceTransferTransactionId.slice(0, 20)}…</span></div>
+              )}
             </div>
+            {repayResult.data.balanceTransferTransactionId && (
+              <p className="mb-4 text-xs font-medium text-emerald-600 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable Canton transaction from the confirmation itself.</p>
+            )}
             <button onClick={() => setRepayResult(null)} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600">Done</button>
           </div>
         </div>

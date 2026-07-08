@@ -135,6 +135,7 @@ export async function POST(req: Request) {
     // `owner, platform`, so the financier's own authority (via the M2M
     // rights granted at provisioning) is required alongside platform's.
     let balanceTransferred = false
+    let balanceTransferTransactionId: string | undefined
     if (financierPartyId && fundedAmount && sellerPartyId) {
       try {
         const [financierBalanceCid, sellerBalanceCid] = await Promise.all([
@@ -142,7 +143,7 @@ export async function POST(req: Request) {
           findBalanceContractId(platformPartyId, sellerPartyId, packageId),
         ])
         if (financierBalanceCid && sellerBalanceCid) {
-          await submitAndWait(
+          const transferResult = await submitAndWait(
             [financierPartyId, platformPartyId],
             [sellerPartyId],
             [{
@@ -155,6 +156,7 @@ export async function POST(req: Request) {
             }],
           )
           balanceTransferred = true
+          balanceTransferTransactionId = transferResult?.transactionId
         }
       } catch { /* balance not provisioned for this party yet — settlement still stands */ }
     }
@@ -163,6 +165,7 @@ export async function POST(req: Request) {
       ok: true,
       transactionId: result?.transactionId,
       fundedInvoiceContractId,
+      balanceTransferTransactionId,
       message: balanceTransferred
         ? `Auction settled on Canton Network. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger.`
         : 'Auction settled on Canton Network. Losing bids rejected privately; winner funded atomically.',
