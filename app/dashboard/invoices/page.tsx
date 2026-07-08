@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
+import { BalanceCard } from '@/components/dashboard/BalanceCard'
 import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -377,6 +378,8 @@ export default function InvoicesPage() {
       )}
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
+        <BalanceCard />
+
         {/* Upload zone */}
         <div
           onDragOver={e => { e.preventDefault(); setDrag(true) }}
@@ -447,9 +450,9 @@ export default function InvoicesPage() {
               ))}
               <div>
                 <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Currency</label>
-                <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className={inputCls}>
-                  {['USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD'].map(c => <option key={c}>{c}</option>)}
-                </select>
+                <div className={cn(inputCls, 'flex items-center text-slate-500 dark:text-slate-400')}>
+                  USD <span className="ml-1.5 text-[10px] text-slate-400 dark:text-slate-500">(InvoPlus balance is USD-only)</span>
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Due Date</label>

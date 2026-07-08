@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // can always exerciseByKey against it without a conditional "does one exist"
 // check on the hot path.
 const STARTING_BALANCE: Record<string, number> = {
-  financier: 250000,
+  financier: 350000,
   business: 0,
 }
 

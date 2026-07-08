@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
+import { BalanceCard } from '@/components/dashboard/BalanceCard'
 import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -336,6 +337,8 @@ export default function MarketplacePage() {
       )}
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+
+        <BalanceCard />
 
         {/* Market summary strip */}
         <div className="relative overflow-hidden rounded-2xl border border-violet-500/25 bg-gradient-to-r from-violet-500/10 via-transparent to-transparent p-5 dark:from-violet-500/15">

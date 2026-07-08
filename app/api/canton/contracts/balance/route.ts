@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic'
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
 const STARTING_BALANCE: Record<string, number> = {
-  financier: 250000,
+  financier: 350000,
   business: 0,
 }
 

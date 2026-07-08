@@ -183,26 +183,33 @@ export function Header({ title }: { title: string }) {
             <span>Search invoices...</span>
           </div>
 
-          {/* Connection status only — block heights and package counts are
-              network trivia, not app metrics. Full details live in Settings. */}
-          <div
-            className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-900"
-            title={ledgerStatus?.ok ? 'Connected to Canton DevNet' : 'Canton DevNet unreachable'}
-          >
-            <span className={cn('w-1.5 h-1.5 rounded-full', ledgerStatus?.ok ? 'bg-emerald-500 animate-pulse' : 'bg-red-400')} />
-            <span className="font-data text-[11px] tracking-wider text-slate-600 uppercase dark:text-slate-400">
-              {ledgerStatus?.ok ? 'Live on Canton' : 'Canton offline'}
-            </span>
-          </div>
+          {/* A red dot only appears when the ledger is actually unreachable —
+              otherwise this stays silent. Full connection detail lives in
+              Settings; the navbar doesn't need to narrate "we're connected"
+              when everything is working. */}
+          {ledgerStatus && !ledgerStatus.ok && (
+            <div
+              className="hidden items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 md:flex"
+              title="Canton DevNet unreachable"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+              <span className="font-data text-[11px] tracking-wider text-red-600 uppercase dark:text-red-300">Canton offline</span>
+            </div>
+          )}
 
           {isConnected && balance !== null && (
             <div
-              className="hidden md:flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-1.5"
+              className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-2"
               title="Your InvoPlus demo balance — not real currency or USDC, but a real Canton contract: it moves atomically on settlement and repayment"
             >
-              <CircleDollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
-              <span className="font-data text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                ${balance.toLocaleString()}
+              <CircleDollarSign className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+              <span className="flex flex-col leading-none">
+                <span className="font-data text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                  ${balance.toLocaleString()}
+                </span>
+                <span className="hidden text-[9px] uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70 sm:block">
+                  {party?.type === 'financier' ? 'Available capital' : 'Balance'}
+                </span>
               </span>
             </div>
           )}
@@ -535,6 +542,15 @@ export function Header({ title }: { title: string }) {
                 ? 'Submit an invoice from the Invoices page and list it for financiers to bid on.'
                 : 'Browse live auctions in the Marketplace and place your first sealed bid.'}
             </p>
+            {party.type === 'financier' && (
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4 text-left">
+                <CircleDollarSign className="h-8 w-8 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                <p className="text-xs text-slate-700 dark:text-slate-300">
+                  <span className="block font-data text-lg font-bold text-emerald-700 dark:text-emerald-300">$350,000 USD</span>
+                  We've funded your account with a demo balance so you can start bidding right away — it moves for real on Canton when you win an auction.
+                </p>
+              </div>
+            )}
             <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-700 dark:bg-slate-950">
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Connected as</p>
