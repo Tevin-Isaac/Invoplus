@@ -120,9 +120,15 @@ export async function createUser(userId: string, primaryParty: string) {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       user: { id: userId, primaryParty, isDeactivated: false },
+      // Same extra `value` nesting as grantM2MRights' rights payload — this
+      // was missing here, so every createUser call since day one has 400'd
+      // with "Missing required field at 'value'" and been silently
+      // swallowed by provision-party's best-effort try/catch. Confirmed
+      // fixed against the live validator: the flat shape 400s, this shape
+      // succeeds.
       rights: [
-        { kind: { CanActAs: { party: primaryParty } } },
-        { kind: { CanReadAs: { party: primaryParty } } },
+        { kind: { CanActAs: { value: { party: primaryParty } } } },
+        { kind: { CanReadAs: { value: { party: primaryParty } } } },
       ],
     }),
     cache: 'no-store',

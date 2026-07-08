@@ -202,7 +202,7 @@ export default function SettingsPage() {
             better use of full width than the stacked 2-col panels above */}
         <div className={cn(panel, 'overflow-hidden lg:col-span-2')}>
           <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
-            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Live Ledger Participants</h2>
+            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">InvoPlus Ledger Users</h2>
             <button onClick={fetchUsers} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/5 dark:hover:text-white">
               <RefreshCw className={cn('h-3.5 w-3.5', loadingUsers && 'animate-spin')} />
             </button>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
             {loadingUsers ? (
               <p className="text-xs text-slate-500 dark:text-slate-400">Loading from Canton DevNet…</p>
             ) : users.length === 0 ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400">No participants found</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">No InvoPlus users provisioned yet — connect to create one.</p>
             ) : (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {users.map((u: any) => (
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
-            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Live participants on Canton DevNet sandbox</p>
+            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">InvoPlus-provisioned users on the shared Canton DevNet sandbox — filtered from the validator's full user list, which includes other teams' accounts.</p>
           </div>
         </div>
 

@@ -485,23 +485,26 @@ export function Header({ title }: { title: string }) {
               <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connected — one more thing</h3>
             </div>
             <p className="mb-4 text-xs text-slate-600 dark:text-slate-400">
-              How will you use InvoPlus? This just picks which dashboard you see — you can switch anytime.
+              How will you use InvoPlus? This picks which dashboard you see — you can switch anytime.
             </p>
 
             <div className="mb-4">
-              <label className="mb-1.5 block text-xs text-slate-600 dark:text-slate-400">Company / display name <span className="text-slate-400 dark:text-slate-500">(optional)</span></label>
+              <label className="mb-1.5 block text-xs text-slate-600 dark:text-slate-400">Company / display name</label>
               <input
                 value={orgName}
                 onChange={e => setOrgName(e.target.value)}
                 placeholder="e.g. Acme Traders Ltd"
+                required
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-violet-500/60 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
               />
+              <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Labels your account across InvoPlus's own dashboard and notifications. Listings on the ledger itself still identify you by Canton party ID — that's not editable, it's your on-chain identity.</p>
             </div>
 
             <div className="space-y-3">
               <button
                 onClick={() => chooseRole('business')}
-                className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
+                disabled={!orgName.trim()}
+                className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-transparent dark:border-slate-700 dark:hover:border-violet-500"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
                   <Building2 className="w-5 h-5 text-violet-600 dark:text-violet-300" />
@@ -514,7 +517,8 @@ export function Header({ title }: { title: string }) {
 
               <button
                 onClick={() => chooseRole('financier')}
-                className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
+                disabled={!orgName.trim()}
+                className="group w-full flex items-start gap-3 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:bg-transparent dark:border-slate-700 dark:hover:border-violet-500"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
                   <Landmark className="w-5 h-5 text-violet-600 dark:text-violet-300" />
