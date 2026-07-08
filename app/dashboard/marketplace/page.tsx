@@ -10,6 +10,7 @@ import { useNotifications } from '@/lib/notifications'
 interface Auction {
   id: string
   invoiceId: string
+  invoiceHash: string     // matches SealedBid.invoiceHash — used to find bids at settlement
   buyer: string
   seller: string          // Canton party ID of the invoice seller, from the Auction payload
   amount: number
@@ -196,6 +197,7 @@ export default function MarketplacePage() {
             return {
               id: c.contractId.slice(0, 12),
               invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
+              invoiceHash: p.invoiceHash?.value ?? p.invoiceHash ?? '',
               seller: p.seller?.value ?? p.seller ?? '',
               buyer: p.debtorName?.value ?? p.debtorName ?? 'Unknown',
               amount: Number(p.faceAmount?.value ?? p.faceAmount ?? 0),
@@ -203,7 +205,7 @@ export default function MarketplacePage() {
               dueDate: p.dueDate?.value ?? p.dueDate ?? '',
               grade: String(p.riskGrade?.value ?? p.riskGrade ?? '—').replace('Grade_', ''),
               riskScore: Number(p.aiScore?.value ?? p.aiScore ?? 0),
-              bidsReceived: Number(p.bidCount ?? 0),
+              bidsReceived: Number(p.bidCount?.value ?? p.bidCount ?? 0),
               myBid: null,
               status: p.settled ? 'settled' : 'open',
               auctionContractId: c.contractId,
@@ -265,6 +267,41 @@ export default function MarketplacePage() {
     }
   }
 
+  // Settle: platform auto-picks the best sealed bid (seller never sees bid
+  // terms — that's the whole point of sealed-bid privacy) and atomically
+  // funds the invoice. Losing bids are rejected in their own transactions
+  // so their contents never touch anything the seller can read.
+  const [settlingId, setSettlingId] = useState<string | null>(null)
+  const [settleResult, setSettleResult] = useState<{ auction: Auction; data: any } | null>(null)
+  const handleSettleAuction = async (a: Auction) => {
+    if (!party?.id) return
+    if (!window.confirm(`Settle ${a.invoiceId}? The best sealed bid is accepted automatically and funds are committed atomically on Canton. This can't be undone.`)) return
+    setSettlingId(a.id)
+    try {
+      const res = await fetch('/api/canton/contracts/settle-auction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sellerPartyId: party.id,
+          auctionContractId: a.auctionContractId,
+          invoiceHash: a.invoiceHash,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setAuctions(prev => prev.filter(x => x.id !== a.id))
+        setSettleResult({ auction: a, data })
+        notifyCancel('auction', 'Auction settled', `${a.invoiceId} funded on Canton. Find it under Invoices as Funded.`)
+      } else {
+        window.alert(data.error ?? 'Settlement failed')
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Network error')
+    } finally {
+      setSettlingId(null)
+    }
+  }
+
   const open = auctions.filter(a => a.status === 'open')
   const totalValue = open.reduce((s, a) => s + a.amount, 0)
   const filtered = gradeFilter === 'all' ? auctions : auctions.filter(a => a.grade === gradeFilter)
@@ -274,6 +311,28 @@ export default function MarketplacePage() {
       <Header title="Marketplace" />
       {selectedAuction && (
         <BidModal auction={selectedAuction} onClose={() => setSelectedAuction(null)} onBidPlaced={handleBidPlaced} />
+      )}
+      {settleResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className={cn(panel, 'w-full max-w-sm p-8 text-center')}>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+              <CheckCircle className="h-8 w-8 text-emerald-500" />
+            </div>
+            <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">Auction Settled</h3>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              {settleResult.auction.invoiceId} is funded on Canton — winner and loser bids resolved atomically.
+            </p>
+            <div className="mb-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm dark:border-slate-700 dark:bg-slate-950">
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Invoice</span><span className="font-data font-semibold text-slate-950 dark:text-white">${settleResult.auction.amount.toLocaleString()}</span></div>
+              {settleResult.data.fundedInvoiceContractId && (
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">FundedInvoice</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{settleResult.data.fundedInvoiceContractId.slice(0, 20)}…</span></div>
+              )}
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Canton Tx</span><span className="font-data max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">{settleResult.data.transactionId?.slice(0, 20)}…</span></div>
+            </div>
+            <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">Find it under Invoices as Funded — you can request repayment once the debtor pays you.</p>
+            <button onClick={() => setSettleResult(null)} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600">Done</button>
+          </div>
+        </div>
       )}
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
@@ -401,14 +460,36 @@ export default function MarketplacePage() {
                       {a.myBid != null && <span className="font-data ml-1 text-violet-600 dark:text-violet-300">· yours: {a.myBid}%</span>}
                     </span>
                     {party?.id === a.seller ? (
-                      /* Your own listing: you can't bid on it, but you can pull it */
-                      <button
-                        onClick={() => handleCancelListing(a)}
-                        disabled={cancellingId === a.id}
-                        className="rounded-xl border border-red-500/40 px-4 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-60"
-                      >
-                        {cancellingId === a.id ? 'Cancelling…' : 'Cancel listing'}
-                      </button>
+                      /* Your own listing: you can't bid on it, but you can
+                         settle it (once it has bids) or pull it entirely.
+                         You never see bid terms — settlement picks the best
+                         offer automatically, preserving sealed-bid privacy. */
+                      <div className="flex items-center gap-2">
+                        {a.bidsReceived > 0 && (
+                          <button
+                            onClick={() => handleSettleAuction(a)}
+                            disabled={settlingId === a.id}
+                            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-600 disabled:opacity-60"
+                          >
+                            {settlingId === a.id ? 'Settling…' : `Settle (${a.bidsReceived})`}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleCancelListing(a)}
+                          disabled={cancellingId === a.id || settlingId === a.id}
+                          className="rounded-xl border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-60"
+                        >
+                          {cancellingId === a.id ? 'Cancelling…' : 'Cancel'}
+                        </button>
+                      </div>
+                    ) : party?.type === 'business' ? (
+                      /* Bidding is a financier action — a business identity
+                         funding invoices doesn't make sense in this product's
+                         model, so make that explicit instead of letting the
+                         API silently accept it. */
+                      <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500" title="Bidding is for financier accounts. Connect or switch to a financier identity to bid.">
+                        Financiers only
+                      </span>
                     ) : (
                       <button
                         onClick={() => a.status === 'open' && setSelectedAuction(a)}

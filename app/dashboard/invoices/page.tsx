@@ -72,37 +72,88 @@ export default function InvoicesPage() {
     .filter(i => filter === 'all' || lc(i.status) === filter)
     .filter(i => !search || i.buyer.toLowerCase().includes(search.toLowerCase()) || i.id.toLowerCase().includes(search.toLowerCase()))
 
+  const vv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+
   useEffect(() => {
     if (!party?.id) return
-    const load = async () => {
+    const post = async (template: string) => {
       try {
         const res = await fetch('/api/canton/contracts/list', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parties: [party.id], template: 'invoice' }),
+          body: JSON.stringify({ parties: [party.id], template }),
         })
         const data = await res.json()
-        if (data.ok) {
-          const rows = (data.contracts || []).map((c: any) => {
-            const p = c.payload || {}
-            const face = p.faceAmount && (p.faceAmount.value ?? p.faceAmount) ? Number(p.faceAmount.value ?? p.faceAmount) : 0
-            return {
-              id: c.contractId,
-              invoiceId: (p.invoiceId?.value ?? p.invoiceId) || '',
-              buyer: (p.debtorName?.value ?? p.debtorName) || 'Unknown',
-              taxId: (p.debtorTaxId?.value ?? p.debtorTaxId) || '',
-              amount: face,
-              currency: (p.currency?.value ?? p.currency) || 'USD',
-              issueDate: (p.issueDate?.value ?? p.issueDate) || '',
-              dueDate: (p.dueDate?.value ?? p.dueDate) || '',
-              status: (p.status?.value ?? p.status) || (p.settled ? 'funded' : 'pending'),
-              grade: (p.riskGrade?.value ?? p.riskGrade) || '—',
-              aiScore: Number(p.aiScore?.value ?? p.aiScore ?? 0),
-            }
-          })
-          setInvoices(rows)
+        return data.ok ? (data.contracts || []) : []
+      } catch { return [] }
+    }
+    const load = async () => {
+      // Once listed, the original InvoiceContract is archived and replaced
+      // by an Auction (then a FundedInvoice at settlement) — Daml contracts
+      // are immutable, so the invoice's lifecycle only shows in full by
+      // merging all three templates instead of querying 'invoice' alone.
+      const [invoiceContracts, auctionContracts, fundedContracts] = await Promise.all([
+        post('invoice'), post('auction'), post('funded'),
+      ])
+
+      const pending: any[] = invoiceContracts.map((c: any) => {
+        const p = c.payload || {}
+        const face = p.faceAmount ? Number(vv(p.faceAmount)) : 0
+        return {
+          id: c.contractId,
+          invoiceId: vv(p.invoiceId) || '',
+          buyer: vv(p.debtorName) || 'Unknown',
+          taxId: vv(p.debtorTaxId) || '',
+          amount: face,
+          currency: vv(p.currency) || 'USD',
+          issueDate: vv(p.issueDate) || '',
+          dueDate: vv(p.dueDate) || '',
+          status: lc(vv(p.status) || 'pending'),
+          grade: vv(p.riskGrade) || '—',
+          aiScore: Number(vv(p.aiScore) ?? 0),
         }
-      } catch { /* keep empty state */ }
+      })
+
+      // Listed invoices only exist as sellers' own Auctions now.
+      const mine = (list: any[]) => list.filter((c: any) => vv(c.payload?.seller) === party.id)
+      const bidding: any[] = mine(auctionContracts).filter((c: any) => !vv(c.payload?.settled)).map((c: any) => {
+        const p = c.payload || {}
+        return {
+          id: c.contractId,
+          invoiceId: vv(p.invoiceId) || '',
+          buyer: vv(p.debtorName) || 'Unknown',
+          taxId: '',
+          amount: Number(vv(p.faceAmount) ?? 0),
+          currency: vv(p.currency) || 'USD',
+          issueDate: '',
+          dueDate: vv(p.dueDate) || '',
+          status: 'bidding',
+          grade: String(vv(p.riskGrade) ?? '—').replace('Grade_', ''),
+          aiScore: Number(vv(p.aiScore) ?? 0),
+          bidsReceived: Number(p.bidCount?.value ?? p.bidCount ?? 0),
+        }
+      })
+
+      const funded: any[] = mine(fundedContracts).map((c: any) => {
+        const p = c.payload || {}
+        return {
+          id: c.contractId,
+          invoiceId: vv(p.invoiceId) || '',
+          buyer: vv(p.debtorName) || 'Unknown',
+          taxId: '',
+          amount: Number(vv(p.faceAmount) ?? 0),
+          currency: vv(p.currency) || 'USD',
+          issueDate: '',
+          dueDate: vv(p.dueDate) || '',
+          status: 'funded',
+          grade: '—',
+          aiScore: 0,
+          financierPartyId: vv(p.financier),
+          fundedAmount: Number(vv(p.fundedAmount) ?? 0),
+        }
+      })
+
+      setInvoices([...pending, ...bidding, ...funded])
     }
     load()
   }, [party])
@@ -112,6 +163,41 @@ export default function InvoicesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [rowError, setRowError] = useState<string | null>(null)
+
+  // Repayment: once the debtor has paid the seller off-chain, the seller
+  // closes the loop with the financier. Chains RepayFinancier -> Approve ->
+  // Complete in one call (see complete-repayment route for why).
+  const [repayingId, setRepayingId] = useState<string | null>(null)
+  const [repayResult, setRepayResult] = useState<{ inv: any; data: any } | null>(null)
+  const handleMarkRepaid = async (inv: any) => {
+    if (!party?.id) return
+    if (!window.confirm(`Mark ${inv.invoiceId} as repaid? This sends principal + yield to the financier on Canton and can't be undone.`)) return
+    setRepayingId(inv.id)
+    setRowError(null)
+    try {
+      const res = await fetch('/api/canton/contracts/complete-repayment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sellerPartyId: party.id,
+          financierPartyId: inv.financierPartyId,
+          fundedInvoiceContractId: inv.id,
+        }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setInvoices(prev => prev.filter(i => i.id !== inv.id))
+        setRepayResult({ inv, data })
+        notify('info', 'Repayment complete', `${inv.invoiceId} — financier repaid in full on Canton.`)
+      } else {
+        setRowError(data.error ?? 'Repayment failed')
+      }
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : 'Network error')
+    } finally {
+      setRepayingId(null)
+    }
+  }
 
   const startEdit = (inv: any) => {
     setForm({
@@ -271,6 +357,24 @@ export default function InvoicesPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <Header title="Invoices" />
+      {repayResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className={cn(panel, 'w-full max-w-sm p-8 text-center')}>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+              <CheckCircle className="h-8 w-8 text-emerald-500" />
+            </div>
+            <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">Repayment Complete</h3>
+            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+              {repayResult.inv.invoiceId} — the financier has been repaid in full on Canton.
+            </p>
+            <div className="mb-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm dark:border-slate-700 dark:bg-slate-950">
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Principal + Yield</span><span className="font-data font-semibold text-slate-950 dark:text-white">${repayResult.inv.amount.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Canton Tx</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{repayResult.data.transactionId?.slice(0, 20)}…</span></div>
+            </div>
+            <button onClick={() => setRepayResult(null)} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600">Done</button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
         {/* Upload zone */}
@@ -600,7 +704,16 @@ export default function InvoicesPage() {
                           </button>
                         </>
                       )}
-                      {lc(inv.status) === 'funded' && <span className="hidden text-xs text-slate-400 md:inline">—</span>}
+                      {lc(inv.status) === 'funded' && (
+                        <button
+                          onClick={() => handleMarkRepaid(inv)}
+                          disabled={repayingId === inv.id}
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition-all hover:bg-emerald-500 hover:text-white disabled:opacity-60 dark:text-emerald-300"
+                        >
+                          {repayingId === inv.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                          {repayingId === inv.id ? 'Repaying…' : 'Mark as Repaid'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )

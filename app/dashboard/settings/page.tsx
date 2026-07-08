@@ -46,7 +46,10 @@ export default function SettingsPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <Header title="Settings" />
-      <div className="max-w-2xl flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+      {/* 2-col on wide screens so the page uses the width instead of a
+          single narrow stacked column leaving half the screen empty */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-5 lg:grid-cols-2">
 
         {/* Canton Party */}
         <div className={cn(panel, 'overflow-hidden')}>
@@ -195,34 +198,38 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Live ledger users */}
-        <div className={cn(panel, 'overflow-hidden')}>
+        {/* Live ledger users — spans both columns; a list of rows makes
+            better use of full width than the stacked 2-col panels above */}
+        <div className={cn(panel, 'overflow-hidden lg:col-span-2')}>
           <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
             <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Live Ledger Participants</h2>
             <button onClick={fetchUsers} className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/5 dark:hover:text-white">
               <RefreshCw className={cn('h-3.5 w-3.5', loadingUsers && 'animate-spin')} />
             </button>
           </div>
-          <div className="space-y-2 p-5">
+          <div className="p-5">
             {loadingUsers ? (
               <p className="text-xs text-slate-500 dark:text-slate-400">Loading from Canton DevNet…</p>
             ) : users.length === 0 ? (
               <p className="text-xs text-slate-500 dark:text-slate-400">No participants found</p>
             ) : (
-              users.map((u: any) => (
-                <div key={u.id} className={cn(cell, 'flex items-center gap-3 p-3')}>
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-violet-500" />
-                  <div className="min-w-0">
-                    <p className="font-data truncate text-xs text-slate-950 dark:text-white">{u.metadata?.annotations?.username ?? u.id}</p>
-                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.primaryParty}</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {users.map((u: any) => (
+                  <div key={u.id} className={cn(cell, 'flex items-center gap-3 p-3')}>
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-violet-500" />
+                    <div className="min-w-0">
+                      <p className="font-data truncate text-xs text-slate-950 dark:text-white">{u.metadata?.annotations?.username ?? u.id}</p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">{u.primaryParty}</p>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
-            <p className="pt-1 text-xs text-slate-400 dark:text-slate-500">Live participants on Canton DevNet sandbox</p>
+            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Live participants on Canton DevNet sandbox</p>
           </div>
         </div>
 
+        </div>
       </div>
     </div>
   )

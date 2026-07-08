@@ -11,13 +11,23 @@
  *      authority satisfied via the Auction's own seller+platform signatories)
  *      to create the dual-signed FundedInvoice.
  *
+ * If `winnerBidContractId` is omitted, the winner is picked automatically
+ * (best advance rate for the seller, tie-broken by lowest annual rate) from
+ * every open SealedBid matching `invoiceHash`. This is the real product
+ * design: the seller can never see bid terms to "choose" a winner manually
+ * — sealed-bid privacy means only the platform (as an impartial party) and
+ * each bidding financier can read a bid's contents, so best-execution has
+ * to happen here, not in a human's judgment call.
+ *
  * Daml choices: InvoPlus.Invoice:SealedBid:RejectBid, InvoPlus.Invoice:Auction:SettleAuction
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait } from '@/lib/canton-server'
+import { submitAndWait, queryACS } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
+
+const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
 export async function POST(req: Request) {
   try {
@@ -25,28 +35,63 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Authentication required' }, { status: 401 })
     }
     const {
-      platformPartyId,
       sellerPartyId,
       auctionContractId,
-      winnerBidContractId,
-      loserBidContractIds,   // array of losing SealedBid contract IDs
+      invoiceHash,               // required when winnerBidContractId is omitted
+      winnerBidContractId: providedWinnerId,
+      loserBidContractIds: providedLoserIds,
     } = await req.json()
 
-    if (!platformPartyId || !auctionContractId || !winnerBidContractId) {
+    if (!auctionContractId) {
       return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 })
     }
 
     const packageId = process.env.INVOPLUS_PACKAGE_ID
     if (!packageId) {
-      return NextResponse.json({
-        ok: false,
-        error: 'INVOPLUS_PACKAGE_ID not set.',
-      }, { status: 503 })
+      return NextResponse.json({ ok: false, error: 'INVOPLUS_PACKAGE_ID not set.' }, { status: 503 })
+    }
+
+    // SettleAuction's controller is literally the Auction's own `platform`
+    // field, which is always process.env.CANTON_PLATFORM_PARTY (see
+    // list-auction) — never a value the client can supply, or authorization
+    // fails because the acting party doesn't match the required controller.
+    const platformPartyId = process.env.CANTON_PLATFORM_PARTY
+    if (!platformPartyId) {
+      return NextResponse.json({ ok: false, error: 'CANTON_PLATFORM_PARTY not set.' }, { status: 503 })
+    }
+
+    let winnerBidContractId = providedWinnerId as string | undefined
+    let loserBidContractIds: string[] = providedLoserIds ?? []
+
+    // Auto-select mode: no winner given, figure it out ourselves.
+    if (!winnerBidContractId) {
+      if (!invoiceHash) {
+        return NextResponse.json({ ok: false, error: 'invoiceHash required for automatic settlement' }, { status: 400 })
+      }
+      const bidLines = await queryACS([platformPartyId], [`${packageId}:InvoPlus.Invoice:SealedBid`])
+      const bids = bidLines
+        .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
+        .map((l: any) => l.contractEntry.JsActiveContract.createdEvent)
+        .filter((e: any) => pv(e.createArgument?.invoiceHash) === invoiceHash)
+
+      if (bids.length === 0) {
+        return NextResponse.json({ ok: false, error: 'No open sealed bids found for this auction' }, { status: 404 })
+      }
+
+      const best = bids.reduce((a: any, b: any) => {
+        const aAdv = Number(pv(a.createArgument.advanceRate)), bAdv = Number(pv(b.createArgument.advanceRate))
+        if (aAdv !== bAdv) return bAdv > aAdv ? b : a
+        const aRate = Number(pv(a.createArgument.annualRate)), bRate = Number(pv(b.createArgument.annualRate))
+        return bRate < aRate ? b : a
+      })
+
+      winnerBidContractId = best.contractId
+      loserBidContractIds = bids.filter((b: any) => b.contractId !== best.contractId).map((b: any) => b.contractId)
     }
 
     // Phase 1: reject each losing bid in its own transaction — platform only,
     // seller never reads these, so bid contents stay sealed forever.
-    for (const loserCid of (loserBidContractIds ?? [])) {
+    for (const loserCid of loserBidContractIds) {
       await submitAndWait(
         [platformPartyId],
         [platformPartyId],
@@ -88,7 +133,7 @@ export async function POST(req: Request) {
       fundedInvoiceContractId,
       message: 'Auction settled on Canton Network. Losing bids rejected privately; winner funded atomically.',
       details: {
-        losingBidsRejected: (loserBidContractIds ?? []).length,
+        losingBidsRejected: loserBidContractIds.length,
         winnerBidSettled: true,
         fundedInvoiceCreated: true,
       },
