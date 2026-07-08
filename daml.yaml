@@ -1,6 +1,6 @@
 sdk-version: 3.4.11
 name: invoplus
-version: 1.0.0
+version: 1.1.0
 source: daml
 build-options:
   - --target=2.1
@@ -17,4 +17,5 @@ data-dependencies: []
 #   InvoPlus.Platform  — PlatformConfig, SellerOnboarding, FeeReceipt, SettlementSummary
 #   InvoPlus.Financier — FinancierProfile, BidHistory, CapitalAccount
 #   InvoPlus.Repayment — RepaymentRequest, RepaymentConfirmation, DisputeCase, DefaultNotice, ExtensionRequest
+#   InvoPlus.Token      — Balance: platform-issued demo asset, moved on settlement/repayment
 #   InvoPlus.Setup     — Daml Scripts: setupDemo, setupDisputeDemo

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut } from 'lucide-react'
+import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut, CircleDollarSign } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
 import { useNotifications } from '@/lib/notifications'
@@ -46,8 +46,32 @@ export function Header({ title }: { title: string }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [orgName, setOrgName] = useState('')
+  const [balance, setBalance] = useState<number | null>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  // Real ledger balance — the InvoPlus.Token:Balance moved by settle-auction
+  // and complete-repayment. Polled rather than event-driven since it can
+  // change from actions taken by other parties (e.g. a financier funding
+  // your invoice), not just this browser's own submissions.
+  useEffect(() => {
+    if (!party?.id) { setBalance(null); return }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partyId: party.id }),
+        })
+        const data = await res.json()
+        if (!cancelled && data.ok) setBalance(data.amount)
+      } catch { /* keep last known value */ }
+    }
+    load()
+    const interval = setInterval(load, 15000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [party?.id])
 
   // Close dropdowns on outside click. A `fixed inset-0` backdrop can't do
   // this here: the header's backdrop-blur creates a containing block, so
@@ -170,6 +194,18 @@ export function Header({ title }: { title: string }) {
               {ledgerStatus?.ok ? 'Live on Canton' : 'Canton offline'}
             </span>
           </div>
+
+          {isConnected && balance !== null && (
+            <div
+              className="hidden md:flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.08] px-3 py-1.5"
+              title="Your InvoPlus balance — a real Canton contract, moved on settlement and repayment"
+            >
+              <CircleDollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
+              <span className="font-data text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                ${balance.toLocaleString()}
+              </span>
+            </div>
+          )}
 
           <div className="relative" ref={notifRef}>
             <button

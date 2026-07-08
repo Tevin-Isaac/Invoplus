@@ -1,0 +1,66 @@
+-- InvoPlus: a scoped, platform-issued demo balance so bidding and repayment
+-- move real, atomic value on Canton instead of just recording intent.
+--
+-- This is NOT Canton Coin/Amulet — it's a self-issued asset, minted by the
+-- platform party, transferable between InvoPlus parties. That tradeoff is
+-- deliberate: real Canton Coin would require every financier to hold an
+-- external DevNet-faucet balance (a dependency outside this app's control),
+-- while a scoped balance lets the platform fund new financiers deterministically
+-- on provisioning and guarantees settlement/repayment never fails on a demo
+-- for reasons unrelated to the app itself. The transfer is still a genuine,
+-- atomic, ledger-verifiable movement of value between two Canton parties —
+-- just centrally issued rather than backed by an external token.
+--
+-- No contract keys: LF target 2.1 (this project's build target) dropped
+-- contract-key support, so callers pass the counterparty's current Balance
+-- contract ID explicitly (looked up via an ACS query) rather than exerciseByKey.
+module InvoPlus.Token where
+
+template Balance
+  with
+    platform : Party
+    owner    : Party
+    amount   : Decimal
+    currency : Text
+  where
+    signatory platform
+    observer owner
+
+    -- Platform credits a party's balance directly — used on provisioning
+    -- (financiers start with working capital) and to represent an off-ledger
+    -- event landing on-ledger (e.g. a debtor's wire arriving at the seller).
+    choice Mint : ContractId Balance
+      with
+        mintAmount : Decimal
+      controller platform
+      do
+        assertMsg "Mint amount must be positive" (mintAmount > 0.0)
+        create this with amount = amount + mintAmount
+
+    -- Debit this balance and credit the counterparty's balance in one choice.
+    -- Requires both the owner's own authority (they're being debited) and
+    -- the platform's (issuer of record for this asset, and signatory on
+    -- both Balance contracts involved).
+    choice Transfer : (ContractId Balance, ContractId Balance)
+      with
+        toBalanceCid   : ContractId Balance
+        transferAmount : Decimal
+      controller owner, platform
+      do
+        assertMsg "Transfer amount must be positive" (transferAmount > 0.0)
+        assertMsg "Insufficient balance" (amount >= transferAmount)
+        toBalance <- fetch toBalanceCid
+        assertMsg "Cannot transfer to self" (toBalance.owner /= owner)
+        assertMsg "Currency mismatch" (toBalance.currency == currency)
+        newToCid <- exercise toBalanceCid Credit with creditAmount = transferAmount
+        newFromCid <- create this with amount = amount - transferAmount
+        return (newFromCid, newToCid)
+
+    -- Internal: only ever reached via Transfer's exercise above.
+    choice Credit : ContractId Balance
+      with
+        creditAmount : Decimal
+      controller platform
+      do
+        assertMsg "Credit amount must be positive" (creditAmount > 0.0)
+        create this with amount = amount + creditAmount

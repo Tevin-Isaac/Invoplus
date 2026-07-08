@@ -22,7 +22,7 @@
  * Daml choices: InvoPlus.Invoice:SealedBid:RejectBid, InvoPlus.Invoice:Auction:SettleAuction
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait, queryACS } from '@/lib/canton-server'
+import { submitAndWait, queryACS, findBalanceContractId } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -124,18 +124,53 @@ export async function POST(req: Request) {
       }],
     )
 
-    const fundedInvoiceContractId = (result?.created ?? [])
-      .find((c: any) => c.templateId.endsWith(':FundedInvoice'))?.contractId
+    const fundedInvoiceEvent = (result?.created ?? [])
+      .find((c: any) => c.templateId.endsWith(':FundedInvoice'))
+    const fundedInvoiceContractId = fundedInvoiceEvent?.contractId
+    const financierPartyId = pv(fundedInvoiceEvent?.createArgument?.financier)
+    const fundedAmount = pv(fundedInvoiceEvent?.createArgument?.fundedAmount)
+
+    // Phase 3: move real value — debit the winning financier's Balance,
+    // credit the seller's, for the funded amount. Transfer's controller is
+    // `owner, platform`, so the financier's own authority (via the M2M
+    // rights granted at provisioning) is required alongside platform's.
+    let balanceTransferred = false
+    if (financierPartyId && fundedAmount && sellerPartyId) {
+      try {
+        const [financierBalanceCid, sellerBalanceCid] = await Promise.all([
+          findBalanceContractId(platformPartyId, financierPartyId, packageId),
+          findBalanceContractId(platformPartyId, sellerPartyId, packageId),
+        ])
+        if (financierBalanceCid && sellerBalanceCid) {
+          await submitAndWait(
+            [financierPartyId, platformPartyId],
+            [sellerPartyId],
+            [{
+              ExerciseCommand: {
+                templateId: `${packageId}:InvoPlus.Token:Balance`,
+                contractId: financierBalanceCid,
+                choice: 'Transfer',
+                choiceArgument: { toBalanceCid: sellerBalanceCid, transferAmount: String(fundedAmount) },
+              },
+            }],
+          )
+          balanceTransferred = true
+        }
+      } catch { /* balance not provisioned for this party yet — settlement still stands */ }
+    }
 
     return NextResponse.json({
       ok: true,
       transactionId: result?.transactionId,
       fundedInvoiceContractId,
-      message: 'Auction settled on Canton Network. Losing bids rejected privately; winner funded atomically.',
+      message: balanceTransferred
+        ? `Auction settled on Canton Network. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger.`
+        : 'Auction settled on Canton Network. Losing bids rejected privately; winner funded atomically.',
       details: {
         losingBidsRejected: loserBidContractIds.length,
         winnerBidSettled: true,
         fundedInvoiceCreated: true,
+        balanceTransferred,
       },
     })
   } catch (err) {

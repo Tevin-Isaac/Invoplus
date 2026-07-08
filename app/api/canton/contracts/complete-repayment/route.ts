@@ -22,7 +22,7 @@
  *   InvoPlus.Repayment:RepaymentRequest:{ApproveRepayment,CompleteRepayment}
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait } from '@/lib/canton-server'
+import { submitAndWait, findBalanceContractId } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -65,6 +65,10 @@ export async function POST(req: Request) {
     const requestContractId = repayResult?.contractId
     if (!requestContractId) throw new Error('RepayFinancier did not return a RepaymentRequest contract ID')
 
+    const requestEvent = (repayResult?.created ?? []).find((c: any) => c.contractId === requestContractId)
+    const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+    const totalDue = pv(requestEvent?.createArgument?.totalDue)
+
     const requestTemplateId = `${packageId}:InvoPlus.Repayment:RepaymentRequest`
 
     // Step 2: platform approves.
@@ -101,11 +105,59 @@ export async function POST(req: Request) {
       .find((c: any) => c.templateId.endsWith(':RepaymentConfirmation'))?.contractId
       ?? completeResult?.contractId
 
+    // Move real value: the debtor's payment is off-ledger by definition (the
+    // debtor isn't a Canton party) — mint the seller's Balance for the
+    // amount they just collected, then transfer the full totalDue on to the
+    // financier in the same call. This is the honest limit of any invoice
+    // platform not run entirely on-chain: the *inbound* leg is attested by
+    // the seller, but the *outbound* leg to the financier is a genuine,
+    // atomic, ledger-verifiable Canton transfer.
+    let balanceTransferred = false
+    if (totalDue) {
+      try {
+        const sellerBalanceCid = await findBalanceContractId(platform, sellerPartyId, packageId)
+        if (sellerBalanceCid) {
+          const mintResult = await submitAndWait(
+            [platform],
+            [sellerPartyId],
+            [{
+              ExerciseCommand: {
+                templateId: `${packageId}:InvoPlus.Token:Balance`,
+                contractId: sellerBalanceCid,
+                choice: 'Mint',
+                choiceArgument: { mintAmount: String(totalDue) },
+              },
+            }],
+          )
+          const mintedSellerBalanceCid = mintResult?.contractId
+          const financierBalanceCid = await findBalanceContractId(platform, financierPartyId, packageId)
+          if (mintedSellerBalanceCid && financierBalanceCid) {
+            await submitAndWait(
+              [sellerPartyId, platform],
+              [financierPartyId],
+              [{
+                ExerciseCommand: {
+                  templateId: `${packageId}:InvoPlus.Token:Balance`,
+                  contractId: mintedSellerBalanceCid,
+                  choice: 'Transfer',
+                  choiceArgument: { toBalanceCid: financierBalanceCid, transferAmount: String(totalDue) },
+                },
+              }],
+            )
+            balanceTransferred = true
+          }
+        }
+      } catch { /* balance not provisioned for this party yet — repayment confirmation still stands */ }
+    }
+
     return NextResponse.json({
       ok: true,
       confirmationContractId,
       transactionId: completeResult?.transactionId,
-      message: 'Repayment complete — principal and yield settled to the financier on Canton.',
+      message: balanceTransferred
+        ? `Repayment complete — $${totalDue} moved from the seller's balance to the financier's, on-ledger.`
+        : 'Repayment complete — principal and yield settled to the financier on Canton.',
+      balanceTransferred,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown error'

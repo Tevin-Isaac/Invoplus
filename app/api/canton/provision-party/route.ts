@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server'
-import { allocateParty, createUser, grantM2MRights } from '@/lib/canton-server'
+import { allocateParty, createUser, grantM2MRights, submitAndWait } from '@/lib/canton-server'
 
 export const dynamic = 'force-dynamic'
+
+// Financiers need working capital to fund invoices; sellers don't need a
+// starting balance since they receive funding, not spend it. Both get a
+// Balance contract created up front so settle-auction/complete-repayment
+// can always exerciseByKey against it without a conditional "does one exist"
+// check on the hot path.
+const STARTING_BALANCE: Record<string, number> = {
+  financier: 250000,
+  business: 0,
+}
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +37,32 @@ export async function POST(req: Request) {
     try {
       await createUser(`${hint}@invoplus`, partyId)
     } catch { /* may already exist */ }
+
+    // Best-effort: give the new party a real, ledger-backed Balance so
+    // bidding/settlement/repayment can move actual value for it. If the
+    // package isn't deployed yet (older Seaport builds) this silently no-ops
+    // rather than failing provisioning.
+    const packageId = process.env.INVOPLUS_PACKAGE_ID
+    const platformPartyId = process.env.CANTON_PLATFORM_PARTY
+    if (packageId && platformPartyId) {
+      try {
+        await submitAndWait(
+          [platformPartyId],
+          [partyId],
+          [{
+            CreateCommand: {
+              templateId: `${packageId}:InvoPlus.Token:Balance`,
+              createArguments: {
+                platform: platformPartyId,
+                owner: partyId,
+                amount: String(STARTING_BALANCE[role] ?? 0),
+                currency: 'USD',
+              },
+            },
+          }],
+        )
+      } catch { /* Token module not yet deployed, or balance already exists */ }
+    }
 
     return NextResponse.json({ ok: true, partyId, displayName, role })
   } catch (err) {

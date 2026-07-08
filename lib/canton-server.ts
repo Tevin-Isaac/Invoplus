@@ -246,6 +246,20 @@ export async function queryACS(parties: string[], templateIds?: string[]) {
   }
 }
 
+// Balance has no contract key (LF 2.1 dropped key support), so every
+// Transfer/Mint needs the owner's current Balance contract ID looked up by
+// ACS query first. Queried as `platform` (signatory, so always a witness),
+// not the owner — avoids an extra M2M-rights dependency for a read.
+export async function findBalanceContractId(platformPartyId: string, ownerPartyId: string, packageId: string): Promise<string | null> {
+  const lines = await queryACS([platformPartyId], [`${packageId}:InvoPlus.Token:Balance`])
+  const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+  const entry = lines
+    .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
+    .map((l: any) => l.contractEntry.JsActiveContract.createdEvent)
+    .find((e: any) => pv(e.createArgument?.owner) === ownerPartyId)
+  return entry?.contractId ?? null
+}
+
 // ─── Submit a command and wait for completion ─────────────────────────────────
 
 // Uses /v2/commands/submit-and-wait-for-transaction (not the plain
@@ -299,7 +313,7 @@ export async function submitAndWait(
   const events: any[] = data?.transaction?.events ?? []
   const created = events
     .filter(e => e.CreatedEvent)
-    .map(e => ({ contractId: e.CreatedEvent.contractId, templateId: e.CreatedEvent.templateId }))
+    .map(e => ({ contractId: e.CreatedEvent.contractId, templateId: e.CreatedEvent.templateId, createArgument: e.CreatedEvent.createArgument }))
   const exercised = events
     .filter(e => e.ExercisedEvent)
     .map(e => ({
