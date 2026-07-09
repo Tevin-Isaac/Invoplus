@@ -176,6 +176,7 @@ export async function POST(req: Request) {
           findBalanceContractId(platformPartyId, financierPartyId, packageId),
           findBalanceContractId(platformPartyId, sellerPartyId, packageId),
         ])
+        console.log(`[settle-auction] ${auctionContractId.slice(0, 12)} phase3-start financierBalanceCid=${financierBalanceCid?.slice(0, 12)} sellerBalanceCid=${sellerBalanceCid?.slice(0, 12)}`)
         if (financierBalanceCid && sellerBalanceCid) {
           const transferResult = await submitAndWait(
             [financierPartyId, platformPartyId],
@@ -189,6 +190,7 @@ export async function POST(req: Request) {
               },
             }],
           )
+          console.log(`[settle-auction] ${auctionContractId.slice(0, 12)} transfer-ok txId=${transferResult?.transactionId} createdCount=${transferResult?.created?.length}`)
           balanceTransferred = true
           balanceTransferTransactionId = transferResult?.transactionId
 
@@ -231,6 +233,7 @@ export async function POST(req: Request) {
         // settlement itself succeeded, which is exactly the kind of
         // failure that must never fail silently.
         balanceTransferError = err instanceof Error ? err.message : 'Balance transfer failed'
+        console.error(`[settle-auction] ${auctionContractId.slice(0, 12)} phase3-caught balanceTransferred=${balanceTransferred} txId=${balanceTransferTransactionId} error=${balanceTransferError}`)
       }
     }
 
@@ -265,6 +268,8 @@ export async function POST(req: Request) {
         balanceTransferError = undefined
       }
     }
+
+    console.log(`[settle-auction] ${auctionContractId.slice(0, 12)} FINAL balanceTransferred=${balanceTransferred} txId=${balanceTransferTransactionId} error=${balanceTransferError} sellerBalanceBefore=${sellerBalanceBefore} sellerBalanceAfter=${sellerBalanceAfter} fundedAmount=${fundedAmount}`)
 
     return NextResponse.json({
       ok: true,
