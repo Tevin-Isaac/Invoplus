@@ -67,8 +67,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!party?.id) { setData({ invoices: [], auctions: [], bids: [], funded: [], repaid: [] }); return }
+    let firstLoad = true
     const load = async () => {
-      setLoading(true); setFetchError(null)
+      // Only the first load shows the loading skeleton — a background
+      // refresh replacing live numbers with "—" every 30s would flicker.
+      if (firstLoad) setLoading(true)
+      setFetchError(null)
       try {
         const [invoices, auctions, bids, funded, repaid] = await Promise.all([
           fetchContracts(party.id, 'invoice'),
@@ -84,9 +88,16 @@ export default function DashboardPage() {
         setData({ invoices, auctions, bids, funded, repaid })
       } catch (e) {
         setFetchError(e instanceof Error ? e.message : 'Unable to load contract data')
-      } finally { setLoading(false) }
+      } finally {
+        if (firstLoad) { setLoading(false); firstLoad = false }
+      }
     }
     load()
+    // Real-time-ish: activity from the counterparty (a financier funding
+    // your invoice, a seller repaying you) lands here without a manual
+    // reload, same pattern as the marketplace/offers/analytics polls.
+    const interval = setInterval(load, 30000)
+    return () => clearInterval(interval)
   }, [party])
 
   const { invoices, auctions, bids, funded, repaid } = data

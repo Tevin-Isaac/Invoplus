@@ -273,6 +273,12 @@ export default function InvoicesPage() {
       setInvoices([...pending, ...bidding, ...funded, ...repaid])
     }
     load()
+    // A listed invoice's bid count, and its bidding -> funded -> repaid
+    // transitions, are driven by OTHER parties' actions — without a poll,
+    // a business staring at this page never sees any of it change until a
+    // manual reload. Same cadence as the marketplace's auction refresh.
+    const interval = setInterval(load, 20000)
+    return () => clearInterval(interval)
   }, [party])
 
   // Edit = archive + recreate atomically on-ledger (contracts are

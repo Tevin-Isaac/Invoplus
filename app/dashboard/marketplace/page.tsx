@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
 import { ConfirmDialog, ConfirmState } from '@/components/dashboard/ConfirmDialog'
 import { CopyBtn } from '@/components/dashboard/CopyBtn'
-import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight, Zap } from 'lucide-react'
+import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight, Zap } from 'lucide-react'
 import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -309,7 +309,13 @@ export default function MarketplacePage() {
   const { notify: notifyCancel } = useNotifications()
 
   useEffect(() => {
-    if (!party?.id) { setAuctions([]); setLoading(false); return }
+    // No party gate: the auction floor and settled history are platform-
+    // wide by design (every listing routes through the platform party
+    // server-side, which ignores the parties[] value for those queries),
+    // so an unconnected visitor sees the same live marketplace as any
+    // user — they just can't bid until they connect. Only the "my own
+    // sealed bids" fetch genuinely needs a connected financier.
+    const requesterId = party?.id ?? 'public'
     let cancelled = false
     setLoading(true)
     const load = async () => {
@@ -318,9 +324,9 @@ export default function MarketplacePage() {
           fetch('/api/canton/contracts/list', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parties: [party.id], template: 'auction' }),
+            body: JSON.stringify({ parties: [requesterId], template: 'auction' }),
           }).then(r => r.json()),
-          party.type === 'financier'
+          party?.type === 'financier'
             ? fetch('/api/canton/contracts/list', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -336,12 +342,12 @@ export default function MarketplacePage() {
           fetch('/api/canton/contracts/list', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parties: [party.id], template: 'funded', scope: 'platform' }),
+            body: JSON.stringify({ parties: [requesterId], template: 'funded', scope: 'platform' }),
           }).then(r => r.json()),
           fetch('/api/canton/contracts/list', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parties: [party.id], template: 'repayment', scope: 'platform' }),
+            body: JSON.stringify({ parties: [requesterId], template: 'repayment', scope: 'platform' }),
           }).then(r => r.json()),
         ])
 
@@ -728,16 +734,13 @@ export default function MarketplacePage() {
             <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
             <p className="text-sm text-slate-500 dark:text-slate-400">Loading auctions from Canton…</p>
           </div>
-        ) : !party ? (
-          <div className={cn(panel, 'flex flex-col items-center justify-center gap-2 px-6 py-16 text-center')}>
-            <Wallet className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-            <p className="text-sm font-medium text-slate-950 dark:text-white">Connect your Canton wallet</p>
-            <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Live auctions are read from the ledger. Connect a financier party to browse and bid.</p>
-          </div>
         ) : filtered.length === 0 ? (
+          // No connect-gate: the auction floor is platform-wide public data,
+          // so unconnected visitors browse the same live marketplace — they
+          // only need to connect at the moment they actually try to bid.
           <div className={cn(panel, 'flex flex-col items-center justify-center gap-2 px-6 py-16 text-center')}>
             <Store className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-            <p className="text-sm font-medium text-slate-950 dark:text-white">No auctions{gradeFilter !== 'all' ? ` in Grade ${gradeFilter}` : ' yet'}</p>
+            <p className="text-sm font-medium text-slate-950 dark:text-white">No auctions{gradeFilter !== 'all' ? ` in Grade ${gradeFilter}` : ' open right now'}</p>
             <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">When sellers list verified invoices, the sealed-bid auctions appear here.</p>
           </div>
         ) : (

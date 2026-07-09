@@ -78,35 +78,44 @@ export default function AnalyticsPage() {
   }, [])
 
   useEffect(() => {
-    if (!party?.id) { setLoading(false); return }
     let cancelled = false
     setLoading(true)
     // Analytics is a public-facing showcase of the whole platform's
     // traction, not a personal dashboard — every one of these templates has
     // the platform party as a signatory/observer, so routing the query
     // through it (scope: 'platform') shows every user's activity to every
-    // visitor equally, regardless of their own role. Sealed bids are
-    // deliberately absent from this page entirely (not even "yours") since
-    // they're private by design and personal figures don't belong on a
-    // page meant to represent the platform as a whole to outside viewers.
+    // visitor equally, regardless of their own role. Two consequences:
+    //   1. No party gate — an unconnected visitor sees the same platform-
+    //      wide numbers (the API ignores the parties[] value entirely when
+    //      scope is 'platform', so a placeholder satisfies its non-empty
+    //      check).
+    //   2. Polled, not one-shot — this page previously fetched once on
+    //      mount, so activity from OTHER users never appeared until a
+    //      manual reload, undercutting the whole "live platform traction"
+    //      point. 30s matches the platform-stats poll above.
+    // Sealed bids are deliberately absent from this page entirely (not
+    // even "yours") since they're private by design and personal figures
+    // don't belong on a page meant to represent the platform as a whole.
     const post = async (template: string) => {
       try {
         const res = await fetch('/api/canton/contracts/list', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parties: [party.id], template, scope: 'platform' }),
+          body: JSON.stringify({ parties: [party?.id ?? 'public'], template, scope: 'platform' }),
         })
         const d = await res.json()
         return d.ok ? (d.contracts || []) : []
       } catch { return [] }
     }
-    Promise.all([
+    const load = () => Promise.all([
       post('invoice'), post('funded'), post('registry'), post('repayment'),
     ]).then(([invoices, funded, registry, repaid]) => {
       if (cancelled) return
       setData({ invoices, funded, registry: registry.length, repaid })
       setLoading(false)
     })
-    return () => { cancelled = true }
+    load()
+    const interval = setInterval(load, 30000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [party])
 
   const { invoices, funded, registry, repaid } = data
@@ -162,18 +171,9 @@ export default function AnalyticsPage() {
       </div>
     )
   }
-  if (!party) {
-    return (
-      <div className="flex h-full flex-col overflow-hidden">
-        <Header title="Analytics" />
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-          <Wallet className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-          <p className="text-sm font-medium text-slate-950 dark:text-white">Connect your Canton wallet</p>
-          <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Analytics are computed from live, platform-wide contracts on the Canton ledger. Connect a party to populate them.</p>
-        </div>
-      </div>
-    )
-  }
+  // No connect-gate here, deliberately: everything on this page is
+  // platform-wide public data, so an unconnected visitor (a judge sizing
+  // up traction) sees the same live numbers as any user.
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
