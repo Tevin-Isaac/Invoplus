@@ -10,7 +10,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'displayName and role required' }, { status: 400 })
     }
 
-    const hint = `invoplus_${role}_${Date.now()}`
+    // Role-neutral hint, deliberately: this route is called BEFORE the
+    // user picks business/financier in the role modal (role here is often
+    // just a placeholder default), so baking it into the party ID's hint
+    // was actively misleading — a real financier could end up with a
+    // party ID that permanently reads "invoplus_business_...", which
+    // reasonably looked like a bug (two roles sharing an identity) even
+    // though the actual role/balance were tracked correctly elsewhere.
+    // Every party from this route IS still fully unique (allocateParty
+    // mints a real, distinct Canton party every call) — only the cosmetic
+    // label changes.
+    const hint = `invoplus_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const partyResult = await allocateParty(displayName, hint)
     const partyId = (partyResult as any).partyDetails?.party ?? (partyResult as any).party
 

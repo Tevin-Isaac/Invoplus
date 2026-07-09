@@ -49,10 +49,13 @@ export default function SettingsPage() {
     let cancelled = false
     const load = async () => {
       try {
+        // Read-only — see the matching comment in Header.tsx. Creation only
+        // happens at the deliberate role-confirmation moment (chooseRole /
+        // reconnectRecent in lib/canton.tsx), never from a passive poll.
         const res = await fetch('/api/canton/contracts/balance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ partyId: party.id, role: party.type }),
+          body: JSON.stringify({ partyId: party.id }),
         })
         const data = await res.json()
         if (!cancelled && data.ok) setBalance(data.amount)

@@ -234,6 +234,15 @@ export function CantonProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ partyId: core.id }),
     }).catch(() => { /* already granted */ })
+    // The role is already known and trustworthy here (it's how this party
+    // was stored), so this is safe to pass — covers the edge case of an
+    // older saved identity that never got a Balance created in the first
+    // place. Balance's lazy-create is a no-op if one already exists.
+    fetch('/api/canton/contracts/balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partyId: core.id, role: core.type }),
+    }).catch(() => { /* Header's own poll will retry */ })
     setParty(core.source === 'account' ? { ...core, source: 'provisioned' } : core)
   }, [setParty])
 

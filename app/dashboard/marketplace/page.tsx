@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
 import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight, Zap } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
 
@@ -259,11 +259,19 @@ function BidModal({ auction, onClose, onBidPlaced }: {
           </div>
 
           {result && !result.ok && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+            <div className="flex items-start gap-2.5 overflow-hidden rounded-xl border border-red-500/30 bg-red-500/10 p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs font-medium text-red-600 dark:text-red-300">Bid failed</p>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{result.error}</p>
+                <p className="mt-0.5 break-words text-xs text-slate-500 dark:text-slate-400">{humanizeCantonError(result.error)}</p>
+                {result.error?.includes('CONTRACT_NOT_FOUND') && (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 rounded-lg border border-red-500/30 px-2.5 py-1 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-300"
+                  >
+                    Refresh marketplace
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -327,7 +335,13 @@ export default function MarketplacePage() {
       }
     }
     load()
-    return () => { cancelled = true }
+    // Auctions are archived + recreated (new contract ID) every time anyone
+    // bids on them — without a periodic refresh, a card's auctionContractId
+    // can go stale while just sitting on screen, and bidding against it
+    // fails CONTRACT_NOT_FOUND. This shrinks that window; the BidModal's
+    // own error handling covers whatever's left.
+    const interval = setInterval(load, 20000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [party])
 
   const handleBidPlaced = (auctionId: string, advanceRate: number) => {

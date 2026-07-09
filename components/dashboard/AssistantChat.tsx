@@ -71,14 +71,15 @@ export function AssistantChat() {
   }, [messages])
 
   // Lightweight, independent of Header's own balance chip — just enough
-  // context for the assistant to give role-aware answers.
+  // context for the assistant to give role-aware answers. Read-only — see
+  // the matching comment in Header.tsx for why role is never sent here.
   useEffect(() => {
     if (!party?.id) { setBalance(null); return }
     let cancelled = false
     fetch('/api/canton/contracts/balance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ partyId: party.id, role: party.type }),
+      body: JSON.stringify({ partyId: party.id }),
     }).then(r => r.json()).then(d => { if (!cancelled && d.ok) setBalance(d.amount) }).catch(() => {})
     return () => { cancelled = true }
   }, [party?.id, party?.type])

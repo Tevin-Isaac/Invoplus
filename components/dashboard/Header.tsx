@@ -61,10 +61,18 @@ export function Header({ title }: { title: string }) {
     let cancelled = false
     const load = async () => {
       try {
+        // Deliberately NOT sending `role` here — that triggers lazy-CREATION
+        // in the balance route if none exists yet, and this effect fires
+        // immediately on connect, before the role-picker modal even shows.
+        // Sending role here raced chooseRole()'s confirmed-role call and
+        // always won (it fires first), permanently locking in the
+        // placeholder 'business' default as if it were the real role. This
+        // poll only ever reads; chooseRole() and reconnectRecent() are the
+        // only two places that pass role and are allowed to create.
         const res = await fetch('/api/canton/contracts/balance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ partyId: party.id, role: party.type }),
+          body: JSON.stringify({ partyId: party.id }),
         })
         const data = await res.json()
         if (!cancelled && data.ok) setBalance(data.amount)
