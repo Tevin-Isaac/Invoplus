@@ -588,14 +588,25 @@ export default function InvoicesPage() {
                     balanceTransferred means your own balance genuinely went
                     up (the mint step succeeded) even though the onward
                     transfer to the financier didn't. */}
+                {/* Color and wording must match what actually happened —
+                    showing "Your balance is now $X" in a success-styled box
+                    when nothing actually moved (sellerCredited false) reads
+                    as a contradiction next to a failure message below, since
+                    $X there is just the unchanged prior balance. */}
                 {repayResult.data.sellerBalanceAfter != null && (
-                  <div className="mb-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-violet-700/70 dark:text-violet-300/70">Your balance is now</p>
-                    <p className="font-data text-3xl font-bold text-violet-700 dark:text-violet-300">${Number(repayResult.data.sellerBalanceAfter).toLocaleString()}</p>
-                    {repayResult.data.sellerCredited && (
-                      <p className="mt-1 text-xs text-violet-700/80 dark:text-violet-300/80">+${Number(repayResult.data.totalDue ?? repayResult.inv.amount).toLocaleString()} collected from the debtor{repayResult.data.balanceTransferred ? ', sent on to the financier' : ''}</p>
-                    )}
-                  </div>
+                  repayResult.data.sellerCredited ? (
+                    <div className="mb-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center">
+                      <p className="text-[10px] uppercase tracking-wider text-violet-700/70 dark:text-violet-300/70">Your balance is now</p>
+                      <p className="font-data text-3xl font-bold text-violet-700 dark:text-violet-300">${Number(repayResult.data.sellerBalanceAfter).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-violet-700/80 dark:text-violet-300/80">+${Number(repayResult.data.totalDue ?? repayResult.inv.amount).toLocaleString()} collected from the debtor{repayResult.data.balanceTransferred ? ', sent on to the financier' : ' — the transfer to the financier hasn\'t landed yet, see below'}</p>
+                    </div>
+                  ) : (
+                    <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center dark:border-slate-700 dark:bg-slate-950">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Your balance is currently</p>
+                      <p className="font-data text-3xl font-bold text-slate-700 dark:text-slate-300">${Number(repayResult.data.sellerBalanceAfter).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Unchanged — this repayment hasn't landed yet, see below</p>
+                    </div>
+                  )
                 )}
 
                 <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">

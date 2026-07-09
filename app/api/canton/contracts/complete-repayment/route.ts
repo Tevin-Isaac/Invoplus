@@ -50,7 +50,7 @@ export const dynamic = 'force-dynamic'
 // Same reasoning as settle-auction's maxDuration: three chained Daml choices
 // plus two retry-guarded balance transfers can add up past the default 10s
 // serverless timeout under real Canton latency.
-export const maxDuration = 45
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   try {

@@ -589,18 +589,32 @@ export default function MarketplacePage() {
 
               <div className="px-6 pb-6">
                 {/* The number that actually matters — your real, freshly-read
-                    balance, not just a submission's pending/error flag. */}
+                    balance, not just a submission's pending/error flag.
+                    Critically, this box's color and wording must match
+                    balanceTransferred: showing "Your balance is now $X" in a
+                    reassuring green box when the transfer actually FAILED
+                    was the real bug behind repeated reports of a confusing
+                    contradiction — $X there was just the seller's
+                    unchanged, pre-existing balance, not proof of a fresh
+                    increase, but it reads that way sitting in a success-
+                    styled box next to a failure message. */}
                 {settleResult.data.sellerBalanceAfter != null && (
-                  <div className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-emerald-700/70 dark:text-emerald-300/70">Your balance is now</p>
-                    <p className="font-data text-3xl font-bold text-emerald-700 dark:text-emerald-300">${Number(settleResult.data.sellerBalanceAfter).toLocaleString()}</p>
-                    {settleResult.data.balanceTransferred && (
+                  settleResult.data.balanceTransferred ? (
+                    <div className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center">
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-700/70 dark:text-emerald-300/70">Your balance is now</p>
+                      <p className="font-data text-3xl font-bold text-emerald-700 dark:text-emerald-300">${Number(settleResult.data.sellerBalanceAfter).toLocaleString()}</p>
                       <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">
                         +${(Number(settleResult.data.fundedAmount ?? settleResult.auction.amount) - Number(settleResult.data.originationFee ?? 0)).toLocaleString()} net from this settlement
                         {settleResult.data.originationFee > 0 && ` (InvoPlus fee: $${Number(settleResult.data.originationFee).toFixed(2)})`}
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center dark:border-slate-700 dark:bg-slate-950">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">Your balance is currently</p>
+                      <p className="font-data text-3xl font-bold text-slate-700 dark:text-slate-300">${Number(settleResult.data.sellerBalanceAfter).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Unchanged — this settlement's transfer hasn't landed yet, see below</p>
+                    </div>
+                  )
                 )}
 
                 <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">

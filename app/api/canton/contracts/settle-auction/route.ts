@@ -53,7 +53,7 @@ export const dynamic = 'force-dynamic'
 // saw a failure/timeout while the ledger operation had actually completed
 // moments later in the background — this gives real headroom instead of
 // tightening every retry to fit an artificially short window.
-export const maxDuration = 45
+export const maxDuration = 60
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
