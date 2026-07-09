@@ -206,10 +206,19 @@ export default function DashboardPage() {
                     </div>
                     <span className="rounded-lg bg-violet-500/10 px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">{s.label}</span>
                   </div>
-                  <div className="mt-4">
-                    {s.bars.length ? <MiniBars values={s.bars} /> : (
+                  {/* The sub-caption above already explains an empty state
+                      ("Place one in the Marketplace" etc.) when big is "—"
+                      — repeating "no ledger data yet" here too was the same
+                      message shown three times in one card. Only fall back
+                      to it when there's a real count but somehow no bars;
+                      the wrapper stays present either way so every card in
+                      the row keeps the same height. */}
+                  <div className="mt-4 h-9">
+                    {s.bars.length > 0 ? (
+                      <MiniBars values={s.bars} />
+                    ) : s.big !== '—' ? (
                       <p className="font-data text-[10px] text-slate-400 dark:text-slate-500">no ledger data yet</p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               ))}
