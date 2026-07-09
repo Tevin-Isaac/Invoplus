@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
 import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight } from 'lucide-react'
@@ -539,6 +540,15 @@ export default function MarketplacePage() {
 
                     {/* Subtle corner glow, revealed on hover */}
                     <div className={cn('pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100', glow.corner)} />
+
+                    {/* Decorative invoice-document watermark — gives every
+                        card the feel of an actual invoice sitting there,
+                        without competing with the real numbers. Rotated and
+                        bled off the bottom-right edge, clipped by the card's
+                        own overflow-hidden. */}
+                    <div className="pointer-events-none absolute -bottom-10 -right-10 h-44 w-44 rotate-[8deg] opacity-[0.07] transition-all duration-500 group-hover:opacity-[0.14] group-hover:-translate-y-1 dark:opacity-[0.14] dark:group-hover:opacity-[0.24]">
+                      <Image src="/marketplace/invoice-doc-1.png" alt="" fill className="object-contain" sizes="176px" />
+                    </div>
 
                     {/* Card header: grade badge + live/countdown + status */}
                     <div className="relative flex items-center justify-between px-5 pt-4">

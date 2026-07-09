@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { useCanton } from '@/lib/canton'
-import { Copy, Check, RefreshCw, Shield, Wallet, Bell, Globe, CircleDollarSign } from 'lucide-react'
+import { Copy, Check, RefreshCw, Shield, Wallet, Bell, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
@@ -120,7 +120,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">Balance</p>
                   <div className={cn(cell, 'flex items-center gap-2 px-3 py-2.5')}>
-                    <CircleDollarSign className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <Wallet className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
                     <span className="font-data flex-1 text-sm font-semibold text-slate-950 dark:text-white">
                       {balance === null ? '—' : `$${balance.toLocaleString()} USD`}
                     </span>

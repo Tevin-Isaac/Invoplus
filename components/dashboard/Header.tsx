@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut, CircleDollarSign } from 'lucide-react'
+import { Bell, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
 import { useNotifications } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 import { WalletConnect } from '@/components/wallet-connect'
+import { HeaderSearch } from '@/components/dashboard/HeaderSearch'
+import { AssistantChat } from '@/components/dashboard/AssistantChat'
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000)
@@ -178,10 +180,9 @@ export function Header({ title }: { title: string }) {
         <h1 className="truncate text-lg font-semibold text-slate-950 dark:text-white">{title}</h1>
 
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex w-52 items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-            <Search className="w-4 h-4 shrink-0" />
-            <span>Search invoices...</span>
-          </div>
+          <HeaderSearch />
+
+          <AssistantChat />
 
           {/* A red dot only appears when the ledger is actually unreachable —
               otherwise this stays silent. Full connection detail lives in
@@ -202,7 +203,7 @@ export function Header({ title }: { title: string }) {
               className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-2"
               title="Your InvoPlus demo balance — not real currency or USDC, but a real Canton contract: it moves atomically on settlement and repayment"
             >
-              <CircleDollarSign className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+              <Wallet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
               <span className="flex flex-col leading-none">
                 <span className="font-data text-sm font-bold text-emerald-700 dark:text-emerald-300">
                   ${balance.toLocaleString()}
@@ -548,7 +549,7 @@ export function Header({ title }: { title: string }) {
             </p>
             {party.type === 'financier' && (
               <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] p-4 text-left">
-                <CircleDollarSign className="h-8 w-8 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                <Wallet className="h-8 w-8 shrink-0 text-emerald-600 dark:text-emerald-300" />
                 <p className="text-xs text-slate-700 dark:text-slate-300">
                   <span className="block font-data text-lg font-bold text-emerald-700 dark:text-emerald-300">$350,000 USD</span>
                   We've funded your account with a demo balance so you can start bidding right away — it moves for real on Canton when you win an auction.
