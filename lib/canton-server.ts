@@ -286,35 +286,62 @@ export async function submitAndWait(
   readAs: string[],
   commands: unknown[],
 ) {
-  const token = await getCantonToken()
   const allParties = Array.from(new Set([...actAs, ...readAs]))
   const filtersByParty: Record<string, unknown> = {}
   for (const p of allParties) {
     filtersByParty[p] = { cumulative: [{ identifierFilter: { WildcardFilter: { value: {} } } }] }
   }
 
-  const res = await fetch(`${LEDGER_URL}/v2/commands/submit-and-wait-for-transaction`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      commands: {
-        actAs,
-        readAs,
-        commands,
-        workflowId: `invoplus-${Date.now()}`,
-        applicationId: 'invoplus',
-        commandId: `cmd-${Date.now()}`,
+  const attempt = async () => {
+    const token = await getCantonToken()
+    return fetch(`${LEDGER_URL}/v2/commands/submit-and-wait-for-transaction`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      transactionFormat: {
-        eventFormat: { filtersByParty, verbose: true },
-        transactionShape: 'TRANSACTION_SHAPE_ACS_DELTA',
-      },
-    }),
-    cache: 'no-store',
-  })
+      body: JSON.stringify({
+        commands: {
+          actAs,
+          readAs,
+          commands,
+          workflowId: `invoplus-${Date.now()}`,
+          applicationId: 'invoplus',
+          commandId: `cmd-${Date.now()}`,
+        },
+        transactionFormat: {
+          eventFormat: { filtersByParty, verbose: true },
+          transactionShape: 'TRANSACTION_SHAPE_ACS_DELTA',
+        },
+      }),
+      cache: 'no-store',
+    })
+  }
+
+  let res = await attempt()
+
+  // Self-healing: a party missing M2M CanActAs rights fails with 403 and a
+  // deliberately redacted "security-sensitive error" body (Canton hides
+  // the real reason). This should never require a human to notice, ask
+  // for a party ID, and manually re-grant it — that doesn't scale past
+  // one person watching a chat. Every party this app provisions is
+  // granted rights at creation time, but a rights-cap cleanup sweep (the
+  // shared 1000-rights limit on this DevNet sandbox fills from every team
+  // using it, not just this app) can end up revoking a live party's
+  // rights if it's swept up by a broad match. Rather than rely on nobody
+  // ever writing an overly-broad cleanup again, just detect this exact
+  // failure shape and self-repair: re-grant CanActAs on every acting
+  // party and retry once before giving up.
+  if (res.status === 403) {
+    const bodyText = await res.text()
+    if (bodyText.includes('security-sensitive error') || bodyText.includes('PERMISSION_DENIED')) {
+      await Promise.all(actAs.map(p => grantM2MRights(p).catch(() => { /* best-effort */ })))
+      res = await attempt()
+    } else {
+      throw new Error(`submitAndWait failed ${res.status}: ${bodyText}`)
+    }
+  }
+
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`submitAndWait failed ${res.status}: ${text}`)
