@@ -237,9 +237,21 @@ export async function POST(req: Request) {
     // despite balanceTransferred being false, trust the read over the
     // submission outcome instead of telling the seller "no cash moved" while
     // their balance visibly went up.
-    if (!balanceTransferred && sellerBalanceBefore != null && sellerBalanceAfter != null && fundedAmount) {
+    //
+    // Retried with a short delay, not just once: the ACS read side can lag
+    // a beat behind a write that already committed, so a single immediate
+    // read can still show the pre-transfer balance even though the transfer
+    // truly succeeded — this was caught live, where the balance was visibly
+    // correct moments later even though this check had already given up.
+    if (!balanceTransferred && sellerBalanceBefore != null && fundedAmount) {
       const expectedMinimum = sellerBalanceBefore + Number(fundedAmount) - originationFee - 0.01
-      if (sellerBalanceAfter >= expectedMinimum) {
+      for (let attempt = 0; attempt < 3 && !(sellerBalanceAfter != null && sellerBalanceAfter >= expectedMinimum); attempt++) {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, 700))
+          sellerBalanceAfter = await currentBalanceAmount(platformPartyId, sellerPartyId, packageId).catch(() => null)
+        }
+      }
+      if (sellerBalanceAfter != null && sellerBalanceAfter >= expectedMinimum) {
         balanceTransferred = true
         balanceTransferError = undefined
       }
