@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
 import { ConfirmDialog, ConfirmState } from '@/components/dashboard/ConfirmDialog'
+import { CopyBtn } from '@/components/dashboard/CopyBtn'
 import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight, Zap } from 'lucide-react'
 import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -302,18 +303,40 @@ export default function MarketplacePage() {
     setLoading(true)
     const load = async () => {
       try {
-        const res = await fetch('/api/canton/contracts/list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parties: [party.id], template: 'auction' }),
-        })
-        const data = await res.json()
-        if (!cancelled && data.ok) {
-          const rows = (data.contracts || []).map((c: any) => {
+        const [auctionRes, bidRes] = await Promise.all([
+          fetch('/api/canton/contracts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parties: [party.id], template: 'auction' }),
+          }).then(r => r.json()),
+          party.type === 'financier'
+            ? fetch('/api/canton/contracts/list', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parties: [party.id], template: 'bid' }),
+              }).then(r => r.json())
+            : Promise.resolve(null),
+        ])
+        // My own sealed bids, keyed by invoice — used to mark cards
+        // "Bid placed" instead of re-inviting a duplicate bid. Recomputed
+        // on every poll (not just optimistic local state) so it survives
+        // the 20s auction refresh and a fresh page load alike.
+        const myBidByInvoice = new Map<string, number>()
+        if (bidRes?.ok) {
+          for (const c of bidRes.contracts || []) {
             const p = c.payload || {}
+            const invId = p.invoiceId?.value ?? p.invoiceId ?? ''
+            const advance = Number(p.advanceRate?.value ?? p.advanceRate ?? 0)
+            if (invId) myBidByInvoice.set(invId, Math.round(advance * 100))
+          }
+        }
+        if (!cancelled && auctionRes.ok) {
+          const rows = (auctionRes.contracts || []).map((c: any) => {
+            const p = c.payload || {}
+            const invoiceId = p.invoiceId?.value ?? p.invoiceId ?? ''
             return {
               id: c.contractId.slice(0, 12),
-              invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
+              invoiceId,
               invoiceHash: p.invoiceHash?.value ?? p.invoiceHash ?? '',
               seller: p.seller?.value ?? p.seller ?? '',
               buyer: p.debtorName?.value ?? p.debtorName ?? 'Unknown',
@@ -323,7 +346,7 @@ export default function MarketplacePage() {
               grade: String(p.riskGrade?.value ?? p.riskGrade ?? '—').replace('Grade_', ''),
               riskScore: Number(p.aiScore?.value ?? p.aiScore ?? 0),
               bidsReceived: Number(p.bidCount?.value ?? p.bidCount ?? 0),
-              myBid: null,
+              myBid: myBidByInvoice.has(invoiceId) ? myBidByInvoice.get(invoiceId)! : null,
               status: p.settled ? 'settled' : 'open',
               auctionContractId: c.contractId,
               auctionEnd: p.auctionEnd?.value ?? p.auctionEnd ?? '',
@@ -430,7 +453,7 @@ export default function MarketplacePage() {
       if (data.ok) {
         setAuctions(prev => prev.filter(x => x.id !== a.id))
         setSettleResult({ auction: a, data })
-        notifyCancel('auction', 'Auction settled', `${a.invoiceId} funded on Canton. Find it under Invoices as Funded.`)
+        notifyCancel('auction', 'Auction settled', `${a.invoiceId} funded on InvoPlus. Find it under Invoices as Funded.`)
       } else {
         setActionError(humanizeCantonError(data.error))
       }
@@ -445,7 +468,7 @@ export default function MarketplacePage() {
   const handleSettleAuction = (a: Auction) => {
     setConfirmState({
       title: 'Settle this auction?',
-      message: `The best sealed bid for ${a.invoiceId} is accepted automatically and funds are committed atomically on Canton. This can't be undone.`,
+      message: `The best sealed bid for ${a.invoiceId} is accepted automatically and funds are committed atomically on InvoPlus. This can't be undone.`,
       confirmLabel: 'Settle now',
       onConfirm: () => runSettleAuction(a),
     })
@@ -507,6 +530,18 @@ export default function MarketplacePage() {
               </div>
 
               <div className="px-6 pb-6">
+                {/* The number that actually matters — your real, freshly-read
+                    balance, not just a submission's pending/error flag. */}
+                {settleResult.data.sellerBalanceAfter != null && (
+                  <div className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-700/70 dark:text-emerald-300/70">Your balance is now</p>
+                    <p className="font-data text-3xl font-bold text-emerald-700 dark:text-emerald-300">${Number(settleResult.data.sellerBalanceAfter).toLocaleString()}</p>
+                    {settleResult.data.balanceTransferred && (
+                      <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">+${Number(settleResult.data.fundedAmount ?? settleResult.auction.amount).toLocaleString()} from this settlement</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
                     <span className="text-xs text-slate-500 dark:text-slate-400">Invoice value</span>
@@ -514,19 +549,22 @@ export default function MarketplacePage() {
                   </div>
                   <div className="space-y-2 pt-3">
                     {settleResult.data.fundedInvoiceContractId && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 dark:text-slate-400">FundedInvoice</span>
-                        <span className="font-data max-w-[150px] truncate text-slate-700 dark:text-slate-300">{settleResult.data.fundedInvoiceContractId.slice(0, 18)}…</span>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="shrink-0 text-slate-500 dark:text-slate-400">FundedInvoice</span>
+                        <span className="font-data min-w-0 flex-1 truncate text-right text-slate-700 dark:text-slate-300" title={settleResult.data.fundedInvoiceContractId}>{settleResult.data.fundedInvoiceContractId}</span>
+                        <CopyBtn text={settleResult.data.fundedInvoiceContractId} />
                       </div>
                     )}
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Settlement Tx</span>
-                      <span className="font-data max-w-[150px] truncate text-slate-700 dark:text-slate-300">{settleResult.data.transactionId?.slice(0, 18)}…</span>
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="shrink-0 text-slate-500 dark:text-slate-400">Settlement Tx</span>
+                      <span className="font-data min-w-0 flex-1 truncate text-right text-slate-700 dark:text-slate-300" title={settleResult.data.transactionId}>{settleResult.data.transactionId}</span>
+                      {settleResult.data.transactionId && <CopyBtn text={settleResult.data.transactionId} />}
                     </div>
                     {settleResult.data.balanceTransferTransactionId && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 dark:text-slate-400">Balance Transfer Tx</span>
-                        <span className="font-data max-w-[150px] truncate text-emerald-600 dark:text-emerald-300">{settleResult.data.balanceTransferTransactionId.slice(0, 18)}…</span>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="shrink-0 text-slate-500 dark:text-slate-400">Balance Transfer Tx</span>
+                        <span className="font-data min-w-0 flex-1 truncate text-right text-emerald-600 dark:text-emerald-300" title={settleResult.data.balanceTransferTransactionId}>{settleResult.data.balanceTransferTransactionId}</span>
+                        <CopyBtn text={settleResult.data.balanceTransferTransactionId} />
                       </div>
                     )}
                   </div>
@@ -535,7 +573,7 @@ export default function MarketplacePage() {
                 {settleResult.data.balanceTransferred ? (
                   <div className="mb-4 flex items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
                     <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
-                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable Canton transaction from the settlement itself.</p>
+                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable transaction from the settlement itself. Full IDs above are real, queryable Canton transactions.</p>
                   </div>
                 ) : (
                   <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3">
@@ -760,6 +798,13 @@ export default function MarketplacePage() {
                            API silently accept it. */
                         <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500" title="Bidding is for financier accounts. Connect or switch to a financier identity to bid.">
                           Financiers only
+                        </span>
+                      ) : a.myBid != null ? (
+                        <span
+                          className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-300"
+                          title="You've already placed a sealed bid on this invoice — you can't bid twice."
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />Bid placed
                         </span>
                       ) : (
                         <motion.button

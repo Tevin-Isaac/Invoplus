@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, Wallet, Building2, Landmark, X, Copy, Check, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut } from 'lucide-react'
+import { Bell, ChevronDown, Wallet, Building2, Landmark, X, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
 import { useNotifications } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 import { HeaderSearch } from '@/components/dashboard/HeaderSearch'
 import { AssistantChat } from '@/components/dashboard/AssistantChat'
+import { CopyBtn } from '@/components/dashboard/CopyBtn'
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000)
@@ -16,18 +17,6 @@ function timeAgo(ts: number): string {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   return `${Math.floor(s / 86400)}d ago`
-}
-
-function CopyBtn({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-      className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-950 transition-colors dark:hover:bg-white/10 dark:hover:text-white"
-    >
-      {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-    </button>
-  )
 }
 
 // Wallet-first wizard, like any web3 app:
@@ -187,7 +176,7 @@ export function Header({ title }: { title: string }) {
     roleChoiceInFlight.current = true
     updateRole(role, orgName)
     setModal('done')
-    notify('connect', 'Connected to Canton', `You're set up as a ${role}${orgName.trim() ? ` — ${orgName.trim()}` : ''}. Every action you take is signed by your party on DevNet.`)
+    notify('connect', 'Connected to InvoPlus', `You're set up as a ${role}${orgName.trim() ? ` — ${orgName.trim()}` : ''}. Every action you take is signed by your party on DevNet.`)
     // This is the FIRST moment the role is actually confirmed (every
     // connection path provisions with a placeholder role before this modal
     // even shows) — fire the balance check right here, with the real role,
@@ -428,7 +417,17 @@ export function Header({ title }: { title: string }) {
                   {recentParties.slice(0, 4).map(rp => (
                     <button
                       key={rp.id}
-                      onClick={() => { reconnectRecent(rp); setModal('done') }}
+                      onClick={() => {
+                        reconnectRecent(rp)
+                        setModal('closed')
+                        // Reconnecting is a returning user, not first-time
+                        // setup — the full "You're all set" modal (with the
+                        // one-time funding callout) reads as if we just
+                        // funded their account again. A quiet toast plus
+                        // whatever page they're already on is less jarring
+                        // than force-navigating into the empty-state prompt.
+                        notify('connect', 'Welcome back', `Signed back in as ${rp.displayName} (${rp.type}).`)
+                      }}
                       className="w-full flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2.5 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
                     >
                       <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white', rp.type === 'business' ? 'bg-violet-500' : 'bg-emerald-500')}>

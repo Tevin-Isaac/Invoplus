@@ -25,7 +25,7 @@ interface MyOffer {
 }
 
 const statusConfig = {
-  won:       { label: 'Won',       icon: CheckCircle, color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/25 dark:text-emerald-300', note: 'Settlement complete · Atomic on Canton' },
+  won:       { label: 'Won',       icon: CheckCircle, color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/25 dark:text-emerald-300', note: 'Settlement complete · Atomic on InvoPlus' },
   pending:   { label: 'Sealed',    icon: EyeOff,      color: 'text-violet-700 bg-violet-500/10 border-violet-500/25 dark:text-violet-300',     note: 'Awaiting auction close · Only you can see this bid' },
   lost:      { label: 'Lost',      icon: XCircle,     color: 'text-slate-500 bg-slate-500/10 border-slate-500/25 dark:text-slate-400',          note: 'Outbid · Your bid content stayed private' },
   withdrawn: { label: 'Withdrawn', icon: XCircle,     color: 'text-red-700 bg-red-500/10 border-red-500/25 dark:text-red-300',                  note: 'You withdrew this bid before settlement' },
@@ -62,7 +62,7 @@ export default function OffersPage() {
       const data = await res.json()
       if (data.ok) {
         setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, status: 'withdrawn' as const } : o))
-        notify('withdraw', 'Bid withdrawn', `Your sealed bid on ${offer.auctionId} was withdrawn on Canton before settlement.`)
+        notify('withdraw', 'Bid withdrawn', `Your sealed bid on ${offer.auctionId} was withdrawn before settlement.`)
       } else {
         setWithdrawError(data.error ?? 'Withdrawal failed')
       }
@@ -164,6 +164,11 @@ export default function OffersPage() {
     }
 
     load()
+    // A bid you just placed should show up here without a manual refresh —
+    // poll periodically rather than relying on the one-shot mount fetch,
+    // the same pattern the marketplace page uses for auctions.
+    const interval = setInterval(load, 15000)
+    return () => clearInterval(interval)
   }, [party])
 
   return (

@@ -25,6 +25,17 @@ import { NextResponse } from 'next/server'
 import { submitAndWait, queryACS, findBalanceContractId } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
 
+async function currentBalanceAmount(platform: string, owner: string, packageId: string): Promise<number | null> {
+  const lines = await queryACS([platform], [`${packageId}:InvoPlus.Token:Balance`])
+  const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+  const matches = lines
+    .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
+    .map((l: any) => l.contractEntry.JsActiveContract.createdEvent)
+    .filter((e: any) => pv(e.createArgument?.owner) === owner)
+  if (matches.length === 0) return null
+  return Math.max(...matches.map((e: any) => Number(pv(e.createArgument?.amount) ?? 0)))
+}
+
 export const dynamic = 'force-dynamic'
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
@@ -170,15 +181,22 @@ export async function POST(req: Request) {
       }
     }
 
+    // Ground truth for the UI — a fresh read beats trusting the submission
+    // outcome alone, so the result modal can always show the seller's real
+    // current balance instead of just a pending/error flag.
+    const sellerBalanceAfter = sellerPartyId ? await currentBalanceAmount(platformPartyId, sellerPartyId, packageId).catch(() => null) : null
+
     return NextResponse.json({
       ok: true,
       transactionId: result?.transactionId,
       fundedInvoiceContractId,
       balanceTransferTransactionId,
       balanceTransferError,
+      fundedAmount,
+      sellerBalanceAfter,
       message: balanceTransferred
-        ? `Auction settled on Canton Network. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger.`
-        : `Auction settled on Canton Network, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'}. Losing bids rejected privately; winner funded atomically on the invoice contract, but no cash moved yet — contact support.`,
+        ? `Auction settled on InvoPlus. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger.`
+        : `Auction settled on InvoPlus, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'}. Losing bids rejected privately; winner funded atomically on the invoice contract, but no cash moved yet — contact support.`,
       details: {
         losingBidsRejected: loserBidContractIds.length,
         winnerBidSettled: true,

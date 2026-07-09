@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
 import { ConfirmDialog, ConfirmState } from '@/components/dashboard/ConfirmDialog'
+import { CopyBtn } from '@/components/dashboard/CopyBtn'
 import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip, Sparkles, Gavel, ArrowRight } from 'lucide-react'
 import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -277,7 +278,7 @@ export default function InvoicesPage() {
       if (data.ok) {
         setInvoices(prev => prev.filter(i => i.id !== inv.id))
         setRepayResult({ inv, data })
-        notify('info', 'Repayment complete', `${inv.invoiceId} — financier repaid in full on Canton.`)
+        notify('info', 'Repayment complete', `${inv.invoiceId} — financier repaid in full on InvoPlus.`)
       } else {
         setRowError(data.error ?? 'Repayment failed')
       }
@@ -292,7 +293,7 @@ export default function InvoicesPage() {
   const handleMarkRepaid = (inv: any) => {
     setConfirmState({
       title: 'Mark this invoice as repaid?',
-      message: `This sends principal + yield for ${inv.invoiceId} to the financier on Canton and can't be undone.`,
+      message: `This sends principal + yield for ${inv.invoiceId} to the financier on InvoPlus and can't be undone.`,
       confirmLabel: 'Mark as repaid',
       onConfirm: () => runMarkRepaid(inv),
     })
@@ -331,7 +332,7 @@ export default function InvoicesPage() {
       const data = await res.json()
       if (data.ok) {
         setInvoices(prev => prev.filter(i => i.id !== inv.id))
-        notify('info', 'Invoice deleted', `${inv.invoiceId || inv.buyer} was archived on Canton.`)
+        notify('info', 'Invoice deleted', `${inv.invoiceId || inv.buyer} was archived on InvoPlus.`)
       } else {
         setRowError(data.error ?? 'Delete failed')
       }
@@ -382,7 +383,7 @@ export default function InvoicesPage() {
       })
       const vdata = await vres.json()
       if (!vdata.ok || !vdata.newInvoiceContractId) {
-        setListOutcome({ ok: false, error: vdata.error ?? 'Verification failed on Canton' })
+        setListOutcome({ ok: false, error: vdata.error ?? 'Verification failed' })
         return
       }
 
@@ -456,10 +457,10 @@ export default function InvoicesPage() {
             issueDate: form.issueDate, dueDate: form.dueDate, status: 'pending',
             grade: data.riskGrade ?? i.grade, aiScore: data.riskScore ?? i.aiScore,
           } : i))
-          notify('invoice', 'Invoice updated on Canton', `${data.invoiceId} re-scored: grade ${data.riskGrade} (${data.riskScore}/100). Status reset to Pending.`)
+          notify('invoice', 'Invoice updated', `${data.invoiceId} re-scored: grade ${data.riskGrade} (${data.riskScore}/100). Status reset to Pending.`)
           setEditingId(null)
         } else {
-          notify('invoice', 'Invoice created on Canton', `${data.invoiceId} · ${form.debtorName} · risk grade ${data.riskGrade} (score ${data.riskScore}/100).`)
+          notify('invoice', 'Invoice created', `${data.invoiceId} · ${form.debtorName} · risk grade ${data.riskGrade} (score ${data.riskScore}/100).`)
         }
       }
     } catch (e) {
@@ -540,28 +541,45 @@ export default function InvoicesPage() {
                     : <AlertTriangle className="h-8 w-8 text-white" />}
                 </motion.div>
                 <h3 className="relative text-xl font-bold text-slate-950 dark:text-white">
-                  {repayResult.data.balanceTransferred ? 'Repayment Complete' : 'Confirmed — Balance Pending'}
+                  {repayResult.data.balanceTransferred ? 'Repayment Complete' : repayResult.data.sellerCredited ? 'Partly Complete' : 'Confirmed — Balance Pending'}
                 </h3>
                 <p className="relative mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {repayResult.inv.invoiceId} · {repayResult.data.balanceTransferred ? 'the financier has been repaid in full on Canton' : 'confirmation recorded on-ledger'}
+                  {repayResult.inv.invoiceId} · {repayResult.data.balanceTransferred ? 'the financier has been repaid in full on InvoPlus' : 'confirmation recorded on-ledger'}
                 </p>
               </div>
 
               <div className="px-6 pb-6">
+                {/* Real, freshly-read balances — not just a submission's
+                    pending/error flag. sellerCredited without
+                    balanceTransferred means your own balance genuinely went
+                    up (the mint step succeeded) even though the onward
+                    transfer to the financier didn't. */}
+                {repayResult.data.sellerBalanceAfter != null && (
+                  <div className="mb-4 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-violet-700/70 dark:text-violet-300/70">Your balance is now</p>
+                    <p className="font-data text-3xl font-bold text-violet-700 dark:text-violet-300">${Number(repayResult.data.sellerBalanceAfter).toLocaleString()}</p>
+                    {repayResult.data.sellerCredited && (
+                      <p className="mt-1 text-xs text-violet-700/80 dark:text-violet-300/80">+${Number(repayResult.data.totalDue ?? repayResult.inv.amount).toLocaleString()} collected from the debtor{repayResult.data.balanceTransferred ? ', sent on to the financier' : ''}</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
                     <span className="text-xs text-slate-500 dark:text-slate-400">Principal + Yield</span>
                     <span className="font-data text-lg font-bold text-slate-950 dark:text-white">${repayResult.inv.amount.toLocaleString()}</span>
                   </div>
                   <div className="space-y-2 pt-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Confirmation Tx</span>
-                      <span className="font-data max-w-[150px] truncate text-slate-700 dark:text-slate-300">{repayResult.data.transactionId?.slice(0, 18)}…</span>
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="shrink-0 text-slate-500 dark:text-slate-400">Confirmation Tx</span>
+                      <span className="font-data min-w-0 flex-1 truncate text-right text-slate-700 dark:text-slate-300" title={repayResult.data.transactionId}>{repayResult.data.transactionId}</span>
+                      {repayResult.data.transactionId && <CopyBtn text={repayResult.data.transactionId} />}
                     </div>
                     {repayResult.data.balanceTransferTransactionId && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 dark:text-slate-400">Balance Transfer Tx</span>
-                        <span className="font-data max-w-[150px] truncate text-emerald-600 dark:text-emerald-300">{repayResult.data.balanceTransferTransactionId.slice(0, 18)}…</span>
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="shrink-0 text-slate-500 dark:text-slate-400">Balance Transfer Tx</span>
+                        <span className="font-data min-w-0 flex-1 truncate text-right text-emerald-600 dark:text-emerald-300" title={repayResult.data.balanceTransferTransactionId}>{repayResult.data.balanceTransferTransactionId}</span>
+                        <CopyBtn text={repayResult.data.balanceTransferTransactionId} />
                       </div>
                     )}
                   </div>
@@ -570,7 +588,7 @@ export default function InvoicesPage() {
                 {repayResult.data.balanceTransferred ? (
                   <div className="mb-4 flex items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
                     <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
-                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable Canton transaction from the confirmation itself.</p>
+                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable transaction from the confirmation itself. Full IDs above are real, queryable Canton transactions.</p>
                   </div>
                 ) : (
                   <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3">
@@ -778,7 +796,6 @@ export default function InvoicesPage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {[
-                    { label: 'Contract ID', val: result.contractId?.slice(0, 20) + '…' },
                     { label: 'Advance Rate Range', val: result.advanceRateRange },
                     { label: 'Tenor', val: `${result.tenorDays} days` },
                   ].map(item => (
@@ -787,6 +804,15 @@ export default function InvoicesPage() {
                       <p className="font-data truncate text-sm font-medium text-slate-950 dark:text-white">{item.val}</p>
                     </div>
                   ))}
+                  {result.contractId && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Contract ID (full, verifiable on-ledger)</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-data min-w-0 flex-1 truncate text-sm font-medium text-slate-950 dark:text-white" title={result.contractId}>{result.contractId}</p>
+                        <CopyBtn text={result.contractId} />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -854,10 +880,24 @@ export default function InvoicesPage() {
                   {showTechDetails ? 'Hide' : 'Show'} ledger details {showTechDetails ? '▴' : '▾'}
                 </button>
                 {showTechDetails && (
-                  <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
-                    <p className="font-data break-all text-[11px] text-slate-500 dark:text-slate-400">{result.cantonTemplateId}</p>
+                  <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+                    {result.contractId && (
+                      <div className="flex items-start gap-1.5">
+                        <p className="font-data min-w-0 flex-1 break-all text-[11px] text-slate-500 dark:text-slate-400">{result.contractId}</p>
+                        <CopyBtn text={result.contractId} />
+                      </div>
+                    )}
+                    {result.cantonTemplateId && (
+                      <div className="flex items-start gap-1.5">
+                        <p className="font-data min-w-0 flex-1 break-all text-[11px] text-slate-500 dark:text-slate-400">{result.cantonTemplateId}</p>
+                        <CopyBtn text={result.cantonTemplateId} />
+                      </div>
+                    )}
                     {listOutcome?.auctionContractId && (
-                      <p className="font-data break-all text-[11px] text-slate-400 dark:text-slate-500">{listOutcome.auctionContractId}</p>
+                      <div className="flex items-start gap-1.5">
+                        <p className="font-data min-w-0 flex-1 break-all text-[11px] text-slate-400 dark:text-slate-500">{listOutcome.auctionContractId}</p>
+                        <CopyBtn text={listOutcome.auctionContractId} />
+                      </div>
                     )}
                   </div>
                 )}

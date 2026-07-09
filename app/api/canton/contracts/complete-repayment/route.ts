@@ -22,8 +22,23 @@
  *   InvoPlus.Repayment:RepaymentRequest:{ApproveRepayment,CompleteRepayment}
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait, findBalanceContractId } from '@/lib/canton-server'
+import { submitAndWait, findBalanceContractId, queryACS } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
+
+// Fresh ground-truth read of a party's current Balance amount — used after
+// a transfer failure to tell the truth about what actually moved, since the
+// mint and transfer are two separate ledger submissions and only the mint
+// can succeed while the transfer still fails.
+async function currentBalanceAmount(platform: string, owner: string, packageId: string): Promise<number | null> {
+  const lines = await queryACS([platform], [`${packageId}:InvoPlus.Token:Balance`])
+  const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+  const matches = lines
+    .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
+    .map((l: any) => l.contractEntry.JsActiveContract.createdEvent)
+    .filter((e: any) => pv(e.createArgument?.owner) === owner)
+  if (matches.length === 0) return null
+  return Math.max(...matches.map((e: any) => Number(pv(e.createArgument?.amount) ?? 0)))
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -115,7 +130,15 @@ export async function POST(req: Request) {
     let balanceTransferred = false
     let balanceTransferTransactionId: string | undefined
     let balanceTransferError: string | undefined
+    // Mint and Transfer are two separate ledger submissions, not one atomic
+    // step — if Mint succeeds but Transfer fails, the seller's balance has
+    // genuinely already increased even though the overall repayment hasn't
+    // finished moving to the financier. Track that distinctly so the
+    // response (and the UI) can tell the truth instead of collapsing both
+    // into one misleading "pending" state.
+    let sellerCredited = false
     if (totalDue) {
+      let mintedSellerBalanceCid: string | undefined
       try {
         const sellerBalanceCid = await findBalanceContractId(platform, sellerPartyId, packageId)
         if (sellerBalanceCid) {
@@ -131,9 +154,28 @@ export async function POST(req: Request) {
               },
             }],
           )
-          const mintedSellerBalanceCid = mintResult?.contractId
-          const financierBalanceCid = await findBalanceContractId(platform, financierPartyId, packageId)
-          if (mintedSellerBalanceCid && financierBalanceCid) {
+          mintedSellerBalanceCid = mintResult?.contractId
+          sellerCredited = !!mintedSellerBalanceCid
+        } else {
+          balanceTransferError = 'Balance contract not found for seller.'
+        }
+      } catch (err) {
+        balanceTransferError = err instanceof Error ? err.message : 'Crediting the seller balance failed'
+      }
+
+      // Transfer the minted amount on to the financier — retried once with
+      // a fresh financier Balance lookup, since Mint already committed and
+      // is not repeated on retry (only Transfer, which is safe to retry:
+      // Canton either commits a submission in full or not at all, so a
+      // failed attempt never partially debits).
+      if (mintedSellerBalanceCid) {
+        for (let attempt = 0; attempt < 2 && !balanceTransferred; attempt++) {
+          try {
+            const financierBalanceCid = await findBalanceContractId(platform, financierPartyId, packageId)
+            if (!financierBalanceCid) {
+              balanceTransferError = 'Balance contract not found for financier after crediting seller balance.'
+              break
+            }
             const transferResult = await submitAndWait(
               [sellerPartyId, platform],
               [financierPartyId],
@@ -148,17 +190,22 @@ export async function POST(req: Request) {
             )
             balanceTransferred = true
             balanceTransferTransactionId = transferResult?.transactionId
-          } else {
-            balanceTransferError = 'Balance contract not found for financier after minting seller balance.'
+            balanceTransferError = undefined
+          } catch (err) {
+            balanceTransferError = err instanceof Error ? err.message : 'Balance transfer failed'
           }
-        } else {
-          balanceTransferError = 'Balance contract not found for seller.'
         }
-      } catch (err) {
-        // Genuinely surfaced now, not swallowed.
-        balanceTransferError = err instanceof Error ? err.message : 'Balance transfer failed'
       }
     }
+
+    // Ground truth for the UI: read both balances back fresh rather than
+    // trusting the submission outcomes alone — this is what actually lets
+    // the response show "your balance is now $X" correctly even in the
+    // partial-failure case above.
+    const [sellerBalanceAfter, financierBalanceAfter] = await Promise.all([
+      currentBalanceAmount(platform, sellerPartyId, packageId).catch(() => null),
+      currentBalanceAmount(platform, financierPartyId, packageId).catch(() => null),
+    ])
 
     return NextResponse.json({
       ok: true,
@@ -166,9 +213,15 @@ export async function POST(req: Request) {
       transactionId: completeResult?.transactionId,
       balanceTransferTransactionId,
       balanceTransferError,
+      sellerCredited,
+      sellerBalanceAfter,
+      financierBalanceAfter,
+      totalDue,
       message: balanceTransferred
         ? `Repayment complete — $${totalDue} moved from the seller's balance to the financier's, on-ledger.`
-        : `Repayment confirmed on Canton, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'} — contact support.`,
+        : sellerCredited
+          ? `Your balance was credited $${totalDue}, but sending it on to the financier didn't complete: ${balanceTransferError ?? 'unknown reason'} — contact support.`
+          : `Repayment confirmed on InvoPlus, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'} — contact support.`,
       balanceTransferred,
     })
   } catch (err) {
