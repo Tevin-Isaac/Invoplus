@@ -33,7 +33,7 @@ export function CookieConsent() {
             <Cookie className="h-4 w-4 text-violet-600 dark:text-violet-300" />
           </span>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            We use cookies to keep you signed in and remember your preferences. We don't run any tracking or analytics yet — this is just so the site works the way you'd expect.
+            This site uses cookies to enhance your experience. By continuing to browse, you agree to our use of cookies.
           </p>
         </div>
         <div className="flex w-full shrink-0 items-center gap-2 md:w-auto">
