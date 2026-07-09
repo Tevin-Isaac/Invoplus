@@ -5,7 +5,7 @@ import { useCanton } from '@/lib/canton'
 
 export interface AppNotification {
   id: string
-  type: 'connect' | 'invoice' | 'auction' | 'bid' | 'withdraw' | 'info'
+  type: 'connect' | 'invoice' | 'auction' | 'bid' | 'withdraw' | 'info' | 'balance'
   title: string
   body: string
   ts: number
@@ -29,6 +29,7 @@ const storageKey = (partyId: string | null) => `invoplus-notifs:${partyId ?? 'an
 const seenBidsKey = (partyId: string) => `invoplus-bidcounts:${partyId}`
 const overdueSeenKey = (partyId: string) => `invoplus-overdue-seen:${partyId}`
 const seenListingsKey = (partyId: string) => `invoplus-seen-listings:${partyId}`
+const lastBalanceKey = (partyId: string) => `invoplus-last-balance:${partyId}`
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
@@ -249,6 +250,51 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(check, 30_000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [partyId, partyType, notify])
+
+  // Balance-change watcher — the only place that reliably covers "money
+  // moved" for BOTH parties. The person who clicks Settle or Mark as
+  // Repaid already gets a notification from that action directly, but the
+  // party on the OTHER end of the transfer (the financier who just got
+  // funded away from, or just got repaid) isn't the one clicking anything
+  // — they'd otherwise only find out by manually checking. This detects
+  // the delta instead of trying to know every reason a balance could
+  // change, so it covers settle, repay, and anything added later for free.
+  useEffect(() => {
+    if (!partyId) return
+    let cancelled = false
+
+    const check = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/balance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partyId }),
+        })
+        const data = await res.json()
+        if (cancelled || !data.ok || !data.provisioned) return
+
+        const raw = window.localStorage.getItem(lastBalanceKey(partyId))
+        const isFirstPoll = raw === null
+        const last = raw !== null ? Number(raw) : data.amount
+        const current = Number(data.amount)
+
+        if (!isFirstPoll && current !== last) {
+          const delta = current - last
+          const rounded = Math.abs(Math.round(delta * 100) / 100)
+          if (delta > 0) {
+            notify('balance', 'Balance increased', `+$${rounded.toLocaleString()} landed in your account — now $${current.toLocaleString()}.`)
+          } else {
+            notify('balance', 'Balance decreased', `-$${rounded.toLocaleString()} moved out of your account — now $${current.toLocaleString()}.`)
+          }
+        }
+        window.localStorage.setItem(lastBalanceKey(partyId), String(current))
+      } catch { /* transient */ }
+    }
+
+    check()
+    const interval = setInterval(check, 15_000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [partyId, notify])
 
   return (
     <NotificationsContext.Provider value={{

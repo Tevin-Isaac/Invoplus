@@ -292,6 +292,7 @@ export function Header({ title }: { title: string }) {
                               : n.type === 'invoice' ? 'bg-sky-500'
                               : n.type === 'auction' ? 'bg-emerald-500'
                               : n.type === 'withdraw' ? 'bg-amber-500'
+                              : n.type === 'balance' ? 'bg-teal-500'
                               : 'bg-slate-400')} />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-baseline justify-between gap-2">
