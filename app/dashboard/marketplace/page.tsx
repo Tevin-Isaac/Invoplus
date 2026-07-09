@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
-import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight } from 'lucide-react'
+import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -421,34 +421,97 @@ export default function MarketplacePage() {
       {selectedAuction && (
         <BidModal auction={selectedAuction} onClose={() => setSelectedAuction(null)} onBidPlaced={handleBidPlaced} />
       )}
-      {settleResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className={cn(panel, 'w-full max-w-sm p-8 text-center')}>
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
-              <CheckCircle className="h-8 w-8 text-emerald-500" />
-            </div>
-            <h3 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">Auction Settled</h3>
-            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-              {settleResult.auction.invoiceId} is funded on Canton — winner and loser bids resolved atomically.
-            </p>
-            <div className="mb-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left text-sm dark:border-slate-700 dark:bg-slate-950">
-              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Invoice</span><span className="font-data font-semibold text-slate-950 dark:text-white">${settleResult.auction.amount.toLocaleString()}</span></div>
-              {settleResult.data.fundedInvoiceContractId && (
-                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">FundedInvoice</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{settleResult.data.fundedInvoiceContractId.slice(0, 20)}…</span></div>
-              )}
-              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Settlement Tx</span><span className="font-data max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">{settleResult.data.transactionId?.slice(0, 20)}…</span></div>
-              {settleResult.data.balanceTransferTransactionId && (
-                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Balance Transfer Tx</span><span className="font-data max-w-[140px] truncate text-xs text-emerald-600 dark:text-emerald-300">{settleResult.data.balanceTransferTransactionId.slice(0, 20)}…</span></div>
-              )}
-            </div>
-            {settleResult.data.balanceTransferTransactionId && (
-              <p className="mb-2 text-xs font-medium text-emerald-600 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable Canton transaction from the settlement itself.</p>
-            )}
-            <p className="mb-4 text-xs text-slate-400 dark:text-slate-500">Find it under Invoices as Funded — you can request repayment once the debtor pays you.</p>
-            <button onClick={() => setSettleResult(null)} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-600">Done</button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {settleResult && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+            >
+              {/* Top banner: success or partial-failure, distinct at a glance */}
+              <div className={cn(
+                'relative overflow-hidden px-6 pb-8 pt-8 text-center',
+                settleResult.data.balanceTransferred
+                  ? 'bg-gradient-to-b from-emerald-500/15 to-transparent'
+                  : 'bg-gradient-to-b from-amber-500/15 to-transparent'
+              )}>
+                <div className="pointer-events-none absolute -top-10 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-emerald-400/20 blur-3xl" />
+                <motion.div
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 14 }}
+                  className={cn(
+                    'relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shadow-lg',
+                    settleResult.data.balanceTransferred ? 'bg-emerald-500 shadow-emerald-500/40' : 'bg-amber-500 shadow-amber-500/40'
+                  )}
+                >
+                  {settleResult.data.balanceTransferred
+                    ? <CheckCircle className="h-8 w-8 text-white" />
+                    : <AlertTriangle className="h-8 w-8 text-white" />}
+                </motion.div>
+                <h3 className="relative text-xl font-bold text-slate-950 dark:text-white">
+                  {settleResult.data.balanceTransferred ? 'Auction Settled' : 'Settled — Balance Pending'}
+                </h3>
+                <p className="relative mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {settleResult.auction.invoiceId} · winner and loser bids resolved atomically
+                </p>
+              </div>
+
+              <div className="px-6 pb-6">
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Invoice value</span>
+                    <span className="font-data text-lg font-bold text-slate-950 dark:text-white">${settleResult.auction.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="space-y-2 pt-3">
+                    {settleResult.data.fundedInvoiceContractId && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 dark:text-slate-400">FundedInvoice</span>
+                        <span className="font-data max-w-[150px] truncate text-slate-700 dark:text-slate-300">{settleResult.data.fundedInvoiceContractId.slice(0, 18)}…</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400">Settlement Tx</span>
+                      <span className="font-data max-w-[150px] truncate text-slate-700 dark:text-slate-300">{settleResult.data.transactionId?.slice(0, 18)}…</span>
+                    </div>
+                    {settleResult.data.balanceTransferTransactionId && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-500 dark:text-slate-400">Balance Transfer Tx</span>
+                        <span className="font-data max-w-[150px] truncate text-emerald-600 dark:text-emerald-300">{settleResult.data.balanceTransferTransactionId.slice(0, 18)}…</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {settleResult.data.balanceTransferred ? (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-3">
+                    <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                    <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">Balance moved on-ledger — a separate, verifiable Canton transaction from the settlement itself.</p>
+                  </div>
+                ) : (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                      {settleResult.data.balanceTransferError ?? 'The balance transfer did not complete — the invoice is funded on-ledger, but no cash has moved yet.'}
+                    </p>
+                  </div>
+                )}
+
+                <p className="mb-4 text-center text-xs text-slate-400 dark:text-slate-500">Find it under Invoices as Funded — you can request repayment once the debtor pays you.</p>
+                <button onClick={() => setSettleResult(null)} className="w-full rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-colors hover:bg-violet-600">Done</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
