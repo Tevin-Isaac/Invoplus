@@ -45,6 +45,15 @@ async function currentBalanceAmount(platform: string, owner: string, packageId: 
 }
 
 export const dynamic = 'force-dynamic'
+// Default serverless timeout (10s) is genuinely too tight for this route:
+// reject-losers (one call per losing bid) + settle + the balance transfer +
+// origination-fee hop (each with its own retry) + the ground-truth balance
+// recheck (up to ~1.4s of retry delay) can add up past 10s under real
+// Canton latency. Suspected root cause of a live report where the client
+// saw a failure/timeout while the ledger operation had actually completed
+// moments later in the background — this gives real headroom instead of
+// tightening every retry to fit an artificially short window.
+export const maxDuration = 45
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 

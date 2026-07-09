@@ -309,9 +309,10 @@ export default function InvoicesPage() {
         setInvoices(prev => prev.filter(i => i.id !== inv.id))
         setRepayResult({ inv, data })
         notify('info', 'Repayment complete', `${inv.invoiceId} — financier repaid in full on InvoPlus.`)
-        if (data.platformFee > 0) {
-          notify('balance', 'InvoPlus fee applied', `A $${Number(data.platformFee).toFixed(2)} servicing fee (10% of yield) was taken from the financier's repayment on ${inv.invoiceId} — they received $${Number(data.financierAmount).toLocaleString()} net.`)
-        }
+        // Deliberately no separate fee notification here — the servicing
+        // fee is deducted from the FINANCIER's share, not the seller's own
+        // money, so surfacing it to the seller would be disclosing the
+        // counterparty's financial details to them, not their own.
       } else {
         setRowError(data.error ?? 'Repayment failed')
       }
