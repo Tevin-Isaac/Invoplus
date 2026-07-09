@@ -4,6 +4,7 @@ import { CantonProvider } from '@/lib/canton'
 import { AuthProvider } from '@/lib/auth-context'
 import { NotificationsProvider } from '@/lib/notifications'
 import { I18nProvider } from '@/lib/i18n/I18nContext'
+import { AppBootSplash } from '@/components/brand/AppBootSplash'
 
 export const metadata: Metadata = {
   title: 'Invoplus — Fast Invoice & Payment Platform',
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <CantonProvider>
               <NotificationsProvider>
-                {children}
+                <AppBootSplash>{children}</AppBootSplash>
               </NotificationsProvider>
             </CantonProvider>
           </AuthProvider>
