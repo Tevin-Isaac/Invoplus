@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Header } from '@/components/dashboard/Header'
-import { TrendingUp, DollarSign, Award, Clock, EyeOff, ExternalLink, Loader2, Wallet } from 'lucide-react'
+import { TrendingUp, DollarSign, Award, Clock, EyeOff, ExternalLink, Loader2, Wallet, FileText, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 
@@ -84,19 +85,54 @@ export default function PortfolioPage() {
   }, [party])
 
   const active = positions.filter(p => p.status === 'active')
+  const repaid = positions.filter(p => p.status === 'repaid')
   const capitalDeployed = active.reduce((s, p) => s + p.fundedAmount, 0)
+  // Currently outstanding return (still owed) plus what's already been
+  // realized from repaid positions — otherwise this reads as $0 the moment
+  // every position you've ever funded has been paid back, even though
+  // you've genuinely earned real yield, which is exactly what looked like a
+  // bug: an all-zero portfolio with real repaid history sitting right there.
   const totalReturn = active.reduce((s, p) => s + p.returnAtRepayment, 0)
-  const avgYield = active.length ? active.reduce((s, p) => s + p.annualRate, 0) / active.length : 0
-  const ccy = positions[0]?.currency || 'USD'
+  const totalYieldRealized = repaid.reduce((s, p) => s + p.returnAtRepayment, 0)
+  const ccy = positions.find(p => p.currency)?.currency || 'USD'
 
   const stats = [
-    { label: 'Capital Deployed', value: money(capitalDeployed, ccy), icon: DollarSign },
-    { label: 'Return at Repayment', value: money(totalReturn, ccy), icon: TrendingUp, accent: true },
-    { label: 'Funded Positions', value: String(active.length), icon: Award },
-    { label: 'Avg Yield (APR)', value: `${(avgYield * 100).toFixed(1)}%`, icon: Clock, accent: true },
+    { label: 'Capital Deployed (Active)', value: money(capitalDeployed, ccy), icon: DollarSign },
+    { label: 'Return Still Owed (Active)', value: money(totalReturn, ccy), icon: Clock, accent: true },
+    { label: 'Yield Realized (Repaid)', value: money(totalYieldRealized, ccy), icon: TrendingUp, accent: true },
+    { label: 'Positions (Active / Repaid)', value: `${active.length} / ${repaid.length}`, icon: Award },
   ]
 
   const filtered = filter === 'all' ? positions : positions.filter(p => p.status === filter)
+
+  // Portfolio is a financier concept (capital deployed, sealed bids, yield)
+  // — a business's own funded/repaid history already lives on Invoices and
+  // Offers. Without this gate, a business sees an all-zero "Capital
+  // Deployed" page that reads as broken rather than "not relevant to you."
+  if (party?.type === 'business') {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <Header title="Portfolio" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10">
+            <FileText className="h-7 w-7 text-violet-500" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-950 dark:text-white">Portfolio is for financier accounts</p>
+            <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
+              Portfolio tracks capital deployed and sealed bids — that's a financier's view. Your own funding history lives on Invoices and Offers.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/invoices"
+            className="flex items-center gap-1.5 rounded-xl bg-violet-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition-colors hover:bg-violet-600"
+          >
+            Go to Invoices<ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

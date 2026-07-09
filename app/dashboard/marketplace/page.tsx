@@ -454,6 +454,9 @@ export default function MarketplacePage() {
         setAuctions(prev => prev.filter(x => x.id !== a.id))
         setSettleResult({ auction: a, data })
         notifyCancel('auction', 'Auction settled', `${a.invoiceId} funded on InvoPlus. Find it under Invoices as Funded.`)
+        if (data.originationFee > 0) {
+          notifyCancel('balance', 'InvoPlus fee applied', `A $${Number(data.originationFee).toFixed(2)} origination fee (0.5% of your advance) was deducted — you keep $${(Number(data.fundedAmount) - Number(data.originationFee)).toLocaleString()} net from this settlement.`)
+        }
       } else {
         setActionError(humanizeCantonError(data.error))
       }

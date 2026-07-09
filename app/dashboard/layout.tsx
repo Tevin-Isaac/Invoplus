@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyJWT, authRequired } from '@/lib/auth'
 import { Sidebar } from '@/components/dashboard/Sidebar'
+import { PageTransition } from '@/components/dashboard/PageTransition'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (authRequired()) {
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {children}
       </div>
+      <PageTransition />
     </div>
   )
 }

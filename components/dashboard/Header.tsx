@@ -246,10 +246,7 @@ export function Header({ title }: { title: string }) {
           )}
 
           {isConnected && balance !== null && (
-            <div
-              className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-2"
-              title="Your InvoPlus demo balance — not real currency or USDC, but a real Canton contract: it moves atomically on settlement and repayment"
-            >
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-2">
               <Wallet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
               <span className="flex flex-col leading-none">
                 <span className="font-data text-sm font-bold text-emerald-700 dark:text-emerald-300">
