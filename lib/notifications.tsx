@@ -27,6 +27,7 @@ const MAX_KEPT = 50
 // disconnecting) never leaks another identity's activity feed.
 const storageKey = (partyId: string | null) => `invoplus-notifs:${partyId ?? 'anon'}`
 const seenBidsKey = (partyId: string) => `invoplus-bidcounts:${partyId}`
+const overdueSeenKey = (partyId: string) => `invoplus-overdue-seen:${partyId}`
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
@@ -144,6 +145,56 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           notify('auction', 'Listing expired — no bids received', `${invoiceId} closed with no sealed bids and was returned to your Invoices. Consider adjusting the advance rate or annual rate before relisting.`)
         }
       } catch { /* try again next poll */ }
+    }
+
+    check()
+    const interval = setInterval(check, 45_000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [partyId, notify])
+
+  // Overdue-repayment watcher: repayment is self-attested off-ledger (the
+  // debtor isn't a Canton party, so nothing forces the seller to click
+  // Mark as Repaid). This is the visible pressure point for both sides —
+  // the seller gets nagged, the financier gets told their money is
+  // outstanding — once a FundedInvoice's due date passes unpaid. Both are
+  // signatories on FundedInvoice, so both can query it directly.
+  useEffect(() => {
+    if (!partyId) return
+    let cancelled = false
+
+    const check = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [partyId], template: 'funded' }),
+        })
+        const data = await res.json()
+        if (cancelled || !data.ok) return
+
+        const raw = window.localStorage.getItem(overdueSeenKey(partyId))
+        let seen: string[] = []
+        try { seen = raw ? JSON.parse(raw) : [] } catch { /* fresh */ }
+        const nextSeen = new Set(seen)
+        const now = Date.now()
+
+        for (const c of data.contracts || []) {
+          const p = c.payload || {}
+          const dueDate = pv(p.dueDate)
+          if (!dueDate || new Date(dueDate).getTime() >= now) continue
+          if (seen.includes(c.contractId)) continue
+          nextSeen.add(c.contractId)
+
+          const invoiceId = String(pv(p.invoiceId) ?? 'Invoice')
+          const isSeller = pv(p.seller) === partyId
+          if (isSeller) {
+            notify('info', 'Repayment overdue', `${invoiceId} passed its due date without being marked repaid. The financier is still owed — mark it repaid as soon as your debtor pays.`)
+          } else {
+            notify('info', 'Waiting on an overdue repayment', `${invoiceId} passed its due date and the seller hasn't marked it repaid yet.`)
+          }
+        }
+        window.localStorage.setItem(overdueSeenKey(partyId), JSON.stringify(Array.from(nextSeen)))
+      } catch { /* transient */ }
     }
 
     check()

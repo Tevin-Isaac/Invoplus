@@ -7,15 +7,23 @@ import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
 
-type InvoiceStatus = 'funded' | 'bidding' | 'verified' | 'pending' | 'rejected'
+type InvoiceStatus = 'funded' | 'overdue' | 'bidding' | 'verified' | 'pending' | 'rejected'
 
 const statusConfig: Record<InvoiceStatus, { label: string; icon: typeof CheckCircle; color: string }> = {
-  funded:   { label: 'Funded',   icon: CheckCircle, color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/25 dark:text-emerald-300' },
+  funded:   { label: 'Funded',   icon: CheckCircle,   color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/25 dark:text-emerald-300' },
+  // Repayment is self-attested off-ledger (the debtor isn't a Canton party,
+  // so nothing enforces the seller actually clicking Mark as Repaid) — this
+  // is the one visible pressure point once the due date passes with no
+  // repayment yet.
+  overdue:  { label: 'Overdue',  icon: AlertTriangle, color: 'text-red-700 bg-red-500/10 border-red-500/25 dark:text-red-300' },
   bidding:  { label: 'Bidding',  icon: Zap,         color: 'text-violet-700 bg-violet-500/10 border-violet-500/25 dark:text-violet-300' },
   verified: { label: 'Verified', icon: FileText,    color: 'text-sky-700 bg-sky-500/10 border-sky-500/25 dark:text-sky-300' },
   pending:  { label: 'Pending',  icon: Clock,       color: 'text-amber-700 bg-amber-500/10 border-amber-500/25 dark:text-amber-300' },
   rejected: { label: 'Rejected', icon: XCircle,     color: 'text-red-700 bg-red-500/10 border-red-500/25 dark:text-red-300' },
 }
+
+const isOverdue = (status: string, dueDate: string) =>
+  status.toLowerCase() === 'funded' && !!dueDate && new Date(dueDate).getTime() < Date.now()
 
 interface ScoreResult {
   ok: boolean
@@ -143,7 +151,7 @@ export default function InvoicesPage() {
   // Only a hard on-ledger limit (>30 chars) blocks submission.
   const taxIdValid = form.debtorTaxId.trim().length <= 30
   const filtered = invoices
-    .filter(i => filter === 'all' || lc(i.status) === filter)
+    .filter(i => filter === 'all' || (filter === 'overdue' ? isOverdue(i.status, i.dueDate) : lc(i.status) === filter))
     .filter(i => !search || i.buyer.toLowerCase().includes(search.toLowerCase()) || i.id.toLowerCase().includes(search.toLowerCase()))
 
   const vv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
@@ -736,7 +744,7 @@ export default function InvoicesPage() {
         {/* Filters + search */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-2">
-            {['all', 'pending', 'verified', 'bidding', 'funded'].map(f => (
+            {['all', 'pending', 'verified', 'bidding', 'funded', 'overdue'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={cn('rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-all',
                   filter === f
@@ -781,10 +789,14 @@ export default function InvoicesPage() {
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {filtered.map(inv => {
-                const sc = statusConfig[lc(inv.status) as InvoiceStatus] ?? statusConfig.pending
+                const overdue = isOverdue(inv.status, inv.dueDate)
+                const sc = statusConfig[(overdue ? 'overdue' : lc(inv.status)) as InvoiceStatus] ?? statusConfig.pending
                 const Icon = sc.icon
                 return (
-                  <div key={inv.id} className="grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-violet-500/[0.04] md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] md:items-center md:gap-4">
+                  <div key={inv.id} className={cn(
+                    'grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-violet-500/[0.04] md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] md:items-center md:gap-4',
+                    overdue && 'border-l-2 border-l-red-500 bg-red-500/[0.03]'
+                  )}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-xs font-bold text-violet-600 dark:text-violet-300">{inv.buyer[0]}</div>
                       <div className="min-w-0">
@@ -840,10 +852,16 @@ export default function InvoicesPage() {
                         <button
                           onClick={() => handleMarkRepaid(inv)}
                           disabled={repayingId === inv.id}
-                          className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition-all hover:bg-emerald-500 hover:text-white disabled:opacity-60 dark:text-emerald-300"
+                          title={overdue ? 'Past due date — the financier is waiting on this repayment' : undefined}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-60',
+                            overdue
+                              ? 'animate-pulse-slow bg-red-500 text-white hover:bg-red-600'
+                              : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white dark:text-emerald-300'
+                          )}
                         >
                           {repayingId === inv.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                          {repayingId === inv.id ? 'Repaying…' : 'Mark as Repaid'}
+                          {repayingId === inv.id ? 'Repaying…' : overdue ? 'Overdue — Mark as Repaid' : 'Mark as Repaid'}
                         </button>
                       )}
                     </div>

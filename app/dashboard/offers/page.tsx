@@ -20,6 +20,8 @@ interface MyOffer {
   closedAt: string | null
   cantonRef: string
   bidContractId: string
+  dueDate: string | null
+  overdue: boolean
 }
 
 const statusConfig = {
@@ -74,41 +76,88 @@ export default function OffersPage() {
   useEffect(() => {
     if (!party?.id) { setOffers([]); setLoading(false); return }
 
+    const vv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
+
     const load = async () => {
       setLoading(true)
       try {
-        const res = await fetch('/api/canton/contracts/list', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parties: [party.id], template: 'bid' }),
-        })
-        const data = await res.json()
-        if (data.ok) {
-          const rows: MyOffer[] = (data.contracts || []).map((c: any, idx: number) => {
+        const [bidRes, fundedRes] = await Promise.all([
+          fetch('/api/canton/contracts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parties: [party.id], template: 'bid' }),
+          }).then(r => r.json()),
+          fetch('/api/canton/contracts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parties: [party.id], template: 'funded' }),
+          }).then(r => r.json()),
+        ])
+        const now = Date.now()
+        const rows: MyOffer[] = []
+
+        // Winning bids are archived by Daml's SettleWin choice (default
+        // consuming semantics, no replacement record) — they vanish from
+        // the ledger entirely, so "won" can never be derived from the bid
+        // template surviving a page reload. FundedInvoice is the record
+        // that actually persists and has everything needed (the financier
+        // is a signatory on it), so "won" rows come from there instead —
+        // this also gives an exact yield instead of an estimate, and the
+        // real due date for the overdue check.
+        if (fundedRes.ok) {
+          for (const c of fundedRes.contracts || []) {
+            const p = c.payload || {}
+            if (vv(p.financier) !== party.id) continue
+            const dueDate = String(vv(p.dueDate) ?? '') || null
+            const faceAmount = Number(vv(p.faceAmount) ?? 0)
+            const fundedAmount = Number(vv(p.fundedAmount) ?? 0)
+            rows.push({
+              id: c.contractId,
+              auctionId: String(vv(p.invoiceId) ?? ''),
+              buyer: String(vv(p.seller) ?? 'seller'),
+              invoiceAmount: faceAmount,
+              advanceRate: Math.round((Number(vv(p.advanceRate) ?? 0)) * 100),
+              annualRate: Math.round((Number(vv(p.annualRate) ?? 0)) * 100),
+              netToSeller: fundedAmount,
+              estimatedYield: Math.round(faceAmount - fundedAmount),
+              status: 'won',
+              closedAt: String(vv(p.settledAt) ?? '') || null,
+              cantonRef: c.contractId,
+              bidContractId: c.contractId,
+              dueDate,
+              overdue: !!dueDate && new Date(dueDate).getTime() < now,
+            })
+          }
+        }
+
+        // Still-open sealed bids — the only bid-template state that
+        // reliably survives a reload, since it hasn't been archived yet.
+        if (bidRes.ok) {
+          for (const c of bidRes.contracts || []) {
             const p = c.payload || {}
             const face = Number(p.faceAmount?.value ?? p.faceAmount ?? 0)
             const advance = Number(p.advanceRate?.value ?? p.advanceRate ?? 0)
             const annual = Number(p.annualRate?.value ?? p.annualRate ?? 0)
-            const net = Math.round(face * advance)
-            const estYield = Math.round(net * annual)
-            const status = p.isRevealed ? 'won' : 'pending'
-            return {
+            rows.push({
               id: c.contractId,
-              auctionId: p.invoiceId?.value ?? p.invoiceId ?? `inv-${idx}`,
+              auctionId: p.invoiceId?.value ?? p.invoiceId ?? '',
               buyer: p.seller?.value ?? p.seller ?? 'seller',
               invoiceAmount: face,
               advanceRate: Math.round(advance * 100),
               annualRate: Math.round(annual * 100),
-              netToSeller: net,
-              estimatedYield: estYield,
-              status: status as any,
+              netToSeller: Math.round(face * advance),
+              estimatedYield: Math.round(face * advance * annual),
+              status: 'pending',
               closedAt: null,
               cantonRef: c.contractId,
               bidContractId: c.contractId,
-            }
-          })
-          setOffers(rows)
+              dueDate: null,
+              overdue: false,
+            })
+          }
         }
+
+        setOffers(rows)
       } catch { /* keep empty */ } finally {
         setLoading(false)
       }
@@ -189,7 +238,10 @@ export default function OffersPage() {
                 const Icon = sc.icon
                 const isPending = offer.status === 'pending'
                 return (
-                  <div key={offer.id} className="grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-violet-500/[0.04] md:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_1fr_1fr] md:items-center md:gap-4">
+                  <div key={offer.id} className={cn(
+                    'grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-violet-500/[0.04] md:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_1fr_1fr] md:items-center md:gap-4',
+                    offer.overdue && 'border-l-2 border-l-red-500 bg-red-500/[0.03]'
+                  )}>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">{offer.buyer}</p>
                       <p className="font-data truncate text-xs text-slate-400 dark:text-slate-500">{offer.auctionId}</p>
@@ -211,6 +263,11 @@ export default function OffersPage() {
                       {offer.status === 'won' && (
                         <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                           <Zap className="h-3.5 w-3.5" />+${offer.estimatedYield.toLocaleString()}
+                        </span>
+                      )}
+                      {offer.overdue && (
+                        <span className="flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-[10px] font-semibold uppercase text-red-600 dark:text-red-300" title="Past due date — the seller hasn't marked this repaid yet">
+                          <AlertTriangle className="h-3 w-3" />Overdue
                         </span>
                       )}
                       {isPending && (
