@@ -82,34 +82,86 @@ export async function allocateParty(displayName: string, partyIdHint: string) {
   return res.json()
 }
 
+async function getM2MUserId(token: string): Promise<string> {
+  return String(JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub)
+}
+
+async function grantRightsRequest(token: string, userId: string, party: string) {
+  return fetch(`${LEDGER_URL}/v2/users/${userId}/rights`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId,
+      rights: [{ kind: { CanActAs: { value: { party } } } }],
+    }),
+    cache: 'no-store',
+  })
+}
+
+// The shared M2M user has a hard 1000-right cap on this DevNet validator —
+// shared across every team on the hackathon, not just this app, so it fills
+// from everyone's activity and has hit the ceiling more than once purely
+// from OTHER teams' usage. We never revoked our own grants after issuing
+// them, so our footprint only ever grew — evicting a batch of our own
+// oldest InvoPlus rights on cap failure turns that into a bounded sliding
+// window instead. Evicting a still-connected party's right is safe: the
+// self-healing 403 retry in submitAndWait re-grants it the moment that
+// party's next command needs it.
+async function evictOldestInvoplusRights(token: string, userId: string, keep: string[], count: number): Promise<number> {
+  const res = await fetch(`${LEDGER_URL}/v2/users/${userId}/rights`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  })
+  if (!res.ok) return 0
+  const data = await res.json()
+  const parties: string[] = (data.rights ?? [])
+    .map((r: any) => r?.kind?.CanActAs?.value?.party as string | undefined)
+    .filter((p: string | undefined): p is string => !!p && p.startsWith('invoplus_') && !keep.includes(p))
+  const toEvict = parties.slice(0, count)
+  if (!toEvict.length) return 0
+  await fetch(`${LEDGER_URL}/v2/users/${userId}/rights`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, rights: toEvict.map(party => ({ kind: { CanActAs: { value: { party } } } })) }),
+    cache: 'no-store',
+  }).catch(() => {})
+  return toEvict.length
+}
+
 /**
  * Grant the M2M user (the identity all our server-side commands run as —
  * its ledger user id is the token's `sub` claim) CanActAs/CanReadAs on a
  * party. Without this, commands submitted on behalf of a freshly allocated
  * party fail with a permission error: allocation alone does NOT link the
  * party to the submitting user.
+ *
+ * Self-healing against the shared rights cap: if granting fails with
+ * TOO_MANY_USER_RIGHTS, evict a batch of our own oldest InvoPlus rights and
+ * retry once — see evictOldestInvoplusRights for why that's safe.
  */
 export async function grantM2MRights(party: string) {
   const token = await getCantonToken()
-  const userId = String(JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).sub)
-  const res = await fetch(`${LEDGER_URL}/v2/users/${userId}/rights`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId,
-      // Note the extra `value` nesting — the v2 JSON API wraps each right's
-      // oneof payload, unlike the flatter shape /v2/users accepts on create.
-      // CanActAs only: acting as a party implies reading as it, and the
-      // shared M2M user has a hard 1000-rights cap on this validator
-      // (TOO_MANY_USER_RIGHTS) — granting both per party burned 2 slots
-      // per connect for no benefit.
-      rights: [
-        { kind: { CanActAs: { value: { party } } } },
-      ],
-    }),
-    cache: 'no-store',
-  })
-  if (!res.ok) throw new Error(`grantM2MRights failed: ${res.status} ${await res.text().catch(() => '')}`)
+  const userId = await getM2MUserId(token)
+
+  let res = await grantRightsRequest(token, userId, party)
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => '')
+    if (bodyText.includes('TOO_MANY_USER_RIGHTS')) {
+      const evicted = await evictOldestInvoplusRights(token, userId, [party], 25)
+      if (evicted > 0) res = await grantRightsRequest(token, userId, party)
+      if (!res.ok) throw new Error(`grantM2MRights failed: ${res.status} ${await res.text().catch(() => '')}`)
+    } else {
+      throw new Error(`grantM2MRights failed: ${res.status} ${bodyText}`)
+    }
+  } else if (Math.random() < 0.1) {
+    // Happy-path trim, ~1 in 10 grants: without this, a successful grant
+    // never gives anything back, so our footprint only ever grows even
+    // when the cap isn't currently an issue — this keeps it roughly flat
+    // over time instead of waiting for the next TOO_MANY_USER_RIGHTS to
+    // force a bigger eviction. Fire-and-forget: not worth the latency on
+    // every single grant for a background hygiene task.
+    evictOldestInvoplusRights(token, userId, [party], 1).catch(() => {})
+  }
   return res.json()
 }
 

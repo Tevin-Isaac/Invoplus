@@ -6,7 +6,7 @@ import { Bell, ChevronDown, Wallet, Building2, Landmark, X, ExternalLink, Loader
 import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
 import { useNotifications } from '@/lib/notifications'
-import { cn } from '@/lib/utils'
+import { cn, humanizeCantonError } from '@/lib/utils'
 import { HeaderSearch } from '@/components/dashboard/HeaderSearch'
 import { AssistantChat } from '@/components/dashboard/AssistantChat'
 import { CopyBtn } from '@/components/dashboard/CopyBtn'
@@ -134,7 +134,7 @@ export function Header({ title }: { title: string }) {
     if (result.ok) {
       setModal('role')
     } else {
-      setConnectError(result.error ?? 'Could not create your identity. Try again.')
+      setConnectError(humanizeCantonError(result.error) ?? 'Could not create your identity. Try again.')
     }
   }
 
