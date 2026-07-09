@@ -29,6 +29,7 @@ const storageKey = (partyId: string | null) => `invoplus-notifs:${partyId ?? 'an
 const seenBidsKey = (partyId: string) => `invoplus-bidcounts:${partyId}`
 const overdueSeenKey = (partyId: string) => `invoplus-overdue-seen:${partyId}`
 const seenListingsKey = (partyId: string) => `invoplus-seen-listings:${partyId}`
+const seenRepaymentsKey = (partyId: string) => `invoplus-seen-repayments:${partyId}`
 const lastBalanceKey = (partyId: string) => `invoplus-last-balance:${partyId}`
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
@@ -258,6 +259,56 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     check()
     const interval = setInterval(check, 30_000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [partyId, partyType, notify])
+
+  // Repayment-received watcher, financiers only: the generic balance-delta
+  // watcher below already tells a financier their balance went up, but not
+  // that a fee was taken out of it — this reads their own
+  // RepaymentConfirmation records (they're a signatory, so this is their
+  // own data, not the seller's) and reports the exact breakdown: principal,
+  // gross yield, InvoPlus's cut, and net received. 10% mirrors
+  // PLATFORM_FEE_RATE in complete-repayment/route.ts — informational only,
+  // the real deduction already happened server-side by the time this fires.
+  useEffect(() => {
+    if (!partyId || partyType !== 'financier') return
+    let cancelled = false
+
+    const check = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [partyId], template: 'repayment' }),
+        })
+        const data = await res.json()
+        if (cancelled || !data.ok) return
+
+        const raw = window.localStorage.getItem(seenRepaymentsKey(partyId))
+        const isFirstPoll = raw === null
+        let seen: string[] = []
+        try { seen = raw ? JSON.parse(raw) : [] } catch { /* fresh */ }
+        const seenSet = new Set(seen)
+
+        for (const c of data.contracts || []) {
+          const p = c.payload || {}
+          if (pv(p.financier) !== partyId) continue
+          if (seenSet.has(c.contractId)) continue
+          seenSet.add(c.contractId)
+          if (isFirstPoll) continue // baseline silently, same reasoning as the other watchers
+          const invoiceId = String(pv(p.invoiceId) ?? 'Invoice')
+          const fundedAmount = Number(pv(p.fundedAmount) ?? 0)
+          const yieldAmount = Number(pv(p.yieldAmount) ?? 0)
+          const fee = Math.round(yieldAmount * 0.10 * 100) / 100
+          const netYield = Math.round((yieldAmount - fee) * 100) / 100
+          notify('balance', 'Repayment received', `${invoiceId} — $${fundedAmount.toLocaleString()} principal + $${netYield.toLocaleString()} net yield. InvoPlus fee: $${fee.toFixed(2)} (10% of $${yieldAmount.toLocaleString()} yield).`)
+        }
+        window.localStorage.setItem(seenRepaymentsKey(partyId), JSON.stringify(Array.from(seenSet)))
+      } catch { /* transient */ }
+    }
+
+    check()
+    const interval = setInterval(check, 20_000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [partyId, partyType, notify])
 

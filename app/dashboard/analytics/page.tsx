@@ -166,8 +166,16 @@ export default function AnalyticsPage() {
   // registry checks instead, since bids aren't relevant to them.
   const kpis = isFinancier ? [
     { label: 'Platform Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length + repaid.length} funded position${funded.length + repaid.length === 1 ? '' : 's'} · all users`, accent: true },
-    { label: 'Your Open Sealed Bids', value: String(openBids.length), sub: 'Awaiting auction close' },
-    { label: 'Your Capital at Stake', value: fmtUSD(capitalAtStake), sub: 'Committed across your open bids' },
+    // A bare "0" / "$0" here reads as broken rather than "you just don't
+    // have an open bid right now" — this is a genuinely personal, often-
+    // empty number (unlike the platform-wide figures above), so it gets
+    // friendlier copy instead of a zero sitting on its own.
+    openBids.length > 0
+      ? { label: 'Your Open Sealed Bids', value: String(openBids.length), sub: 'Awaiting auction close' }
+      : { label: 'Your Open Sealed Bids', value: '—', sub: 'None right now — place one in the Marketplace' },
+    capitalAtStake > 0
+      ? { label: 'Your Capital at Stake', value: fmtUSD(capitalAtStake), sub: 'Committed across your open bids' }
+      : { label: 'Your Capital at Stake', value: '—', sub: 'Nothing committed until you place a bid' },
   ] : [
     { label: 'Platform Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length + repaid.length} funded position${funded.length + repaid.length === 1 ? '' : 's'} · all users`, accent: true },
     { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions · all sellers' },
