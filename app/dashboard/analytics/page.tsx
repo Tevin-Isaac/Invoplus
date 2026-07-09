@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
           <div>
             <p className="text-sm font-medium text-slate-950 dark:text-white">How InvoPlus makes money</p>
             <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              A {platformStats ? (platformStats.feeRate * 100).toFixed(0) : '10'}% servicing fee on the financier's yield, taken at repayment, plus a small {platformStats ? (platformStats.originationFeeRate * 100).toFixed(1) : '0.5'}% origination fee on the seller's advance, taken at settlement — both financiers and businesses contribute a little to keep InvoPlus running. The advance rate and yield rate agreed in the sealed-bid auction are never altered; the fee is a separate deduction from the cash that actually moves, not a change to the terms themselves.
+              When an invoice is funded, InvoPlus takes {platformStats ? (platformStats.originationFeeRate * 100).toFixed(1) : '0.5'}% of the seller's advance. When it's repaid, InvoPlus takes {platformStats ? (platformStats.feeRate * 100).toFixed(0) : '10'}% of the financier's yield. Both come out of the money after the auction is already won — a financier who bid 10% APR still gets exactly a 10% APR bid accepted, InvoPlus's cut just comes off their payout afterward, not off the rate they bid.
             </p>
           </div>
         </div>
