@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, Wallet, Building2, Landmark, X, ExternalLink, Loader2, AlertTriangle, CheckCircle, Zap, Moon, Sun, LogOut } from 'lucide-react'
+import { Bell, ChevronDown, Wallet, Building2, Landmark, X, ExternalLink, Loader2, AlertTriangle, CheckCircle, Moon, Sun, LogOut } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
 import { useNotifications } from '@/lib/notifications'
@@ -488,7 +488,7 @@ export function Header({ title }: { title: string }) {
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15">
                   {provisioning
                     ? <Loader2 className="w-5 h-5 animate-spin text-violet-600 dark:text-violet-300" />
-                    : <Zap className="w-5 h-5 text-violet-600 dark:text-violet-300" />}
+                    : <Wallet className="w-5 h-5 text-violet-600 dark:text-violet-300" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white">

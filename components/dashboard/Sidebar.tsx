@@ -30,7 +30,7 @@ export function Sidebar() {
   // Icon rail by default; expands on toggle. Persisted across visits.
   const [expanded, setExpanded] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
-  const { ledgerStatus, ledgerLoading, party } = useCanton()
+  const { party } = useCanton()
   const { user } = useAuth()
 
   useEffect(() => {
@@ -99,26 +99,6 @@ export function Sidebar() {
     </nav>
   )
 
-  const LedgerDot = ({ showLabel }: { showLabel: boolean }) => (
-    <div
-      className={cn('flex items-center gap-2.5 py-2', showLabel ? 'px-3' : 'justify-center px-0')}
-      title={ledgerLoading ? 'Connecting to Canton…' : ledgerStatus?.ok ? 'Connected to Canton DevNet' : 'Canton DevNet unreachable'}
-    >
-      <span className={cn(
-        'h-2 w-2 shrink-0 rounded-full',
-        ledgerLoading ? 'bg-amber-400 animate-pulse' : ledgerStatus?.ok ? 'bg-emerald-500 animate-pulse' : 'bg-red-400'
-      )} />
-      {showLabel && (
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-950 dark:text-white">Canton Network</p>
-          <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-            {ledgerLoading ? 'Connecting…' : ledgerStatus?.ok ? 'DevNet · connected' : 'DevNet · offline'}
-          </p>
-        </div>
-      )}
-    </div>
-  )
-
   return (
     <>
       {/* Mobile hamburger */}
@@ -159,14 +139,15 @@ export function Sidebar() {
           <NavList items={navItems} showLabels={expanded} />
         </div>
 
-        {/* Settings, separated from the main nav — then ledger status and
-            profile (display only: all identity actions, including logout/
-            disconnect, live in the header profile menu, so there's exactly
-            one place for them). */}
+        {/* Settings, separated from the main nav — then profile (display
+            only: all identity actions, including logout/disconnect, live
+            in the header profile menu, so there's exactly one place for
+            them). Ledger/network status is deliberately not shown here —
+            that's an implementation detail, not something end users need
+            to see. */}
         <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
           <NavList items={[settingsItem]} showLabels={expanded} className="mb-2" />
-          <LedgerDot showLabel={expanded} />
-          <div className={cn('mt-1 flex items-center gap-2.5 py-2', expanded ? 'px-3' : 'justify-center px-0')}>
+          <div className={cn('flex items-center gap-2.5 py-2', expanded ? 'px-3' : 'justify-center px-0')}>
             <div
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-700 text-sm font-semibold text-white"
               title={`${displayName} · ${role}`}
@@ -202,8 +183,7 @@ export function Sidebar() {
 
         <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
           <NavList items={[settingsItem]} showLabels onNavigate={() => setMobileOpen(false)} className="mb-2" />
-          <LedgerDot showLabel />
-          <div className="mt-1 flex items-center gap-2.5 px-3 py-2">
+          <div className="flex items-center gap-2.5 px-3 py-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-700 text-sm font-semibold text-white">
               {initial}
             </div>
