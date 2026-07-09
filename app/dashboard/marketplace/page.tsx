@@ -537,7 +537,10 @@ export default function MarketplacePage() {
                     <p className="text-[10px] uppercase tracking-wider text-emerald-700/70 dark:text-emerald-300/70">Your balance is now</p>
                     <p className="font-data text-3xl font-bold text-emerald-700 dark:text-emerald-300">${Number(settleResult.data.sellerBalanceAfter).toLocaleString()}</p>
                     {settleResult.data.balanceTransferred && (
-                      <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">+${Number(settleResult.data.fundedAmount ?? settleResult.auction.amount).toLocaleString()} from this settlement</p>
+                      <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">
+                        +${(Number(settleResult.data.fundedAmount ?? settleResult.auction.amount) - Number(settleResult.data.originationFee ?? 0)).toLocaleString()} net from this settlement
+                        {settleResult.data.originationFee > 0 && ` (InvoPlus fee: $${Number(settleResult.data.originationFee).toFixed(2)})`}
+                      </p>
                     )}
                   </div>
                 )}

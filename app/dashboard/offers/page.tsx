@@ -47,6 +47,7 @@ export default function OffersPage() {
   const [withdrawing, setWithdrawing] = useState<string | null>(null)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
+  const isFinancier = party?.type === 'financier'
   const won = offers.filter(o => o.status === 'won' || o.status === 'repaid')
   const totalDeployed = won.reduce((s, o) => s + o.netToSeller, 0)
   const totalYield = won.reduce((s, o) => s + o.estimatedYield, 0)
@@ -83,15 +84,19 @@ export default function OffersPage() {
 
     const vv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
+    const isFinancierRole = party.type === 'financier'
+
     const load = async () => {
       setLoading(true)
       try {
         const [bidRes, fundedRes, repaymentRes] = await Promise.all([
-          fetch('/api/canton/contracts/list', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parties: [party.id], template: 'bid' }),
-          }).then(r => r.json()),
+          isFinancierRole
+            ? fetch('/api/canton/contracts/list', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parties: [party.id], template: 'bid' }),
+              }).then(r => r.json())
+            : Promise.resolve(null),
           fetch('/api/canton/contracts/list', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -105,26 +110,31 @@ export default function OffersPage() {
         ])
         const now = Date.now()
         const rows: MyOffer[] = []
+        // A business sees its OWN funded/repaid positions (seller === them),
+        // a financier sees the ones they funded (financier === them) — same
+        // underlying templates, filtered from the opposite side.
+        const matchesMe = (p: any) => isFinancierRole ? vv(p.financier) === party.id : vv(p.seller) === party.id
+        const counterparty = (p: any) => isFinancierRole ? String(vv(p.seller) ?? 'seller') : String(vv(p.financier) ?? 'financier')
 
         // Winning bids are archived by Daml's SettleWin choice (default
         // consuming semantics, no replacement record) — they vanish from
         // the ledger entirely, so "won" can never be derived from the bid
         // template surviving a page reload. FundedInvoice is the record
-        // that actually persists and has everything needed (the financier
-        // is a signatory on it), so "won" rows come from there instead —
-        // this also gives an exact yield instead of an estimate, and the
-        // real due date for the overdue check.
+        // that actually persists and has everything needed (both seller and
+        // financier are signatories on it), so "won" rows come from there
+        // instead — this also gives an exact yield instead of an estimate,
+        // and the real due date for the overdue check.
         if (fundedRes.ok) {
           for (const c of fundedRes.contracts || []) {
             const p = c.payload || {}
-            if (vv(p.financier) !== party.id) continue
+            if (!matchesMe(p)) continue
             const dueDate = String(vv(p.dueDate) ?? '') || null
             const faceAmount = Number(vv(p.faceAmount) ?? 0)
             const fundedAmount = Number(vv(p.fundedAmount) ?? 0)
             rows.push({
               id: c.contractId,
               auctionId: String(vv(p.invoiceId) ?? ''),
-              buyer: String(vv(p.seller) ?? 'seller'),
+              buyer: counterparty(p),
               invoiceAmount: faceAmount,
               advanceRate: Math.round((Number(vv(p.advanceRate) ?? 0)) * 100),
               annualRate: Math.round((Number(vv(p.annualRate) ?? 0)) * 100),
@@ -146,13 +156,13 @@ export default function OffersPage() {
         if (repaymentRes.ok) {
           for (const c of repaymentRes.contracts || []) {
             const p = c.payload || {}
-            if (vv(p.financier) !== party.id) continue
+            if (!matchesMe(p)) continue
             const totalDue = Number(vv(p.totalDue) ?? 0)
             const fundedAmount = Number(vv(p.fundedAmount) ?? 0)
             rows.push({
               id: c.contractId,
               auctionId: String(vv(p.invoiceId) ?? ''),
-              buyer: String(vv(p.seller) ?? 'seller'),
+              buyer: counterparty(p),
               invoiceAmount: fundedAmount,
               advanceRate: 0,
               annualRate: 0,
@@ -168,9 +178,10 @@ export default function OffersPage() {
           }
         }
 
-        // Still-open sealed bids — the only bid-template state that
-        // reliably survives a reload, since it hasn't been archived yet.
-        if (bidRes.ok) {
+        // Still-open sealed bids — financier-only (a business never places
+        // bids), and the only bid-template state that reliably survives a
+        // reload, since it hasn't been archived yet.
+        if (bidRes?.ok) {
           for (const c of bidRes.contracts || []) {
             const p = c.payload || {}
             const face = Number(p.faceAmount?.value ?? p.faceAmount ?? 0)
@@ -217,8 +228,9 @@ export default function OffersPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] px-5 py-3">
           <EyeOff className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />
           <p className="text-xs text-slate-600 dark:text-slate-300">
-            Your sealed bids are private Canton contracts — other financiers cannot see your offers at any point.
-            Losing bid contents remain sealed forever.
+            {isFinancier
+              ? "Your sealed bids are private Canton contracts — other financiers cannot see your offers at any point. Losing bid contents remain sealed forever."
+              : 'Every invoice you\'ve had funded by a financier, and its repayment status — sourced from the same ledger records financiers see on their side.'}
           </p>
         </div>
 
@@ -231,12 +243,17 @@ export default function OffersPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[
+          {(isFinancier ? [
             { label: 'Total Bids', value: offers.length.toString() },
             { label: 'Bids Won', value: won.length.toString() },
             { label: 'Capital Deployed', value: `$${totalDeployed.toLocaleString()}` },
             { label: 'Total Yield (est.)', value: `$${totalYield.toLocaleString()}` },
-          ].map(s => (
+          ] : [
+            { label: 'Invoices Funded', value: offers.length.toString() },
+            { label: 'Fully Repaid', value: offers.filter(o => o.status === 'repaid').length.toString() },
+            { label: 'Capital Raised', value: `$${totalDeployed.toLocaleString()}` },
+            { label: 'Cost of Financing', value: `$${totalYield.toLocaleString()}` },
+          ]).map(s => (
             <div key={s.label} className={cn(panel, 'p-5')}>
               <p className="font-data mb-1 text-2xl font-bold text-slate-950 dark:text-white">{loading ? '—' : s.value}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
@@ -249,30 +266,34 @@ export default function OffersPage() {
             that reflowed differently per card and read as "scattered". */}
         <div className={cn(panel, 'overflow-hidden')}>
           <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
-            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">All Offers</h2>
+            <h2 className="text-sm font-semibold text-slate-950 dark:text-white">{isFinancier ? 'All Offers' : 'Funding History'}</h2>
           </div>
 
           <div className="hidden grid-cols-[1.4fr_1fr_0.8fr_0.8fr_1fr_1fr] gap-4 border-b border-slate-100 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500 dark:border-slate-800 dark:text-slate-400 md:grid">
-            <span>Auction / Buyer</span><span>Invoice Value</span>
+            <span>{isFinancier ? 'Auction / Buyer' : 'Invoice / Financier'}</span><span>Invoice Value</span>
             <span>Advance</span><span>Rate</span><span>Status</span><span>Action</span>
           </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">Loading bids from Canton…</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading {isFinancier ? 'bids' : 'funding history'} from Canton…</p>
             </div>
           ) : !party ? (
             <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
               <Wallet className="h-6 w-6 text-slate-400 dark:text-slate-500" />
               <p className="text-sm font-medium text-slate-950 dark:text-white">Connect your Canton wallet</p>
-              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Your sealed bids are read from the ledger. Connect a financier party to see them.</p>
+              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Connect a party to see your activity here.</p>
             </div>
           ) : offers.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
               <Tag className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-              <p className="text-sm font-medium text-slate-950 dark:text-white">No bids yet</p>
-              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Place a sealed bid in the marketplace and it appears here as a private contract.</p>
+              <p className="text-sm font-medium text-slate-950 dark:text-white">{isFinancier ? 'No bids yet' : 'No funded invoices yet'}</p>
+              <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
+                {isFinancier
+                  ? 'Place a sealed bid in the marketplace and it appears here as a private contract.'
+                  : 'List an invoice in the marketplace and settle an auction — it appears here once a financier funds it.'}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -298,14 +319,16 @@ export default function OffersPage() {
                     <span className="font-data text-sm font-semibold text-slate-950 dark:text-white">{offer.annualRate}%</span>
                     <div>
                       <span className={cn('inline-flex w-fit items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium', sc.color)}>
-                        <Icon className="h-3 w-3" />{sc.label}
+                        <Icon className="h-3 w-3" />{!isFinancier && offer.status === 'won' ? 'Funded' : sc.label}
                       </span>
-                      <p className="mt-1 hidden text-[11px] leading-snug text-slate-500 dark:text-slate-400 md:block">{sc.note}</p>
+                      <p className="mt-1 hidden text-[11px] leading-snug text-slate-500 dark:text-slate-400 md:block">
+                        {!isFinancier && offer.status === 'won' ? 'Funded by a financier · awaiting repayment' : sc.note}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {offer.status === 'won' && (
-                        <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                          <Zap className="h-3.5 w-3.5" />+${offer.estimatedYield.toLocaleString()}
+                        <span className={cn('flex items-center gap-1.5 text-xs font-medium', isFinancier ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')}>
+                          <Zap className="h-3.5 w-3.5" />{isFinancier ? '+' : '-'}${offer.estimatedYield.toLocaleString()}
                         </span>
                       )}
                       {offer.overdue && (

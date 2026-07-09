@@ -22,8 +22,16 @@
  * Daml choices: InvoPlus.Invoice:SealedBid:RejectBid, InvoPlus.Invoice:Auction:SettleAuction
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait, queryACS, findBalanceContractId } from '@/lib/canton-server'
+import { submitAndWait, queryACS, findBalanceContractId, ensurePlatformBalance } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
+
+// InvoPlus's cut from the business side: a small origination fee on the
+// seller's advance, taken at settlement — separate from the 10% servicing
+// fee financiers pay on yield at repayment (complete-repayment/route.ts).
+// Deliberately much smaller than the financier's fee: the seller already
+// took a haircut via the advance rate itself, this just keeps the platform
+// running rather than being a meaningful cost to either side.
+const ORIGINATION_FEE_RATE = 0.005
 
 async function currentBalanceAmount(platform: string, owner: string, packageId: string): Promise<number | null> {
   const lines = await queryACS([platform], [`${packageId}:InvoPlus.Token:Balance`])
@@ -148,6 +156,11 @@ export async function POST(req: Request) {
     let balanceTransferred = false
     let balanceTransferTransactionId: string | undefined
     let balanceTransferError: string | undefined
+    const originationFee = fundedAmount ? Math.round(Number(fundedAmount) * ORIGINATION_FEE_RATE * 100) / 100 : 0
+    let originationFeeTransactionId: string | undefined
+
+    const sellerBalanceBefore = sellerPartyId ? await currentBalanceAmount(platformPartyId, sellerPartyId, packageId).catch(() => null) : null
+
     if (financierPartyId && fundedAmount && sellerPartyId) {
       try {
         const [financierBalanceCid, sellerBalanceCid] = await Promise.all([
@@ -169,6 +182,33 @@ export async function POST(req: Request) {
           )
           balanceTransferred = true
           balanceTransferTransactionId = transferResult?.transactionId
+
+          // Origination fee: a second, small hop from the seller's newly
+          // credited balance to platform's own. Best-effort — if this fails,
+          // the seller was still paid in full for the main transfer, so it
+          // doesn't change balanceTransferred or block the settlement from
+          // being reported as complete.
+          if (originationFee > 0) {
+            try {
+              const newSellerBalanceCid = (transferResult?.created ?? []).find((c: any) => pv(c.createArgument?.owner) === sellerPartyId)?.contractId
+              if (newSellerBalanceCid) {
+                const platformBalanceCid = await ensurePlatformBalance(platformPartyId, packageId)
+                const feeResult = await submitAndWait(
+                  [sellerPartyId, platformPartyId],
+                  [platformPartyId],
+                  [{
+                    ExerciseCommand: {
+                      templateId: `${packageId}:InvoPlus.Token:Balance`,
+                      contractId: newSellerBalanceCid,
+                      choice: 'Transfer',
+                      choiceArgument: { toBalanceCid: platformBalanceCid, transferAmount: String(originationFee) },
+                    },
+                  }],
+                )
+                originationFeeTransactionId = feeResult?.transactionId
+              }
+            } catch { /* best-effort — doesn't block settlement completion */ }
+          }
         } else {
           balanceTransferError = 'Balance contract not found for financier or seller — neither party has connected/provisioned a balance yet.'
         }
@@ -184,7 +224,22 @@ export async function POST(req: Request) {
     // Ground truth for the UI — a fresh read beats trusting the submission
     // outcome alone, so the result modal can always show the seller's real
     // current balance instead of just a pending/error flag.
-    const sellerBalanceAfter = sellerPartyId ? await currentBalanceAmount(platformPartyId, sellerPartyId, packageId).catch(() => null) : null
+    let sellerBalanceAfter = sellerPartyId ? await currentBalanceAmount(platformPartyId, sellerPartyId, packageId).catch(() => null) : null
+
+    // Self-correct a genuinely misleading case: submitAndWait can throw on a
+    // network-level ambiguity (e.g. a timeout) even though the transaction
+    // actually committed on the ledger — the response is lost, not the
+    // transfer. If the fresh balance read shows the expected increase
+    // despite balanceTransferred being false, trust the read over the
+    // submission outcome instead of telling the seller "no cash moved" while
+    // their balance visibly went up.
+    if (!balanceTransferred && sellerBalanceBefore != null && sellerBalanceAfter != null && fundedAmount) {
+      const expectedMinimum = sellerBalanceBefore + Number(fundedAmount) - originationFee - 0.01
+      if (sellerBalanceAfter >= expectedMinimum) {
+        balanceTransferred = true
+        balanceTransferError = undefined
+      }
+    }
 
     return NextResponse.json({
       ok: true,
@@ -194,8 +249,10 @@ export async function POST(req: Request) {
       balanceTransferError,
       fundedAmount,
       sellerBalanceAfter,
+      originationFee,
+      originationFeeTransactionId,
       message: balanceTransferred
-        ? `Auction settled on InvoPlus. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger.`
+        ? `Auction settled on InvoPlus. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger${originationFee > 0 ? ` (InvoPlus origination fee: $${originationFee.toFixed(2)})` : ''}.`
         : `Auction settled on InvoPlus, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'}. Losing bids rejected privately; winner funded atomically on the invoice contract, but no cash moved yet — contact support.`,
       details: {
         losingBidsRejected: loserBidContractIds.length,

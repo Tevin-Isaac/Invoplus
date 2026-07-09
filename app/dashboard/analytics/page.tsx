@@ -41,7 +41,10 @@ function EmptyChart({ label }: { label: string }) {
 interface PlatformStats {
   platformBalance: number
   estimatedLifetimeRevenue: number
+  estimatedServicingRevenue: number
+  estimatedOriginationRevenue: number
   feeRate: number
+  originationFeeRate: number
   totalRepayments: number
   totalVolumeRepaid: number
   totalYieldGenerated: number
@@ -209,6 +212,21 @@ export default function AnalyticsPage() {
       <Header title="Analytics" />
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
+        {/* Platform revenue — how InvoPlus makes money, and how much it has
+            so far. Same platform-wide reasoning as the KPIs below: platform
+            is a signatory/observer on every template this aggregates. Leads
+            the page since "how does this make money" is the first question
+            anyone sizing up the platform actually has. */}
+        <div className="flex items-start gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4">
+          <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />
+          <div>
+            <p className="text-sm font-medium text-slate-950 dark:text-white">How InvoPlus makes money</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              A {platformStats ? (platformStats.feeRate * 100).toFixed(0) : '10'}% servicing fee on the financier's yield, taken at repayment, plus a small {platformStats ? (platformStats.originationFeeRate * 100).toFixed(1) : '0.5'}% origination fee on the seller's advance, taken at settlement — both financiers and businesses contribute a little to keep InvoPlus running, but the seller's advance and the financier's headline yield stay close to what was agreed in the auction.
+            </p>
+          </div>
+        </div>
+
         {/* KPIs */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {kpis.map(k => (
@@ -218,19 +236,6 @@ export default function AnalyticsPage() {
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{k.sub}</p>
             </div>
           ))}
-        </div>
-
-        {/* Platform revenue — how InvoPlus makes money, and how much it has
-            so far. Same platform-wide reasoning as the KPIs above: platform
-            is a signatory/observer on every template this aggregates. */}
-        <div className="flex items-start gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4">
-          <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />
-          <div>
-            <p className="text-sm font-medium text-slate-950 dark:text-white">How InvoPlus makes money</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              A {platformStats ? (platformStats.feeRate * 100).toFixed(0) : '10'}% servicing fee on the financier's yield, taken at repayment — the seller's advance and total amount repaid are never touched, only how the repayment splits between the financier and InvoPlus.
-            </p>
-          </div>
         </div>
 
         {platformStats && (

@@ -60,21 +60,31 @@ export async function GET() {
     const totalYieldGenerated = repayments.reduce((s: number, e: any) => s + num(e.createArgument?.yieldAmount), 0)
     const totalVolumeRepaid = repayments.reduce((s: number, e: any) => s + num(e.createArgument?.fundedAmount), 0)
     const activeFundedVolume = funded.reduce((s: number, e: any) => s + num(e.createArgument?.fundedAmount), 0)
+    const totalFundedVolumeEver = activeFundedVolume + totalVolumeRepaid
     const PLATFORM_FEE_RATE = 0.10
-    const estimatedLifetimeRevenue = Math.round(totalYieldGenerated * PLATFORM_FEE_RATE * 100) / 100
+    // Origination fee (see ORIGINATION_FEE_RATE in settle-auction/route.ts) —
+    // taken on the seller's advance at settlement, separate from the
+    // servicing fee taken on the financier's yield at repayment.
+    const ORIGINATION_FEE_RATE = 0.005
+    const estimatedServicingRevenue = Math.round(totalYieldGenerated * PLATFORM_FEE_RATE * 100) / 100
+    const estimatedOriginationRevenue = Math.round(totalFundedVolumeEver * ORIGINATION_FEE_RATE * 100) / 100
+    const estimatedLifetimeRevenue = Math.round((estimatedServicingRevenue + estimatedOriginationRevenue) * 100) / 100
 
     return NextResponse.json({
       ok: true,
       platformBalance,
       estimatedLifetimeRevenue,
+      estimatedServicingRevenue,
+      estimatedOriginationRevenue,
       feeRate: PLATFORM_FEE_RATE,
+      originationFeeRate: ORIGINATION_FEE_RATE,
       totalRepayments: repayments.length,
       totalVolumeRepaid,
       totalYieldGenerated,
       activeFundedPositions: funded.length,
       activeFundedVolume,
       totalFundedEver: funded.length + repayments.length,
-      totalFundedVolumeEver: activeFundedVolume + totalVolumeRepaid,
+      totalFundedVolumeEver,
       activeAuctions: auctions.filter((e: any) => !pv(e.createArgument?.settled)).length,
       totalInvoicesListed: invoices.length + auctions.length + funded.length + repayments.length,
       uniqueParties: uniqueOwners.size,
