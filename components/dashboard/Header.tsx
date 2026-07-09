@@ -7,7 +7,6 @@ import { useCanton } from '@/lib/canton'
 import { useAuth } from '@/lib/auth-context'
 import { useNotifications } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
-import { WalletConnect } from '@/components/wallet-connect'
 import { HeaderSearch } from '@/components/dashboard/HeaderSearch'
 import { AssistantChat } from '@/components/dashboard/AssistantChat'
 
@@ -38,7 +37,7 @@ function CopyBtn({ text }: { text: string }) {
 type ModalStep = 'closed' | 'connect' | 'paste' | 'role' | 'done'
 
 export function Header({ title }: { title: string }) {
-  const { isConnected, party, connect, connectWithPartyId, connectWithWallet, updateRole, recentParties, reconnectRecent, disconnect, isConnecting, ledgerStatus } = useCanton()
+  const { isConnected, party, connect, connectWithPartyId, updateRole, recentParties, reconnectRecent, disconnect, isConnecting, ledgerStatus } = useCanton()
   const { user, logout } = useAuth()
   const { notifications, unreadCount, notify, markAllRead, clearAll } = useNotifications()
   const router = useRouter()
@@ -136,12 +135,6 @@ export function Header({ title }: { title: string }) {
     } else {
       setConnectError(result.error ?? 'Could not create your identity. Try again.')
     }
-  }
-
-  /** Method 2: CIP-103 wallet (hosted or browser extension) connected. */
-  const handleWalletConnected = async (account: Parameters<typeof connectWithWallet>[0]) => {
-    await connectWithWallet(account)
-    setModal('role')
   }
 
   /** Method 3: pasted Seaport party validated + connected. */
@@ -466,31 +459,20 @@ export function Header({ title }: { title: string }) {
                 </div>
               </button>
 
-              {/* Hosted wallet / browser extensions */}
-              <div className="w-full rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
-                    <Wallet className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-950 dark:text-white">Canton wallet</p>
-                    <p className="text-xs text-slate-600 mt-0.5 dark:text-slate-400">Requires an existing wallet account — you approve the connection in the wallet</p>
-                  </div>
-                  <WalletConnect
-                    onConnect={handleWalletConnected}
-                    onDisconnect={disconnect}
-                    isConnected={false}
-                    triggerClassName="shrink-0"
-                  />
-                </div>
-                <p className="mt-2.5 border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                  Don't have one? Create a free account on the{' '}
-                  <a href="https://wallet.validator.devnet.sandbox.fivenorth.io" target="_blank" rel="noreferrer" className="font-medium text-violet-600 hover:underline dark:text-violet-300">
-                    hosted Canton DevNet wallet
-                  </a>{' '}
-                  first, then connect here. This checks for a CIP-103 browser extension too, but per Canton's own wallet docs none exist as a downloadable product yet — the hosted wallet above is the only real CIP-103 wallet today, so most users should use <span className="font-medium text-slate-700 dark:text-slate-300">Instant identity</span> above instead.
-                </p>
-              </div>
+              {/* Wallet connect (FiveNorth's hosted Splice Wallet + CIP-103
+                  extension discovery, via components/wallet-connect.tsx and
+                  lib/canton.tsx's connectWithWallet) is temporarily removed
+                  from this picker: the hosted wallet's gateway doesn't
+                  answer CORS preflight requests (405, no
+                  Access-Control-Allow-Origin), so every browser-side
+                  connection attempt fails with "Failed to fetch" —
+                  confirmed live, not fixable in this codebase, needs
+                  FiveNorth to fix their server. Extension discovery is
+                  separately a dead end today too: zero CIP-103 browser
+                  extensions exist as a shipped product per Canton's own
+                  wallet docs. Both building blocks are untouched and ready
+                  to wire back in as a "Canton wallet" option once the
+                  gateway's CORS config is fixed. */}
 
               {/* Seaport party (developers) */}
               <button
