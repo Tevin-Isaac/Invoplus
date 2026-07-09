@@ -7,6 +7,7 @@ import { Menu, X, Moon, Sun } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { useI18n } from '@/lib/i18n/I18nContext'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { AssistantChat } from '@/components/dashboard/AssistantChat'
 
 const fraunces = Fraunces({ subsets: ['latin'], weight: ['500'], style: ['italic'], display: 'swap' })
 
@@ -117,6 +118,7 @@ export function Hero() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          <AssistantChat />
           <LanguageSwitcher />
           <button
             type="button"
@@ -157,7 +159,8 @@ export function Hero() {
               {link.label}
             </a>
           ))}
-          <div className="flex justify-center">
+          <div className="flex items-center justify-center gap-3">
+            <AssistantChat />
             <LanguageSwitcher />
           </div>
           <button

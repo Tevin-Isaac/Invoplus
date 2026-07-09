@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Menu, X, Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
-import { AssistantChat } from '@/components/dashboard/AssistantChat'
 
 const links = [
   { label: 'Platform', href: '/#platform' },
@@ -58,7 +57,6 @@ export function Navbar() {
           </nav>
 
           <div className="hidden lg:flex items-center gap-3">
-            <AssistantChat />
             <button
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -96,10 +94,6 @@ export function Navbar() {
           <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block w-full text-center rounded-full bg-slate-950 dark:bg-white text-white dark:text-slate-950 text-sm font-semibold px-6 py-3 hover:opacity-90 transition">
             Get Started
           </Link>
-          <div className="flex items-center justify-center gap-2 pt-1">
-            <AssistantChat />
-            <span className="text-xs text-slate-500 dark:text-slate-400">Ask the InvoPlus Assistant</span>
-          </div>
         </div>
       )}
     </header>
