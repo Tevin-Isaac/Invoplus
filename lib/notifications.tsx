@@ -101,6 +101,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         let seen: Record<string, number> = {}
         try { seen = raw ? JSON.parse(raw) : {} } catch { /* fresh */ }
         const nextSeen: Record<string, number> = {}
+        const now = Date.now()
         for (const c of mine) {
           const invoiceId = String(pv(c.payload?.invoiceId) ?? 'auction')
           const count = Number(pv(c.payload?.bidCount) ?? 0)
@@ -108,9 +109,41 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           if (!isFirstPoll && count > (seen[invoiceId] ?? 0)) {
             notify('bid', 'New sealed bid received', `${invoiceId} now has ${count} sealed bid${count === 1 ? '' : 's'}. Contents stay private until settlement.`)
           }
+
+          // Auction ended with zero bids: return it to the seller automatically
+          // rather than leaving a dead listing on the marketplace forever. The
+          // backend holds M2M CanActAs on every party it provisions, so this
+          // client-triggered call can act as the seller the same way settle
+          // and repay already do.
+          const auctionEnd = pv(c.payload?.auctionEnd)
+          if (count === 0 && auctionEnd && new Date(auctionEnd).getTime() < now) {
+            expireAuction(partyId, c.contractId, invoiceId)
+          }
         }
         window.localStorage.setItem(seenBidsKey(partyId), JSON.stringify(nextSeen))
       } catch { /* transient */ }
+    }
+
+    const expireAuction = async (sellerPartyId: string, auctionContractId: string, invoiceId: string) => {
+      try {
+        const regRes = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [sellerPartyId], template: 'registry' }),
+        })
+        const regData = await regRes.json()
+        const reg = (regData.contracts || []).find((c: any) => String(pv(c.payload?.invoiceHash) ?? '').includes(invoiceId))
+        if (!reg) return
+        const res = await fetch('/api/canton/contracts/cancel-auction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sellerPartyId, auctionContractId, registryEntryContractId: reg.contractId }),
+        })
+        const data = await res.json()
+        if (data.ok) {
+          notify('auction', 'Listing expired — no bids received', `${invoiceId} closed with no sealed bids and was returned to your Invoices. Consider adjusting the advance rate or annual rate before relisting.`)
+        }
+      } catch { /* try again next poll */ }
     }
 
     check()

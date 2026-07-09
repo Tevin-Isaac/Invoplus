@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       currency,
       issueDate,
       dueDate,
+      docHash: providedDocHash,
     } = await req.json()
 
     if (!sellerPartyId || !invoiceContractId || !invoiceId || !debtorName || !faceAmount || !dueDate) {
@@ -64,9 +65,13 @@ export async function POST(req: Request) {
       dueDate,
     })
     const invoiceHash = `hash:${invoiceId}:${effectiveTaxId}:${faceAmount}`
-    const docHash = 'sha256:' + createHash('sha256')
-      .update(`${invoiceId}|${debtorName}|${effectiveTaxId}|${faceAmount}|${dueDate}`)
-      .digest('hex')
+    // A real attached-document hash from the client wins; otherwise
+    // fingerprint the typed fields the same way create-invoice does.
+    const docHash = providedDocHash && String(providedDocHash).length >= 10
+      ? providedDocHash
+      : 'sha256:' + createHash('sha256')
+          .update(`${invoiceId}|${debtorName}|${effectiveTaxId}|${faceAmount}|${dueDate}`)
+          .digest('hex')
 
     const templateId = `${packageId}:InvoPlus.Invoice:InvoiceContract`
     const result = await submitAndWait(

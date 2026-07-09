@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
+import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -62,6 +62,28 @@ export default function InvoicesPage() {
     invoiceId: '', debtorName: '', debtorTaxId: '', amount: '',
     currency: 'USD', issueDate: today, dueDate: '',
   })
+  // Real file, real hash — not a decorative drop zone. docHash sent to
+  // create-invoice is the actual SHA-256 of the attached document; when no
+  // file is attached, the server falls back to fingerprinting the typed
+  // fields instead (see create-invoice/route.ts).
+  const [attachedFile, setAttachedFile] = useState<{ name: string; hash: string } | null>(null)
+  const [hashing, setHashing] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const hashFile = async (file: File) => {
+    setHashing(true)
+    try {
+      const buf = await file.arrayBuffer()
+      const digest = await crypto.subtle.digest('SHA-256', buf)
+      const hex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
+      setAttachedFile({ name: file.name, hash: `sha256:${hex}` })
+      setShowForm(true)
+    } catch {
+      setResult({ ok: false, error: 'Could not read that file — try again or continue without attaching one.' })
+    } finally {
+      setHashing(false)
+    }
+  }
 
   const lc = (s: string) => (s || '').toLowerCase()
   // Tax ID is optional (most invoices worldwide don't carry one) — the
@@ -210,6 +232,7 @@ export default function InvoicesPage() {
       dueDate: inv.dueDate,
     })
     setEditingId(inv.id)
+    setAttachedFile(null)
     setResult(null)
     setListOutcome(null)
     setShowForm(true)
@@ -328,12 +351,14 @@ export default function InvoicesPage() {
           currency: form.currency,
           issueDate: form.issueDate,
           dueDate: form.dueDate,
+          ...(attachedFile ? { docHash: attachedFile.hash } : {}),
         }),
       })
       const data = await res.json()
       setResult(data)
       if (data.ok) {
         setShowForm(false)
+        setAttachedFile(null)
         if (editingId) {
           setInvoices(prev => prev.map(i => i.id === editingId ? {
             ...i, id: data.contractId, invoiceId: data.invoiceId, buyer: form.debtorName,
@@ -383,12 +408,22 @@ export default function InvoicesPage() {
       )}
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
-        {/* Upload zone */}
+        {/* Upload zone — a real file, really hashed. Dropping/choosing a
+            document computes its SHA-256 client-side and attaches that as
+            docHash; the "New Invoice (no document)" link below skips
+            straight to the form for anyone without a file handy. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) hashFile(f); e.target.value = '' }}
+        />
         <div
           onDragOver={e => { e.preventDefault(); setDrag(true) }}
           onDragLeave={() => setDrag(false)}
-          onDrop={e => { e.preventDefault(); setDrag(false); setShowForm(true) }}
-          onClick={() => !submitting && setShowForm(true)}
+          onDrop={e => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) hashFile(f) }}
+          onClick={() => !submitting && !hashing && fileInputRef.current?.click()}
           className={cn(
             'relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed p-8 text-center transition-all md:p-10',
             drag
@@ -402,18 +437,31 @@ export default function InvoicesPage() {
               <p className="text-sm font-semibold text-slate-950 dark:text-white">Submitting to Canton ledger…</p>
               <p className="font-data text-xs text-slate-500 dark:text-slate-400">InvoiceContract · risk scoring · registry entry</p>
             </div>
+          ) : hashing ? (
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-10 w-10 animate-spin text-violet-500" />
+              <p className="text-sm font-semibold text-slate-950 dark:text-white">Hashing document…</p>
+              <p className="font-data text-xs text-slate-500 dark:text-slate-400">Computing SHA-256 locally — the file itself never leaves your browser</p>
+            </div>
           ) : (
             <div>
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10">
                 <Upload className="h-6 w-6 text-violet-600 dark:text-violet-300" />
               </div>
-              <p className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Submit invoice to Canton Network</p>
+              <p className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Attach an invoice document</p>
               <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-                Creates a real <span className="font-data text-violet-600 dark:text-violet-300">InvoiceContract</span> on the ledger · risk scored · anti-fraud registry entry, atomically
+                PDF or image, hashed in your browser · the hash becomes part of the real <span className="font-data text-violet-600 dark:text-violet-300">InvoiceContract</span> on Canton
               </p>
               <span className="rounded-xl bg-violet-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-600">
-                New Invoice
+                Choose file
               </span>
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setAttachedFile(null); setShowForm(true) }}
+                className="mt-3 block w-full text-xs font-medium text-slate-400 underline-offset-2 hover:text-violet-600 hover:underline dark:hover:text-violet-300"
+              >
+                Or skip — new invoice without a document
+              </button>
             </div>
           )}
         </div>
@@ -426,8 +474,18 @@ export default function InvoicesPage() {
                 <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-300" />
                 <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{editingId ? 'Edit Invoice — archives & recreates on Canton' : 'New Invoice → Canton InvoiceContract'}</h3>
               </div>
-              <button onClick={() => { setShowForm(false); setEditingId(null) }} className="text-slate-400 hover:text-slate-950 dark:hover:text-white"><X className="h-4 w-4" /></button>
+              <button onClick={() => { setShowForm(false); setEditingId(null); setAttachedFile(null) }} className="text-slate-400 hover:text-slate-950 dark:hover:text-white"><X className="h-4 w-4" /></button>
             </div>
+            {attachedFile && (
+              <div className="flex items-center gap-2.5 rounded-xl border border-violet-500/25 bg-violet-500/[0.06] px-3.5 py-2.5">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-slate-950 dark:text-white">{attachedFile.name}</p>
+                  <p className="font-data truncate text-[10px] text-slate-500 dark:text-slate-400">{attachedFile.hash.slice(0, 26)}…</p>
+                </div>
+                <button type="button" onClick={() => setAttachedFile(null)} className="shrink-0 text-slate-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {[
                 { label: 'Invoice Number', key: 'invoiceId', placeholder: 'INV-2026-0043' },

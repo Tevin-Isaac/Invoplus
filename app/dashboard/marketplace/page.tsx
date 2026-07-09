@@ -22,6 +22,7 @@ interface Auction {
   myBid: number | null
   status: string
   auctionContractId: string
+  auctionEnd: string
 }
 
 interface BidResult { ok: boolean; message?: string; transactionId?: string; error?: string }
@@ -209,6 +210,7 @@ export default function MarketplacePage() {
               myBid: null,
               status: p.settled ? 'settled' : 'open',
               auctionContractId: c.contractId,
+              auctionEnd: p.auctionEnd?.value ?? p.auctionEnd ?? '',
             } as Auction
           })
           setAuctions(rows)
