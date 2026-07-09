@@ -59,22 +59,27 @@ function ChartTooltip({ active, payload, label }: any) {
 
 export default function DashboardPage() {
   const { party } = useCanton()
-  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; bids: any[]; funded: any[] }>({ invoices: [], auctions: [], bids: [], funded: [] })
+  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; bids: any[]; funded: any[]; repaid: any[] }>({ invoices: [], auctions: [], bids: [], funded: [], repaid: [] })
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!party?.id) { setData({ invoices: [], auctions: [], bids: [], funded: [] }); return }
+    if (!party?.id) { setData({ invoices: [], auctions: [], bids: [], funded: [], repaid: [] }); return }
     const load = async () => {
       setLoading(true); setFetchError(null)
       try {
-        const [invoices, auctions, bids, funded] = await Promise.all([
+        const [invoices, auctions, bids, funded, repaid] = await Promise.all([
           fetchContracts(party.id, 'invoice'),
           fetchContracts(party.id, 'auction'),
           fetchContracts(party.id, 'bid'),
           fetchContracts(party.id, 'funded'),
+          // FundedInvoice is archived the moment repayment completes —
+          // without this, every settled-and-repaid position drops out of
+          // the funded volume, chart, and activity feed the instant it's
+          // paid back, which reads as if the data just disappeared.
+          fetchContracts(party.id, 'repayment'),
         ])
-        setData({ invoices, auctions, bids, funded })
+        setData({ invoices, auctions, bids, funded, repaid })
       } catch (e) {
         setFetchError(e instanceof Error ? e.message : 'Unable to load contract data')
       } finally { setLoading(false) }
@@ -82,28 +87,31 @@ export default function DashboardPage() {
     load()
   }, [party])
 
-  const { invoices, auctions, bids, funded } = data
+  const { invoices, auctions, bids, funded, repaid } = data
 
   const monthly = (() => {
     const m = new Map<number, { label: string; amount: number }>()
-    funded.forEach((c: any) => {
-      const t = pv(c.payload, 'settledAt'); if (!t) return
+    const add = (t: string, amount: number) => {
+      if (!t) return
       const d = new Date(t); if (isNaN(d.getTime())) return
       const k = d.getFullYear() * 12 + d.getMonth()
       const e = m.get(k) || { label: `${MONTHS[d.getMonth()]}`, amount: 0 }
-      e.amount += num(pv(c.payload, 'fundedAmount'))
+      e.amount += amount
       m.set(k, e)
-    })
+    }
+    funded.forEach((c: any) => add(pv(c.payload, 'settledAt'), num(pv(c.payload, 'fundedAmount'))))
+    repaid.forEach((c: any) => add(pv(c.payload, 'completedAt'), num(pv(c.payload, 'fundedAmount'))))
     return Array.from(m.entries()).sort((a, b) => a[0] - b[0]).map(([, v]) => v)
   })()
 
   const totalFunded = funded.reduce((s: number, c: any) => s + num(pv(c.payload, 'fundedAmount')), 0)
+    + repaid.reduce((s: number, c: any) => s + num(pv(c.payload, 'fundedAmount')), 0)
   const isFin = party?.type === 'financier'
 
   const stats = [
     {
       label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
-      sub: `${funded.length} position${funded.length === 1 ? '' : 's'}`,
+      sub: `${funded.length + repaid.length} position${funded.length + repaid.length === 1 ? '' : 's'}`,
       bars: monthly.map(m => m.amount),
     },
     {
@@ -118,7 +126,10 @@ export default function DashboardPage() {
     },
   ]
 
-  const activity = [...funded.map((c: any) => ({
+  const activity = [...repaid.map((c: any) => ({
+    id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Repaid', note: 'repaid in full',
+    amount: num(pv(c.payload, 'totalDue')), chip: 'R',
+  })), ...funded.map((c: any) => ({
     id: c.contractId, name: pv(c.payload, 'invoiceId') || 'Funded', note: pv(c.payload, 'debtorName') || 'settled',
     amount: num(pv(c.payload, 'fundedAmount')), chip: 'F',
   })), ...invoices.map((c: any) => ({

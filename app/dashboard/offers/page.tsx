@@ -16,7 +16,7 @@ interface MyOffer {
   annualRate: number
   netToSeller: number
   estimatedYield: number
-  status: 'won' | 'pending' | 'lost' | 'withdrawn'
+  status: 'won' | 'pending' | 'lost' | 'withdrawn' | 'repaid'
   closedAt: string | null
   cantonRef: string
   bidContractId: string
@@ -25,6 +25,11 @@ interface MyOffer {
 }
 
 const statusConfig = {
+  // FundedInvoice (the source for 'won') is archived the moment the seller's
+  // repayment completes — 'repaid' is sourced from RepaymentConfirmation,
+  // the only template that survives that, so a won position doesn't just
+  // vanish from history once it's paid back.
+  repaid:    { label: 'Repaid',    icon: CheckCircle, color: 'text-violet-700 bg-violet-500/10 border-violet-500/25 dark:text-violet-300',       note: 'Principal + yield received in full' },
   won:       { label: 'Won',       icon: CheckCircle, color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/25 dark:text-emerald-300', note: 'Settlement complete · Atomic on InvoPlus' },
   pending:   { label: 'Sealed',    icon: EyeOff,      color: 'text-violet-700 bg-violet-500/10 border-violet-500/25 dark:text-violet-300',     note: 'Awaiting auction close · Only you can see this bid' },
   lost:      { label: 'Lost',      icon: XCircle,     color: 'text-slate-500 bg-slate-500/10 border-slate-500/25 dark:text-slate-400',          note: 'Outbid · Your bid content stayed private' },
@@ -42,7 +47,7 @@ export default function OffersPage() {
   const [withdrawing, setWithdrawing] = useState<string | null>(null)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
 
-  const won = offers.filter(o => o.status === 'won')
+  const won = offers.filter(o => o.status === 'won' || o.status === 'repaid')
   const totalDeployed = won.reduce((s, o) => s + o.netToSeller, 0)
   const totalYield = won.reduce((s, o) => s + o.estimatedYield, 0)
 
@@ -81,7 +86,7 @@ export default function OffersPage() {
     const load = async () => {
       setLoading(true)
       try {
-        const [bidRes, fundedRes] = await Promise.all([
+        const [bidRes, fundedRes, repaymentRes] = await Promise.all([
           fetch('/api/canton/contracts/list', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -91,6 +96,11 @@ export default function OffersPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ parties: [party.id], template: 'funded' }),
+          }).then(r => r.json()),
+          fetch('/api/canton/contracts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parties: [party.id], template: 'repayment' }),
           }).then(r => r.json()),
         ])
         const now = Date.now()
@@ -126,6 +136,34 @@ export default function OffersPage() {
               bidContractId: c.contractId,
               dueDate,
               overdue: !!dueDate && new Date(dueDate).getTime() < now,
+            })
+          }
+        }
+
+        // Repaid — RepaymentConfirmation is the only record that survives
+        // once a won position's FundedInvoice is archived by repayment, so
+        // it's the only place a completed position's history can come from.
+        if (repaymentRes.ok) {
+          for (const c of repaymentRes.contracts || []) {
+            const p = c.payload || {}
+            if (vv(p.financier) !== party.id) continue
+            const totalDue = Number(vv(p.totalDue) ?? 0)
+            const fundedAmount = Number(vv(p.fundedAmount) ?? 0)
+            rows.push({
+              id: c.contractId,
+              auctionId: String(vv(p.invoiceId) ?? ''),
+              buyer: String(vv(p.seller) ?? 'seller'),
+              invoiceAmount: fundedAmount,
+              advanceRate: 0,
+              annualRate: 0,
+              netToSeller: fundedAmount,
+              estimatedYield: Math.round(totalDue - fundedAmount),
+              status: 'repaid',
+              closedAt: String(vv(p.completedAt) ?? '') || null,
+              cantonRef: c.contractId,
+              bidContractId: c.contractId,
+              dueDate: null,
+              overdue: false,
             })
           }
         }

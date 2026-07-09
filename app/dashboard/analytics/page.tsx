@@ -41,37 +41,51 @@ function EmptyChart({ label }: { label: string }) {
 export default function AnalyticsPage() {
   const { party } = useCanton()
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; bids: any[]; registry: number }>({ invoices: [], auctions: [], funded: [], bids: [], registry: 0 })
+  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; bids: any[]; registry: number; repaid: any[] }>({ invoices: [], auctions: [], funded: [], bids: [], registry: 0, repaid: [] })
 
   useEffect(() => {
     if (!party?.id) { setLoading(false); return }
     let cancelled = false
     setLoading(true)
-    const post = async (template: string) => {
+    // Analytics is platform-wide, not just your own contracts — invoice,
+    // auction, funded, and registry all have the platform party as a
+    // signatory/observer, so routing the query through it (scope:
+    // 'platform') is a legitimate way to see every user's activity, not
+    // just yours. SealedBid is the one exception: it stays party-scoped no
+    // matter what, since a financier's own open bids are the only thing on
+    // this page that's genuinely private.
+    const post = async (template: string, scope?: 'platform') => {
       try {
         const res = await fetch('/api/canton/contracts/list', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parties: [party.id], template }),
+          body: JSON.stringify({ parties: [party.id], template, scope }),
         })
         const d = await res.json()
         return d.ok ? (d.contracts || []) : []
       } catch { return [] }
     }
-    Promise.all([post('invoice'), post('auction'), post('funded'), post('bid'), post('registry')]).then(([invoices, auctions, funded, bids, registry]) => {
+    Promise.all([
+      post('invoice', 'platform'), post('auction', 'platform'), post('funded', 'platform'),
+      post('bid'), post('registry', 'platform'), post('repayment', 'platform'),
+    ]).then(([invoices, auctions, funded, bids, registry, repaid]) => {
       if (cancelled) return
-      setData({ invoices, auctions, funded, bids, registry: registry.length })
+      setData({ invoices, auctions, funded, bids, registry: registry.length, repaid })
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [party])
 
-  const { invoices, auctions, funded, bids, registry } = data
+  const { invoices, auctions, funded, bids, registry, repaid } = data
   const isFinancier = party?.type === 'financier'
   const openBids = bids.filter(c => !val(c.payload?.isRevealed))
   const capitalAtStake = openBids.reduce((s, c) => s + num(c.payload?.faceAmount) * num(c.payload?.advanceRate), 0)
+  // Platform-wide funded volume: active FundedInvoice positions plus ones
+  // that have since been repaid (FundedInvoice is archived on repayment —
+  // RepaymentConfirmation is what survives, and it still carries fundedAmount).
   const totalVolume = funded.reduce((s, c) => s + num(c.payload?.fundedAmount), 0)
+    + repaid.reduce((s, c) => s + num(c.payload?.fundedAmount), 0)
   const activeAuctions = auctions.filter(c => !val(c.payload?.settled)).length
-  const totalContracts = invoices.length + auctions.length + funded.length
+  const totalContracts = invoices.length + auctions.length + funded.length + repaid.length
 
   const volMap = new Map<string, { month: string; funded: number; order: number }>()
   const rateMap = new Map<string, { month: string; sum: number; n: number; order: number }>()
@@ -88,6 +102,17 @@ export default function AnalyticsPage() {
     const r = rateMap.get(key) || { month: label, sum: 0, n: 0, order }
     r.sum += num(c.payload?.advanceRate) * 100; r.n += 1; rateMap.set(key, r)
   })
+  repaid.forEach(c => {
+    const t = val(c.payload?.completedAt)
+    if (!t) return
+    const d = new Date(t)
+    if (isNaN(d.getTime())) return
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const label = `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+    const order = d.getFullYear() * 12 + d.getMonth()
+    const v = volMap.get(key) || { month: label, funded: 0, order }
+    v.funded += num(c.payload?.fundedAmount); volMap.set(key, v)
+  })
   const volumeData = Array.from(volMap.values()).sort((a, b) => a.order - b.order)
   const rateData = Array.from(rateMap.values()).sort((a, b) => a.order - b.order).map(r => ({ month: r.month, avgAdvance: +(r.sum / r.n).toFixed(1) }))
 
@@ -101,25 +126,27 @@ export default function AnalyticsPage() {
   const totalGraded = Object.values(gradeCounts).reduce((s, n) => s + n, 0)
   const gradeBreakdown = Object.entries(gradeCounts).map(([g, n]) => ({ name: `Grade ${g}`, value: n, pct: totalGraded ? Math.round((n / totalGraded) * 100) : 0, color: gradeColor[g] || '#94a3b8' }))
 
-  // KPIs follow the connected role: financiers care about their bid book,
-  // sellers about their invoices and registry protection.
+  // Platform-wide KPIs (every user's activity, not just yours) — except the
+  // bid-book figures, which stay personal since sealed bids are private by
+  // design. Financiers additionally see their own bid exposure; sellers see
+  // registry checks instead, since bids aren't relevant to them.
   const kpis = isFinancier ? [
-    { label: 'Total Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length} funded position${funded.length === 1 ? '' : 's'}`, accent: true },
-    { label: 'Open Sealed Bids', value: String(openBids.length), sub: 'Awaiting auction close' },
-    { label: 'Capital at Stake', value: fmtUSD(capitalAtStake), sub: 'Committed across open bids' },
+    { label: 'Platform Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length + repaid.length} funded position${funded.length + repaid.length === 1 ? '' : 's'} · all users`, accent: true },
+    { label: 'Your Open Sealed Bids', value: String(openBids.length), sub: 'Awaiting auction close' },
+    { label: 'Your Capital at Stake', value: fmtUSD(capitalAtStake), sub: 'Committed across your open bids' },
   ] : [
-    { label: 'Total Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length} funded position${funded.length === 1 ? '' : 's'}`, accent: true },
-    { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions' },
-    { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries' },
+    { label: 'Platform Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length + repaid.length} funded position${funded.length + repaid.length === 1 ? '' : 's'} · all users`, accent: true },
+    { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions · all sellers' },
+    { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries · platform-wide' },
   ]
 
-  // Your on-ledger footprint — app statistics only. Network internals like
-  // block height belong in Settings, not analytics.
+  // Platform-wide footprint — every user's contracts, not just yours.
+  // Network internals like block height belong in Settings, not analytics.
   const performance = [
-    { label: 'Total Contracts', value: String(totalContracts), note: 'Invoice + Auction + Funded' },
-    { label: 'Registry Entries', value: String(registry), note: 'Anti-fraud records on Canton' },
-    { label: 'Funded Positions', value: String(funded.length), note: 'Settled atomically on ledger', accent: true },
-    { label: 'Invoices Scored', value: String(invoices.length), note: 'Risk-graded by the engine' },
+    { label: 'Total Contracts', value: String(totalContracts), note: 'Invoice + Auction + Funded + Repaid, platform-wide' },
+    { label: 'Registry Entries', value: String(registry), note: 'Anti-fraud records on Canton, platform-wide' },
+    { label: 'Funded Positions', value: String(funded.length + repaid.length), note: 'Settled atomically on ledger', accent: true },
+    { label: 'Invoices Scored', value: String(invoices.length), note: 'Risk-graded by the engine, platform-wide' },
   ]
 
   if (loading) {
@@ -140,7 +167,7 @@ export default function AnalyticsPage() {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
           <Wallet className="h-6 w-6 text-slate-400 dark:text-slate-500" />
           <p className="text-sm font-medium text-slate-950 dark:text-white">Connect your Canton wallet</p>
-          <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Analytics are computed from your live contracts on the Canton ledger. Connect a party to populate them.</p>
+          <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">Analytics are computed from live, platform-wide contracts on the Canton ledger. Connect a party to populate them.</p>
         </div>
       </div>
     )

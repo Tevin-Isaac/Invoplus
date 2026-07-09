@@ -11,9 +11,13 @@ import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
 
-type InvoiceStatus = 'funded' | 'overdue' | 'bidding' | 'verified' | 'pending' | 'rejected'
+type InvoiceStatus = 'funded' | 'overdue' | 'bidding' | 'verified' | 'pending' | 'rejected' | 'repaid'
 
 const statusConfig: Record<InvoiceStatus, { label: string; icon: typeof CheckCircle; color: string }> = {
+  // FundedInvoice is archived the moment repayment completes — 'repaid' is
+  // sourced from RepaymentConfirmation, the only template that survives
+  // repayment, so this row would otherwise vanish from history entirely.
+  repaid:   { label: 'Repaid',   icon: CheckCircle,   color: 'text-violet-700 bg-violet-500/10 border-violet-500/25 dark:text-violet-300' },
   funded:   { label: 'Funded',   icon: CheckCircle,   color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/25 dark:text-emerald-300' },
   // Repayment is self-attested off-ledger (the debtor isn't a Canton party,
   // so nothing enforces the seller actually clicking Mark as Repaid) — this
@@ -176,11 +180,12 @@ export default function InvoicesPage() {
     }
     const load = async () => {
       // Once listed, the original InvoiceContract is archived and replaced
-      // by an Auction (then a FundedInvoice at settlement) — Daml contracts
+      // by an Auction (then a FundedInvoice at settlement, then archived
+      // again into a RepaymentConfirmation once repaid) — Daml contracts
       // are immutable, so the invoice's lifecycle only shows in full by
-      // merging all three templates instead of querying 'invoice' alone.
-      const [invoiceContracts, auctionContracts, fundedContracts] = await Promise.all([
-        post('invoice'), post('auction'), post('funded'),
+      // merging all four templates instead of querying 'invoice' alone.
+      const [invoiceContracts, auctionContracts, fundedContracts, repaymentContracts] = await Promise.all([
+        post('invoice'), post('auction'), post('funded'), post('repayment'),
       ])
 
       const pending: any[] = invoiceContracts.map((c: any) => {
@@ -240,7 +245,32 @@ export default function InvoicesPage() {
         }
       })
 
-      setInvoices([...pending, ...bidding, ...funded])
+      // RepaymentConfirmation has no faceAmount/debtorName (RepaymentRequest
+      // never carried those) — totalDue is the closest honest stand-in for
+      // "amount" on a completed row, and the fields we don't have are left
+      // blank rather than guessed.
+      const repaid: any[] = mine(repaymentContracts).map((c: any) => {
+        const p = c.payload || {}
+        return {
+          id: c.contractId,
+          invoiceId: vv(p.invoiceId) || '',
+          buyer: '—',
+          taxId: '',
+          amount: Number(vv(p.totalDue) ?? 0),
+          currency: vv(p.currency) || 'USD',
+          issueDate: '',
+          dueDate: '',
+          status: 'repaid',
+          grade: '—',
+          aiScore: 0,
+          financierPartyId: vv(p.financier),
+          fundedAmount: Number(vv(p.fundedAmount) ?? 0),
+          yieldAmount: Number(vv(p.yieldAmount) ?? 0),
+          completedAt: vv(p.completedAt) || '',
+        }
+      })
+
+      setInvoices([...pending, ...bidding, ...funded, ...repaid])
     }
     load()
   }, [party])
@@ -917,7 +947,7 @@ export default function InvoicesPage() {
         {/* Filters + search */}
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-2">
-            {['all', 'pending', 'verified', 'bidding', 'funded', 'overdue'].map(f => (
+            {['all', 'pending', 'verified', 'bidding', 'funded', 'overdue', 'repaid'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={cn('rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition-all',
                   filter === f

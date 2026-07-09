@@ -16,7 +16,7 @@ const money = (n: number, ccy = 'USD') => {
 interface Position {
   id: string; invoiceRef: string; debtor: string; faceAmount: number; fundedAmount: number
   advanceRate: number; annualRate: number; currency: string; dueDate: string
-  status: 'active' | 'pending'; cantonRef: string; returnAtRepayment: number
+  status: 'active' | 'pending' | 'repaid'; cantonRef: string; returnAtRepayment: number
 }
 
 const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
@@ -25,7 +25,7 @@ export default function PortfolioPage() {
   const { party } = useCanton()
   const [positions, setPositions] = useState<Position[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'active' | 'pending'>('all')
+  const [filter, setFilter] = useState<'all' | 'active' | 'pending' | 'repaid'>('all')
 
   useEffect(() => {
     if (!party?.id) { setPositions([]); setLoading(false); return }
@@ -42,7 +42,10 @@ export default function PortfolioPage() {
       } catch { return [] }
     }
     const load = async () => {
-      const [funded, bids] = await Promise.all([post('funded'), post('bid')])
+      // FundedInvoice is archived the moment repayment completes — without
+      // also reading RepaymentConfirmation (the record that survives that),
+      // every position vanishes from the portfolio the instant it's repaid.
+      const [funded, bids, repayments] = await Promise.all([post('funded'), post('bid'), post('repayment')])
       if (cancelled) return
       const fundedRows: Position[] = funded.map((c: any) => {
         const p = c.payload || {}
@@ -54,6 +57,16 @@ export default function PortfolioPage() {
           cantonRef: c.contractId, returnAtRepayment: Math.max(face - fund, 0),
         }
       })
+      const repaidRows: Position[] = repayments.map((c: any) => {
+        const p = c.payload || {}
+        const fund = num(p.fundedAmount); const total = num(p.totalDue)
+        return {
+          id: c.contractId, invoiceRef: val(p.invoiceId) || '—', debtor: '—',
+          faceAmount: total, fundedAmount: fund, advanceRate: 0, annualRate: 0,
+          currency: val(p.currency) || 'USD', dueDate: '', status: 'repaid',
+          cantonRef: c.contractId, returnAtRepayment: Math.max(total - fund, 0),
+        }
+      })
       const bidRows: Position[] = bids.filter((c: any) => !val(c.payload?.isRevealed)).map((c: any) => {
         const p = c.payload || {}
         return {
@@ -63,7 +76,7 @@ export default function PortfolioPage() {
           cantonRef: c.contractId, returnAtRepayment: 0,
         }
       })
-      setPositions([...fundedRows, ...bidRows])
+      setPositions([...fundedRows, ...repaidRows, ...bidRows])
       setLoading(false)
     }
     load()
@@ -121,7 +134,7 @@ export default function PortfolioPage() {
           <div className="flex items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
             <h2 className="text-sm font-semibold text-slate-950 dark:text-white">Funded Positions</h2>
             <div className="flex gap-1">
-              {(['all', 'active', 'pending'] as const).map(f => (
+              {(['all', 'active', 'pending', 'repaid'] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)} className={cn(
                   'rounded-lg px-3 py-1 text-xs font-medium capitalize transition-all',
                   filter === f
@@ -158,8 +171,10 @@ export default function PortfolioPage() {
                       <span className={cn('shrink-0 rounded-md border px-2 py-1 text-xs font-bold',
                         pos.status === 'active'
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                          : 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300')}>
-                        {pos.status === 'active' ? 'Funded' : 'Sealed'}
+                          : pos.status === 'repaid'
+                            ? 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                            : 'border-slate-300/30 bg-slate-500/10 text-slate-600 dark:text-slate-300')}>
+                        {pos.status === 'active' ? 'Funded' : pos.status === 'repaid' ? 'Repaid' : 'Sealed'}
                       </span>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-950 dark:text-white">{pos.invoiceRef}</p>
@@ -180,9 +195,9 @@ export default function PortfolioPage() {
                         <p className="text-xs text-slate-500 dark:text-slate-400">Annual Rate</p>
                         <p className="font-data text-sm font-semibold text-violet-600 dark:text-violet-300">{(pos.annualRate * 100).toFixed(1)}%</p>
                       </div>
-                      {pos.status === 'active' && (
+                      {(pos.status === 'active' || pos.status === 'repaid') && (
                         <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Return at Repayment</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{pos.status === 'repaid' ? 'Yield Earned' : 'Return at Repayment'}</p>
                           <p className="font-data text-sm font-semibold text-violet-600 dark:text-violet-300">{money(pos.returnAtRepayment, pos.currency)}</p>
                         </div>
                       )}
