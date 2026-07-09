@@ -118,7 +118,10 @@ export default function DashboardPage() {
     },
     {
       label: isFin ? 'Open bids' : 'Invoices', big: String(isFin ? bids.length : invoices.length),
-      sub: isFin ? 'sealed on ledger' : 'uploaded',
+      // "created" covers both ways an invoice gets on the ledger — typed
+      // into the form or extracted from an uploaded PDF — so this isn't
+      // read as "only counts PDF uploads."
+      sub: isFin ? 'sealed on ledger' : 'created',
       bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
     },
     {
@@ -195,7 +198,7 @@ export default function DashboardPage() {
                 </div>
                 <span className="font-data rounded-lg bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-600 dark:text-violet-300">USD</span>
               </div>
-              {monthly.length ? (
+              {monthly.length >= 2 ? (
                 <ResponsiveContainer width="100%" height={230}>
                   <AreaChart data={monthly}>
                     <defs>
@@ -211,6 +214,15 @@ export default function DashboardPage() {
                     <Area type="monotone" dataKey="amount" stroke="#14B892" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#14B892', r: 3 }} />
                   </AreaChart>
                 </ResponsiveContainer>
+              ) : monthly.length === 1 ? (
+                // A single month can't draw a line — Recharts renders one
+                // point as a lone dot with no curve, which reads as broken
+                // rather than "not enough data for a trend yet." Show the
+                // one real number plainly instead.
+                <div className="flex h-[230px] flex-col items-center justify-center gap-1 text-center">
+                  <p className="font-data text-4xl font-bold text-emerald-500">${monthly[0].amount.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">funded in {monthly[0].label} — the trend line appears once you have a second month of activity</p>
+                </div>
               ) : (
                 <div className="flex h-[230px] flex-col items-center justify-center gap-2 text-center">
                   <TrendingUp className="h-5 w-5 text-slate-400 dark:text-slate-500" />

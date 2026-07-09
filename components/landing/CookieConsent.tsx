@@ -5,21 +5,23 @@ import { Cookie, X } from 'lucide-react'
 
 const STORAGE_KEY = 'invoplus-cookie-consent'
 
-// No real cookie/analytics integrations are wired up yet — this only
-// records the user's choice locally so the banner doesn't reappear. When
-// real analytics/tracking is added later, gate it on
-// localStorage.getItem('invoplus-cookie-consent') === 'accepted'.
+// sessionStorage, deliberately not localStorage: it clears when the browser
+// tab/window is actually closed, but survives a plain page refresh — so a
+// fresh visit to the site shows the banner again (like real sites do), but
+// reloading the same open tab doesn't re-ask every time. When real
+// analytics/tracking is added later, gate it on
+// sessionStorage.getItem('invoplus-cookie-consent') === 'accepted'.
 export function CookieConsent() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     try {
-      if (!window.localStorage.getItem(STORAGE_KEY)) setVisible(true)
+      if (!window.sessionStorage.getItem(STORAGE_KEY)) setVisible(true)
     } catch { /* storage unavailable — don't block on it */ }
   }, [])
 
   const choose = (value: 'accepted' | 'declined') => {
-    try { window.localStorage.setItem(STORAGE_KEY, value) } catch { /* unavailable */ }
+    try { window.sessionStorage.setItem(STORAGE_KEY, value) } catch { /* unavailable */ }
     setVisible(false)
   }
 

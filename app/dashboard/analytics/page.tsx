@@ -317,56 +317,57 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {/* Advance rate trend */}
-          <div className={cn(panel, 'p-5 md:p-6')}>
-            <h3 className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Avg Advance Rate Trend</h3>
-            <p className="mb-6 text-xs text-slate-500 dark:text-slate-400">Average advance rate across funded positions, by month</p>
-            {rateData.length ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={rateData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b833" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[70, 100]} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="avgAdvance" name="Advance %" stroke="#14B892" strokeWidth={2} dot={{ fill: '#14B892', r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyChart label="Rate trend appears once you have funded positions on the ledger." />
-            )}
-          </div>
-
-          {/* Grade distribution */}
-          <div className={cn(panel, 'p-5 md:p-6')}>
-            <h3 className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Invoice Grade Distribution</h3>
-            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">Your invoices by risk grade from the scoring engine</p>
-            {gradeBreakdown.length ? (
-              <div className="flex items-center gap-6">
-                <ResponsiveContainer width={160} height={160}>
-                  <PieChart>
-                    <Pie data={gradeBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
-                      {gradeBreakdown.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
-                    </Pie>
-                  </PieChart>
+        {/* Both charts below are collapsed entirely when neither has data
+            yet, rather than showing two empty placeholder boxes — the
+            components and their data plumbing stay intact underneath, they
+            just don't spend layout space until there's something real to
+            draw. */}
+        {(rateData.length > 0 || gradeBreakdown.length > 0) && (
+          <div className={cn('grid grid-cols-1 gap-5', rateData.length > 0 && gradeBreakdown.length > 0 && 'lg:grid-cols-2')}>
+            {rateData.length > 0 && (
+              <div className={cn(panel, 'p-5 md:p-6')}>
+                <h3 className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Avg Advance Rate Trend</h3>
+                <p className="mb-6 text-xs text-slate-500 dark:text-slate-400">Average advance rate across funded positions, by month</p>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={rateData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#94a3b833" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[70, 100]} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line type="monotone" dataKey="avgAdvance" name="Advance %" stroke="#14B892" strokeWidth={2} dot={{ fill: '#14B892', r: 4 }} />
+                  </LineChart>
                 </ResponsiveContainer>
-                <div className="space-y-3">
-                  {gradeBreakdown.map(g => (
-                    <div key={g.name} className="flex items-center gap-2">
-                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
-                      <div>
-                        <p className="text-xs font-medium text-slate-950 dark:text-white">{g.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{g.value} invoice{g.value === 1 ? '' : 's'} · {g.pct}%</p>
+              </div>
+            )}
+
+            {gradeBreakdown.length > 0 && (
+              <div className={cn(panel, 'p-5 md:p-6')}>
+                <h3 className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Invoice Grade Distribution</h3>
+                <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">Your invoices by risk grade from the scoring engine</p>
+                <div className="flex items-center gap-6">
+                  <ResponsiveContainer width={160} height={160}>
+                    <PieChart>
+                      <Pie data={gradeBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
+                        {gradeBreakdown.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-3">
+                    {gradeBreakdown.map(g => (
+                      <div key={g.name} className="flex items-center gap-2">
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
+                        <div>
+                          <p className="text-xs font-medium text-slate-950 dark:text-white">{g.name}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{g.value} invoice{g.value === 1 ? '' : 's'} · {g.pct}%</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            ) : (
-              <EmptyChart label="Create and verify invoices to see the grade distribution." />
             )}
           </div>
-        </div>
+        )}
 
         {/* Network performance */}
         <div className={cn(panel, 'p-5 md:p-6')}>

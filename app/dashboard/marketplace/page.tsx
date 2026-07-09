@@ -304,6 +304,7 @@ export default function MarketplacePage() {
   const [loading, setLoading] = useState(true)
   const [gradeFilter, setGradeFilter] = useState<string>('all')
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
+  const [settledHistory, setSettledHistory] = useState<{ id: string; invoiceId: string; amount: number; advanceRate: number; when: string; repaid: boolean }[]>([])
   const { party } = useCanton()
   const { notify: notifyCancel } = useNotifications()
 
@@ -313,7 +314,7 @@ export default function MarketplacePage() {
     setLoading(true)
     const load = async () => {
       try {
-        const [auctionRes, bidRes] = await Promise.all([
+        const [auctionRes, bidRes, fundedRes, repaidRes] = await Promise.all([
           fetch('/api/canton/contracts/list', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -326,7 +327,51 @@ export default function MarketplacePage() {
                 body: JSON.stringify({ parties: [party.id], template: 'bid' }),
               }).then(r => r.json())
             : Promise.resolve(null),
+          // Settled history, for the "Recently Settled" showcase below the
+          // live grid — Auction is archived at settlement (replaced by
+          // FundedInvoice, then RepaymentConfirmation), so a live auction
+          // query alone can never show past activity. Platform-wide since
+          // this is meant as visible proof the marketplace is actually
+          // active, for every visitor, not just your own history.
+          fetch('/api/canton/contracts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parties: [party.id], template: 'funded', scope: 'platform' }),
+          }).then(r => r.json()),
+          fetch('/api/canton/contracts/list', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parties: [party.id], template: 'repayment', scope: 'platform' }),
+          }).then(r => r.json()),
         ])
+
+        if (!cancelled) {
+          const history: typeof settledHistory = []
+          if (fundedRes.ok) {
+            for (const c of fundedRes.contracts || []) {
+              const p = c.payload || {}
+              history.push({
+                id: c.contractId, invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
+                amount: Number(p.fundedAmount?.value ?? p.fundedAmount ?? 0),
+                advanceRate: Math.round(Number(p.advanceRate?.value ?? p.advanceRate ?? 0) * 100),
+                when: p.settledAt?.value ?? p.settledAt ?? '', repaid: false,
+              })
+            }
+          }
+          if (repaidRes.ok) {
+            for (const c of repaidRes.contracts || []) {
+              const p = c.payload || {}
+              history.push({
+                id: c.contractId, invoiceId: p.invoiceId?.value ?? p.invoiceId ?? '',
+                amount: Number(p.fundedAmount?.value ?? p.fundedAmount ?? 0),
+                advanceRate: 0,
+                when: p.completedAt?.value ?? p.completedAt ?? '', repaid: true,
+              })
+            }
+          }
+          history.sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
+          setSettledHistory(history.slice(0, 8))
+        }
         // My own sealed bids, keyed by invoice — used to mark cards
         // "Bid placed" instead of re-inviting a duplicate bid. Recomputed
         // on every poll (not just optimistic local state) so it survives
@@ -844,6 +889,36 @@ export default function MarketplacePage() {
                 )
               })}
             </AnimatePresence>
+          </div>
+        )}
+
+        {/* Recently Settled — the marketplace should never look dead just
+            because there's no open auction right this second. Platform-wide
+            and visible to both roles, since anyone sizing up InvoPlus
+            benefits from seeing it's a marketplace with real, ongoing
+            activity, not just whatever happens to be live at this moment. */}
+        {settledHistory.length > 0 && (
+          <div className="mt-2">
+            <h2 className="mb-3 text-sm font-semibold text-slate-950 dark:text-white">Recently Settled</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {settledHistory.map(h => (
+                <div key={h.id} className={cn(panel, 'p-4')}>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="font-data truncate text-xs font-semibold text-slate-950 dark:text-white">{h.invoiceId || '—'}</p>
+                    <span className={cn('shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase',
+                      h.repaid
+                        ? 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
+                      {h.repaid ? 'Repaid' : 'Funded'}
+                    </span>
+                  </div>
+                  <p className="font-data text-lg font-bold text-slate-950 dark:text-white">${h.amount.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                    {h.when ? new Date(h.when).toLocaleDateString() : ''}{!h.repaid && h.advanceRate > 0 ? ` · ${h.advanceRate}% advance` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
