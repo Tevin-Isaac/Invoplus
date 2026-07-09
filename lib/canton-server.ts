@@ -273,6 +273,33 @@ export async function findBalanceContractId(platformPartyId: string, ownerPartyI
   return matches[0].contractId
 }
 
+// The platform's own revenue balance (origination/servicing fees land here).
+// Lazily created on first use, same pattern as a party's own Balance in
+// /api/canton/contracts/balance — platform is the only signatory needed, so
+// no M2M rights on anyone else are required to create it.
+export async function ensurePlatformBalance(platformPartyId: string, packageId: string): Promise<string> {
+  const existing = await findBalanceContractId(platformPartyId, platformPartyId, packageId)
+  if (existing) return existing
+  const created = await submitAndWait(
+    [platformPartyId],
+    [platformPartyId],
+    [{
+      CreateCommand: {
+        templateId: `${packageId}:InvoPlus.Token:Balance`,
+        createArguments: {
+          platform: platformPartyId,
+          owner: platformPartyId,
+          amount: '0',
+          currency: 'USD',
+        },
+      },
+    }],
+  )
+  const cid = created?.contractId
+  if (!cid) throw new Error('Failed to create platform revenue balance')
+  return cid
+}
+
 // ─── Submit a command and wait for completion ─────────────────────────────────
 
 // Uses /v2/commands/submit-and-wait-for-transaction (not the plain

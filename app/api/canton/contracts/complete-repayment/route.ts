@@ -22,8 +22,14 @@
  *   InvoPlus.Repayment:RepaymentRequest:{ApproveRepayment,CompleteRepayment}
  */
 import { NextResponse } from 'next/server'
-import { submitAndWait, findBalanceContractId, queryACS } from '@/lib/canton-server'
+import { submitAndWait, findBalanceContractId, queryACS, ensurePlatformBalance } from '@/lib/canton-server'
 import { verifyAuthCookie, authRequired } from '@/lib/auth'
+
+// InvoPlus's cut: a servicing fee on the financier's yield at repayment,
+// not on the seller's advance or the amount they repay — those stay exactly
+// what was agreed in the sealed-bid auction. Only the split of the
+// repayment between financier and platform changes.
+const PLATFORM_FEE_RATE = 0.10
 
 // Fresh ground-truth read of a party's current Balance amount — used after
 // a transfer failure to tell the truth about what actually moved, since the
@@ -83,6 +89,9 @@ export async function POST(req: Request) {
     const requestEvent = (repayResult?.created ?? []).find((c: any) => c.contractId === requestContractId)
     const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
     const totalDue = pv(requestEvent?.createArgument?.totalDue)
+    const yieldAmount = Number(pv(requestEvent?.createArgument?.yieldAmount) ?? 0)
+    const platformFee = Math.round(yieldAmount * PLATFORM_FEE_RATE * 100) / 100
+    const financierAmount = totalDue ? Number(totalDue) - platformFee : 0
 
     const requestTemplateId = `${packageId}:InvoPlus.Repayment:RepaymentRequest`
 
@@ -137,6 +146,7 @@ export async function POST(req: Request) {
     // response (and the UI) can tell the truth instead of collapsing both
     // into one misleading "pending" state.
     let sellerCredited = false
+    let platformFeeTransactionId: string | undefined
     if (totalDue) {
       let mintedSellerBalanceCid: string | undefined
       try {
@@ -163,11 +173,13 @@ export async function POST(req: Request) {
         balanceTransferError = err instanceof Error ? err.message : 'Crediting the seller balance failed'
       }
 
-      // Transfer the minted amount on to the financier — retried once with
-      // a fresh financier Balance lookup, since Mint already committed and
-      // is not repeated on retry (only Transfer, which is safe to retry:
-      // Canton either commits a submission in full or not at all, so a
-      // failed attempt never partially debits).
+      // Transfer the minted amount on to the financier (minus the platform's
+      // servicing fee) — retried once with a fresh financier Balance
+      // lookup, since Mint already committed and is not repeated on retry
+      // (only Transfer, which is safe to retry: Canton either commits a
+      // submission in full or not at all, so a failed attempt never
+      // partially debits).
+      let sellerRemainderCid: string | undefined
       if (mintedSellerBalanceCid) {
         for (let attempt = 0; attempt < 2 && !balanceTransferred; attempt++) {
           try {
@@ -184,17 +196,43 @@ export async function POST(req: Request) {
                   templateId: `${packageId}:InvoPlus.Token:Balance`,
                   contractId: mintedSellerBalanceCid,
                   choice: 'Transfer',
-                  choiceArgument: { toBalanceCid: financierBalanceCid, transferAmount: String(totalDue) },
+                  choiceArgument: { toBalanceCid: financierBalanceCid, transferAmount: String(financierAmount) },
                 },
               }],
             )
             balanceTransferred = true
             balanceTransferTransactionId = transferResult?.transactionId
             balanceTransferError = undefined
+            sellerRemainderCid = (transferResult?.created ?? []).find((c: any) => pv(c.createArgument?.owner) === sellerPartyId)?.contractId
           } catch (err) {
             balanceTransferError = err instanceof Error ? err.message : 'Balance transfer failed'
           }
         }
+      }
+
+      // Platform's servicing fee — a second transfer of the same seller
+      // balance (now holding just the fee remainder after the financier
+      // leg above) into platform's own revenue balance. Best-effort: if
+      // this fails, the financier has still been paid in full above, so it
+      // doesn't block reporting the repayment as complete — it just means
+      // this specific fee didn't land and would need a manual sweep.
+      if (sellerRemainderCid && platformFee > 0) {
+        try {
+          const platformBalanceCid = await ensurePlatformBalance(platform, packageId)
+          const feeResult = await submitAndWait(
+            [sellerPartyId, platform],
+            [platform],
+            [{
+              ExerciseCommand: {
+                templateId: `${packageId}:InvoPlus.Token:Balance`,
+                contractId: sellerRemainderCid,
+                choice: 'Transfer',
+                choiceArgument: { toBalanceCid: platformBalanceCid, transferAmount: String(platformFee) },
+              },
+            }],
+          )
+          platformFeeTransactionId = feeResult?.transactionId
+        } catch { /* best-effort — doesn't block repayment completion */ }
       }
     }
 
@@ -217,8 +255,11 @@ export async function POST(req: Request) {
       sellerBalanceAfter,
       financierBalanceAfter,
       totalDue,
+      platformFee,
+      platformFeeTransactionId,
+      financierAmount,
       message: balanceTransferred
-        ? `Repayment complete — $${totalDue} moved from the seller's balance to the financier's, on-ledger.`
+        ? `Repayment complete — $${financierAmount.toFixed(2)} moved to the financier (InvoPlus servicing fee: $${platformFee.toFixed(2)}), on-ledger.`
         : sellerCredited
           ? `Your balance was credited $${totalDue}, but sending it on to the financier didn't complete: ${balanceTransferError ?? 'unknown reason'} — contact support.`
           : `Repayment confirmed on InvoPlus, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'} — contact support.`,

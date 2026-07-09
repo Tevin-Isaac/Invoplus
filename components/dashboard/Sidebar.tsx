@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/brand/Logo'
 import {
   LayoutDashboard, FileText, Store, Tag, BarChart3,
-  Settings, Menu, X, TrendingUp, PanelLeftOpen, PanelLeftClose,
+  Settings, Menu, X, TrendingUp, PanelLeftOpen, PanelLeftClose, Landmark,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/dashboard/offers',      icon: Tag,             label: 'My Offers' },
   { href: '/dashboard/portfolio',   icon: TrendingUp,      label: 'Portfolio' },
   { href: '/dashboard/analytics',   icon: BarChart3,       label: 'Analytics' },
+  { href: '/dashboard/platform',    icon: Landmark,        label: 'Platform' },
   { href: '/dashboard/settings',    icon: Settings,        label: 'Settings' },
 ]
 
