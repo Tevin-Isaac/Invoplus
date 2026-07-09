@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
-import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge } from 'lucide-react'
+import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -36,11 +37,116 @@ const gradeStyle: Record<string, string> = {
   D: 'bg-red-500 text-white',
 }
 
+// Per-grade visual identity for the marketplace cards — a quick color scan
+// tells a financier the risk tier before they read a single number.
+const gradeGlow: Record<string, { bar: string; badge: string; corner: string; text: string; hoverShadow: string }> = {
+  A: {
+    bar: 'from-emerald-500 via-emerald-400 to-emerald-500',
+    badge: 'bg-emerald-500 text-white shadow-emerald-500/40',
+    corner: 'bg-emerald-400/25',
+    text: 'from-emerald-600 to-emerald-400 dark:from-emerald-300 dark:to-emerald-500',
+    hoverShadow: 'hover:shadow-emerald-500/10',
+  },
+  B: {
+    bar: 'from-violet-500 via-violet-400 to-violet-500',
+    badge: 'bg-violet-500 text-white shadow-violet-500/40',
+    corner: 'bg-violet-400/25',
+    text: 'from-violet-600 to-violet-400 dark:from-violet-300 dark:to-violet-500',
+    hoverShadow: 'hover:shadow-violet-500/10',
+  },
+  C: {
+    bar: 'from-amber-500 via-amber-400 to-amber-500',
+    badge: 'bg-amber-500 text-white shadow-amber-500/40',
+    corner: 'bg-amber-400/25',
+    text: 'from-amber-600 to-amber-400 dark:from-amber-300 dark:to-amber-500',
+    hoverShadow: 'hover:shadow-amber-500/10',
+  },
+  D: {
+    bar: 'from-red-500 via-red-400 to-red-500',
+    badge: 'bg-red-500 text-white shadow-red-500/40',
+    corner: 'bg-red-400/25',
+    text: 'from-red-600 to-red-400 dark:from-red-300 dark:to-red-500',
+    hoverShadow: 'hover:shadow-red-500/10',
+  },
+  default: {
+    bar: 'from-slate-400 via-slate-300 to-slate-400',
+    badge: 'bg-slate-400 text-white shadow-slate-400/30',
+    corner: 'bg-slate-400/20',
+    text: 'from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400',
+    hoverShadow: 'hover:shadow-slate-400/10',
+  },
+}
+
 function daysUntil(dateStr: string): number | null {
   if (!dateStr) return null
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return null
   return Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86_400_000))
+}
+
+// Ticks its own interval rather than the parent re-rendering the whole grid
+// every second — each card's countdown is cheap and fully isolated.
+function CountdownChip({ auctionEnd, settled }: { auctionEnd: string; settled: boolean }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (settled || !auctionEnd) return
+    const msLeft = new Date(auctionEnd).getTime() - Date.now()
+    // Sub-minute precision only matters in the closing minutes — tick fast
+    // there, slow everywhere else, so a marketplace full of cards never
+    // burns cycles on listings ending days from now.
+    const tick = msLeft < 90_000 ? 1_000 : msLeft < 3_600_000 ? 15_000 : 60_000
+    const id = setInterval(() => setNow(Date.now()), tick)
+    return () => clearInterval(id)
+  }, [auctionEnd, settled])
+
+  if (settled) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+        <CheckCircle className="h-3 w-3" />Settled
+      </span>
+    )
+  }
+  if (!auctionEnd) return null
+
+  const msLeft = new Date(auctionEnd).getTime() - now
+  const expired = msLeft <= 0
+
+  if (expired) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-500">
+        <Timer className="h-3 w-3" />Expiring…
+      </span>
+    )
+  }
+
+  const totalMin = Math.floor(msLeft / 60_000)
+  const days = Math.floor(totalMin / 1440)
+  const hours = Math.floor((totalMin % 1440) / 60)
+  const mins = totalMin % 60
+  const secs = Math.floor((msLeft % 60_000) / 1000)
+  const label = days > 0 ? `${days}d ${hours}h left`
+    : hours > 0 ? `${hours}h ${mins}m left`
+    : `${mins}m ${secs}s left`
+
+  // Urgency escalates the closer the auction gets to closing — a plain
+  // "ends in 12m" is easy to miss; the color doing the work means a
+  // financier scanning the grid catches it without reading every card.
+  const urgent = msLeft < 3_600_000        // < 1h
+  const soon = msLeft < 24 * 3_600_000     // < 1d
+
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide',
+      urgent
+        ? 'animate-pulse-slow border-red-500/30 bg-red-500/10 text-red-500'
+        : soon
+          ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+          : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+    )}>
+      <Timer className="h-3 w-3" />{label}
+    </span>
+  )
 }
 
 function BidModal({ auction, onClose, onBidPlaced }: {
@@ -346,25 +452,30 @@ export default function MarketplacePage() {
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
 
         {/* Market summary strip */}
-        <div className="relative overflow-hidden rounded-2xl border border-violet-500/25 bg-gradient-to-r from-violet-500/10 via-transparent to-transparent p-5 dark:from-violet-500/15">
-          <div className="pointer-events-none absolute -top-20 -right-12 h-48 w-48 rounded-full bg-violet-500/15 blur-3xl" />
-          <div className="relative flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15">
-                <Lock className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+        <div className="relative overflow-hidden rounded-3xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.12] via-slate-50 to-transparent p-6 dark:from-violet-500/20 dark:via-slate-950">
+          <div className="pointer-events-none absolute -top-24 -right-16 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-5">
+            <div className="flex items-center gap-3.5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-500/15 shadow-[0_0_24px_-6px_rgba(20,184,146,0.5)]">
+                <Lock className="h-5 w-5 text-violet-600 dark:text-violet-300" />
               </span>
               <div>
-                <p className="font-semibold text-slate-950 dark:text-white">Sealed-bid auction floor</p>
+                <p className="flex items-center gap-1.5 text-base font-bold text-slate-950 dark:text-white">
+                  Sealed-bid auction floor <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Bids are private Canton contracts — rivals never see your numbers.</p>
               </div>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-7">
               <div className="text-right">
-                <p className="font-data text-xl font-bold text-slate-950 dark:text-white">{loading ? '—' : open.length}</p>
+                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{loading ? '—' : open.length}</p>
                 <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Live listings</p>
               </div>
               <div className="text-right">
-                <p className="font-data text-xl font-bold text-violet-600 dark:text-violet-300">{loading ? '—' : `$${totalValue >= 1000 ? (totalValue / 1000).toFixed(0) + 'K' : totalValue}`}</p>
+                <p className="font-data bg-gradient-to-br from-violet-600 to-emerald-500 bg-clip-text text-2xl font-bold text-transparent dark:from-violet-300 dark:to-emerald-300">
+                  {loading ? '—' : `$${totalValue >= 1000 ? (totalValue / 1000).toFixed(0) + 'K' : totalValue}`}
+                </p>
                 <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Total face value</p>
               </div>
             </div>
@@ -375,10 +486,10 @@ export default function MarketplacePage() {
         <div className="flex flex-wrap items-center gap-2">
           {['all', 'A', 'B', 'C', 'D'].map(g => (
             <button key={g} onClick={() => setGradeFilter(g)}
-              className={cn('rounded-lg border px-3 py-1.5 text-xs font-medium transition-all',
+              className={cn('relative rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-all',
                 gradeFilter === g
-                  ? 'border-violet-500 bg-violet-500 text-white'
-                  : 'border-slate-200 bg-white text-slate-500 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white')}>
+                  ? 'border-violet-500 bg-violet-500 text-white shadow-[0_4px_16px_-4px_rgba(20,184,146,0.6)]'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-violet-500/50 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-white')}>
               {g === 'all' ? 'All grades' : `Grade ${g}`}
             </button>
           ))}
@@ -403,117 +514,149 @@ export default function MarketplacePage() {
             <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">When sellers list verified invoices, the sealed-bid auctions appear here.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map(a => {
-              const dueIn = daysUntil(a.dueDate)
-              return (
-                <div key={a.id} className={cn(panel, 'group flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:border-violet-500/50 hover:shadow-lg')}>
-                  {/* Card header: grade ribbon + status */}
-                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg font-data text-xs font-bold', gradeStyle[a.grade] ?? 'bg-slate-400 text-white')}>
-                        {a.grade}
-                      </span>
-                      <span className="font-data text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">{a.id}</span>
-                    </div>
-                    <span className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide',
-                      a.status === 'open'
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500')}>
-                      {a.status === 'open' ? '● Live' : 'Settled'}
-                    </span>
-                  </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((a, i) => {
+                const dueIn = daysUntil(a.dueDate)
+                const glow = gradeGlow[a.grade] ?? gradeGlow.default
+                return (
+                  <motion.div
+                    key={a.id}
+                    layout
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.3), ease: 'easeOut' }}
+                    whileHover={{ y: -6 }}
+                    className={cn(
+                      'group relative flex flex-col overflow-hidden rounded-3xl border bg-white shadow-sm transition-shadow duration-300 dark:bg-slate-900',
+                      'border-slate-200 hover:shadow-2xl dark:border-slate-800',
+                      glow.hoverShadow,
+                    )}
+                  >
+                    {/* Grade-tinted top accent bar */}
+                    <div className={cn('h-1 w-full bg-gradient-to-r', glow.bar)} />
 
-                  {/* Body */}
-                  <div className="flex-1 space-y-4 p-5">
-                    <div>
-                      <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <Building2 className="h-3.5 w-3.5" />{a.buyer}
-                      </p>
-                      <p className="mt-1 truncate font-semibold text-slate-950 dark:text-white">{a.invoiceId || 'Invoice auction'}</p>
-                    </div>
+                    {/* Subtle corner glow, revealed on hover */}
+                    <div className={cn('pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100', glow.corner)} />
 
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Face value</p>
-                      <p className="font-data text-3xl font-bold text-slate-950 dark:text-white">${a.amount.toLocaleString()}
-                        <span className="ml-1.5 text-xs font-normal text-slate-400">{a.currency}</span>
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
-                        <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500"><Gauge className="h-3 w-3" />Risk score</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400" style={{ width: `${a.riskScore}%` }} />
-                          </div>
-                          <span className="font-data text-sm font-bold text-slate-950 dark:text-white">{a.riskScore || '—'}</span>
+                    {/* Card header: grade badge + live/countdown + status */}
+                    <div className="relative flex items-center justify-between px-5 pt-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl font-data text-sm font-bold shadow-lg', glow.badge)}>
+                          {a.grade}
+                        </span>
+                        <div>
+                          <p className="font-data text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">{a.id}</p>
+                          {a.status === 'open' && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Live
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
-                        <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500"><CalendarDays className="h-3 w-3" />Due</p>
-                        <p className="font-data mt-1.5 text-sm font-bold text-slate-950 dark:text-white">
-                          {dueIn != null ? `${dueIn}d` : '—'}
-                          <span className="ml-1 text-[10px] font-normal text-slate-400">{a.dueDate}</span>
+                      <CountdownChip auctionEnd={a.auctionEnd} settled={a.status !== 'open'} />
+                    </div>
+
+                    {/* Body */}
+                    <div className="relative flex-1 space-y-4 p-5">
+                      <div>
+                        <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                          <Building2 className="h-3.5 w-3.5" />{a.buyer}
+                        </p>
+                        <p className="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-white">{a.invoiceId || 'Invoice auction'}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">Face value</p>
+                        <p className={cn('font-data bg-gradient-to-br bg-clip-text text-3xl font-bold text-transparent', glow.text)}>
+                          ${a.amount.toLocaleString()}
+                          <span className="ml-1.5 bg-none text-xs font-normal text-slate-400 [-webkit-text-fill-color:theme(colors.slate.400)]">{a.currency}</span>
                         </p>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Footer: bids + CTA */}
-                  <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3.5 dark:border-slate-800">
-                    <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                      <Shield className="h-3.5 w-3.5 text-violet-500" />
-                      <span className="font-data font-semibold text-slate-950 dark:text-white">{a.bidsReceived}</span> sealed bid{a.bidsReceived === 1 ? '' : 's'}
-                      {a.myBid != null && <span className="font-data ml-1 text-violet-600 dark:text-violet-300">· yours: {a.myBid}%</span>}
-                    </span>
-                    {party?.id === a.seller ? (
-                      /* Your own listing: you can't bid on it, but you can
-                         settle it (once it has bids) or pull it entirely.
-                         You never see bid terms — settlement picks the best
-                         offer automatically, preserving sealed-bid privacy. */
-                      <div className="flex items-center gap-2">
-                        {a.bidsReceived > 0 && (
-                          <button
-                            onClick={() => handleSettleAuction(a)}
-                            disabled={settlingId === a.id}
-                            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-600 disabled:opacity-60"
-                          >
-                            {settlingId === a.id ? 'Settling…' : `Settle (${a.bidsReceived})`}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleCancelListing(a)}
-                          disabled={cancellingId === a.id || settlingId === a.id}
-                          className="rounded-xl border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-60"
-                        >
-                          {cancellingId === a.id ? 'Cancelling…' : 'Cancel'}
-                        </button>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl bg-slate-50 p-3 transition-colors group-hover:bg-slate-100 dark:bg-slate-950 dark:group-hover:bg-slate-800/60">
+                          <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500"><Gauge className="h-3 w-3" />Risk score</p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                              <motion.div
+                                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${a.riskScore}%` }}
+                                transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
+                              />
+                            </div>
+                            <span className="font-data text-sm font-bold text-slate-950 dark:text-white">{a.riskScore || '—'}</span>
+                          </div>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-3 transition-colors group-hover:bg-slate-100 dark:bg-slate-950 dark:group-hover:bg-slate-800/60">
+                          <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500"><CalendarDays className="h-3 w-3" />Due</p>
+                          <p className="font-data mt-1.5 text-sm font-bold text-slate-950 dark:text-white">
+                            {dueIn != null ? `${dueIn}d` : '—'}
+                            <span className="ml-1 text-[10px] font-normal text-slate-400">{a.dueDate}</span>
+                          </p>
+                        </div>
                       </div>
-                    ) : party?.type === 'business' ? (
-                      /* Bidding is a financier action — a business identity
-                         funding invoices doesn't make sense in this product's
-                         model, so make that explicit instead of letting the
-                         API silently accept it. */
-                      <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500" title="Bidding is for financier accounts. Connect or switch to a financier identity to bid.">
-                        Financiers only
+                    </div>
+
+                    {/* Footer: bids + CTA */}
+                    <div className="relative flex items-center justify-between border-t border-slate-100 px-5 py-3.5 dark:border-slate-800">
+                      <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <Shield className="h-3.5 w-3.5 text-violet-500" />
+                        <span className="font-data font-semibold text-slate-950 dark:text-white">{a.bidsReceived}</span> sealed bid{a.bidsReceived === 1 ? '' : 's'}
+                        {a.myBid != null && <span className="font-data ml-1 text-violet-600 dark:text-violet-300">· yours: {a.myBid}%</span>}
                       </span>
-                    ) : (
-                      <button
-                        onClick={() => a.status === 'open' && setSelectedAuction(a)}
-                        disabled={a.status !== 'open'}
-                        className={cn('rounded-xl px-4 py-2 text-xs font-semibold transition-colors',
-                          a.status === 'open'
-                            ? 'bg-violet-500 text-white hover:bg-violet-600'
-                            : 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500')}
-                      >
-                        {a.status === 'open' ? 'Place bid' : 'Settled'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+                      {party?.id === a.seller ? (
+                        /* Your own listing: you can't bid on it, but you can
+                           settle it (once it has bids) or pull it entirely.
+                           You never see bid terms — settlement picks the best
+                           offer automatically, preserving sealed-bid privacy. */
+                        <div className="flex items-center gap-2">
+                          {a.bidsReceived > 0 && (
+                            <motion.button
+                              whileTap={{ scale: 0.96 }}
+                              onClick={() => handleSettleAuction(a)}
+                              disabled={settlingId === a.id}
+                              className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-500/20 transition-colors hover:bg-emerald-600 disabled:opacity-60"
+                            >
+                              <TrendingUp className="h-3.5 w-3.5" />{settlingId === a.id ? 'Settling…' : `Settle (${a.bidsReceived})`}
+                            </motion.button>
+                          )}
+                          <button
+                            onClick={() => handleCancelListing(a)}
+                            disabled={cancellingId === a.id || settlingId === a.id}
+                            className="rounded-xl border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-60"
+                          >
+                            {cancellingId === a.id ? 'Cancelling…' : 'Cancel'}
+                          </button>
+                        </div>
+                      ) : party?.type === 'business' ? (
+                        /* Bidding is a financier action — a business identity
+                           funding invoices doesn't make sense in this product's
+                           model, so make that explicit instead of letting the
+                           API silently accept it. */
+                        <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500" title="Bidding is for financier accounts. Connect or switch to a financier identity to bid.">
+                          Financiers only
+                        </span>
+                      ) : (
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => a.status === 'open' && setSelectedAuction(a)}
+                          disabled={a.status !== 'open'}
+                          className={cn('flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all',
+                            a.status === 'open'
+                              ? 'bg-violet-500 text-white shadow-md shadow-violet-500/30 hover:bg-violet-600 hover:shadow-lg hover:shadow-violet-500/40'
+                              : 'cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500')}
+                        >
+                          {a.status === 'open' ? <>Place bid<ArrowUpRight className="h-3.5 w-3.5" /></> : 'Settled'}
+                        </motion.button>
+                      )}
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
