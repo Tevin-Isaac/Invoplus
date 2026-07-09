@@ -43,7 +43,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(storageKey(partyId))
-      setNotifications(raw ? JSON.parse(raw) : [])
+      let items: AppNotification[] = raw ? JSON.parse(raw) : []
+      // Defensive cleanup: a since-fixed race could land a "Welcome back"
+      // toast in the anonymous bucket (party was still null at the moment
+      // notify() fired) — it would then resurface after a later logout as
+      // if it just happened, with no logged-in identity to explain it. That
+      // toast never legitimately belongs here regardless of how it arrived.
+      if (partyId === null && items.some(n => n.type === 'connect')) {
+        items = items.filter(n => n.type !== 'connect')
+        persist(items, null)
+      }
+      setNotifications(items)
     } catch { setNotifications([]) }
     loadedFor.current = partyId
   }, [partyId])

@@ -42,6 +42,15 @@ export function Header({ title }: { title: string }) {
   // Guards against a double-click/double-tap firing chooseRole twice in the
   // same tick — see the comment at chooseRole() for why this matters.
   const roleChoiceInFlight = useRef(false)
+  // Reconnect's "Welcome back" toast can't fire synchronously in the click
+  // handler: notify() scopes itself to whatever party is CURRENT at call
+  // time, and reconnectRecent()'s setParty() hasn't been processed by React
+  // yet at that point — the toast would land in the previous (often
+  // disconnected/'anon') party's notification bucket and then resurface
+  // later, out of context, as if it just happened after a real logout. This
+  // ref defers the notify() to the effect below, which fires once `party`
+  // has actually caught up to the party being reconnected.
+  const pendingWelcomeBack = useRef<{ id: string; displayName: string; type: string } | null>(null)
 
   // Real ledger balance — the InvoPlus.Token:Balance moved by settle-auction
   // and complete-repayment. Polled rather than event-driven since it can
@@ -73,6 +82,17 @@ export function Header({ title }: { title: string }) {
     const interval = setInterval(load, 15000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [party?.id, party?.type])
+
+  // Fires the "Welcome back" toast once `party` actually matches the
+  // identity that was just reconnected — see pendingWelcomeBack's comment
+  // for why this can't happen synchronously in the click handler.
+  useEffect(() => {
+    const pending = pendingWelcomeBack.current
+    if (pending && party?.id === pending.id) {
+      notify('connect', 'Welcome back', `Signed back in as ${pending.displayName} (${pending.type}).`)
+      pendingWelcomeBack.current = null
+    }
+  }, [party?.id, notify])
 
   // Close dropdowns on outside click. A `fixed inset-0` backdrop can't do
   // this here: the header's backdrop-blur creates a containing block, so
@@ -418,6 +438,7 @@ export function Header({ title }: { title: string }) {
                     <button
                       key={rp.id}
                       onClick={() => {
+                        pendingWelcomeBack.current = { id: rp.id, displayName: rp.displayName, type: rp.type }
                         reconnectRecent(rp)
                         setModal('closed')
                         // Reconnecting is a returning user, not first-time
@@ -426,7 +447,8 @@ export function Header({ title }: { title: string }) {
                         // funded their account again. A quiet toast plus
                         // whatever page they're already on is less jarring
                         // than force-navigating into the empty-state prompt.
-                        notify('connect', 'Welcome back', `Signed back in as ${rp.displayName} (${rp.type}).`)
+                        // (The toast itself fires from the effect above,
+                        // once `party` has actually updated.)
                       }}
                       className="w-full flex items-center gap-2.5 rounded-xl border border-slate-200 px-3 py-2.5 text-left transition-all hover:border-violet-500 hover:bg-violet-500/[0.04] dark:border-slate-700 dark:hover:border-violet-500"
                     >

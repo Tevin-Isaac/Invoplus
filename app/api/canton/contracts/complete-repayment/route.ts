@@ -212,27 +212,32 @@ export async function POST(req: Request) {
 
       // Platform's servicing fee — a second transfer of the same seller
       // balance (now holding just the fee remainder after the financier
-      // leg above) into platform's own revenue balance. Best-effort: if
-      // this fails, the financier has still been paid in full above, so it
-      // doesn't block reporting the repayment as complete — it just means
-      // this specific fee didn't land and would need a manual sweep.
+      // leg above) into platform's own revenue balance. Doesn't block
+      // reporting the repayment as complete if it ultimately fails (the
+      // financier has still been paid in full above), but retried — a
+      // single-attempt version of this silently left a real user's fee
+      // uncollected in production when the first attempt hit a transient
+      // rights/network error, which is exactly the failure mode retrying
+      // guards against.
       if (sellerRemainderCid && platformFee > 0) {
-        try {
-          const platformBalanceCid = await ensurePlatformBalance(platform, packageId)
-          const feeResult = await submitAndWait(
-            [sellerPartyId, platform],
-            [platform],
-            [{
-              ExerciseCommand: {
-                templateId: `${packageId}:InvoPlus.Token:Balance`,
-                contractId: sellerRemainderCid,
-                choice: 'Transfer',
-                choiceArgument: { toBalanceCid: platformBalanceCid, transferAmount: String(platformFee) },
-              },
-            }],
-          )
-          platformFeeTransactionId = feeResult?.transactionId
-        } catch { /* best-effort — doesn't block repayment completion */ }
+        for (let attempt = 0; attempt < 2 && !platformFeeTransactionId; attempt++) {
+          try {
+            const platformBalanceCid = await ensurePlatformBalance(platform, packageId)
+            const feeResult = await submitAndWait(
+              [sellerPartyId, platform],
+              [platform],
+              [{
+                ExerciseCommand: {
+                  templateId: `${packageId}:InvoPlus.Token:Balance`,
+                  contractId: sellerRemainderCid,
+                  choice: 'Transfer',
+                  choiceArgument: { toBalanceCid: platformBalanceCid, transferAmount: String(platformFee) },
+                },
+              }],
+            )
+            platformFeeTransactionId = feeResult?.transactionId
+          } catch { /* retried once; genuinely best-effort past that */ }
+        }
       }
     }
 

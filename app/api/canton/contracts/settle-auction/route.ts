@@ -184,30 +184,34 @@ export async function POST(req: Request) {
           balanceTransferTransactionId = transferResult?.transactionId
 
           // Origination fee: a second, small hop from the seller's newly
-          // credited balance to platform's own. Best-effort — if this fails,
-          // the seller was still paid in full for the main transfer, so it
-          // doesn't change balanceTransferred or block the settlement from
-          // being reported as complete.
+          // credited balance to platform's own. Doesn't block reporting
+          // settlement as complete if it ultimately fails (the seller was
+          // still paid in full for the main transfer), but retried once —
+          // the equivalent single-attempt hop in complete-repayment silently
+          // left a real fee uncollected in production on a transient error,
+          // which is exactly the failure mode retrying guards against.
           if (originationFee > 0) {
-            try {
-              const newSellerBalanceCid = (transferResult?.created ?? []).find((c: any) => pv(c.createArgument?.owner) === sellerPartyId)?.contractId
-              if (newSellerBalanceCid) {
-                const platformBalanceCid = await ensurePlatformBalance(platformPartyId, packageId)
-                const feeResult = await submitAndWait(
-                  [sellerPartyId, platformPartyId],
-                  [platformPartyId],
-                  [{
-                    ExerciseCommand: {
-                      templateId: `${packageId}:InvoPlus.Token:Balance`,
-                      contractId: newSellerBalanceCid,
-                      choice: 'Transfer',
-                      choiceArgument: { toBalanceCid: platformBalanceCid, transferAmount: String(originationFee) },
-                    },
-                  }],
-                )
-                originationFeeTransactionId = feeResult?.transactionId
+            const newSellerBalanceCid = (transferResult?.created ?? []).find((c: any) => pv(c.createArgument?.owner) === sellerPartyId)?.contractId
+            if (newSellerBalanceCid) {
+              for (let attempt = 0; attempt < 2 && !originationFeeTransactionId; attempt++) {
+                try {
+                  const platformBalanceCid = await ensurePlatformBalance(platformPartyId, packageId)
+                  const feeResult = await submitAndWait(
+                    [sellerPartyId, platformPartyId],
+                    [platformPartyId],
+                    [{
+                      ExerciseCommand: {
+                        templateId: `${packageId}:InvoPlus.Token:Balance`,
+                        contractId: newSellerBalanceCid,
+                        choice: 'Transfer',
+                        choiceArgument: { toBalanceCid: platformBalanceCid, transferAmount: String(originationFee) },
+                      },
+                    }],
+                  )
+                  originationFeeTransactionId = feeResult?.transactionId
+                } catch { /* retried once; genuinely best-effort past that */ }
               }
-            } catch { /* best-effort — doesn't block settlement completion */ }
+            }
           }
         } else {
           balanceTransferError = 'Balance contract not found for financier or seller — neither party has connected/provisioned a balance yet.'

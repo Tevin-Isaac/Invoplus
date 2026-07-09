@@ -6,6 +6,7 @@ import { HowItWorks } from '@/components/landing/HowItWorks'
 import { Features } from '@/components/landing/Features'
 import { ContactForm } from '@/components/landing/ContactForm'
 import { Footer } from '@/components/landing/Footer'
+import { CookieConsent } from '@/components/landing/CookieConsent'
 import { Check } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/I18nContext'
 
@@ -78,6 +79,7 @@ export default function HomePage() {
       </main>
 
       <Footer />
+      <CookieConsent />
     </div>
   )
 }
