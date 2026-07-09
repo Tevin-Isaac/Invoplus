@@ -127,6 +127,13 @@ export default function DashboardPage() {
     + repaid.reduce((s: number, c: any) => s + num(pv(c.payload, 'fundedAmount')), 0)
   const isFin = party?.type === 'financier'
 
+  // A bare "0" as the headline number, paired with "no ledger data yet"
+  // underneath, reads as broken rather than "you just haven't done this
+  // yet" — especially for genuinely personal, often-empty counts like open
+  // bids. "—" plus an explanatory line reads as a real, current state
+  // instead of an error.
+  const openBidsCount = isFin ? bids.length : invoices.length
+  const activeAuctionsCount = auctions.filter((c: any) => !pv(c.payload, 'settled')).length
   const stats = [
     {
       label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
@@ -134,16 +141,18 @@ export default function DashboardPage() {
       bars: monthly.map(m => m.amount),
     },
     {
-      label: isFin ? 'Open bids' : 'Invoices', big: String(isFin ? bids.length : invoices.length),
+      label: isFin ? 'Open bids' : 'Invoices',
+      big: openBidsCount > 0 ? String(openBidsCount) : '—',
       // "created" covers both ways an invoice gets on the ledger — typed
       // into the form or extracted from an uploaded PDF — so this isn't
       // read as "only counts PDF uploads."
-      sub: isFin ? 'sealed on ledger' : 'created',
+      sub: openBidsCount > 0 ? (isFin ? 'sealed on ledger' : 'created') : (isFin ? 'Place one in the Marketplace' : 'Create your first invoice'),
       bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
     },
     {
-      label: 'Active auctions', big: String(auctions.filter((c: any) => !pv(c.payload, 'settled')).length),
-      sub: 'sealed-bid live',
+      label: 'Active auctions',
+      big: activeAuctionsCount > 0 ? String(activeAuctionsCount) : '—',
+      sub: activeAuctionsCount > 0 ? 'sealed-bid live' : 'None open right now',
       bars: auctions.slice(0, 8).map((c: any) => num(pv(c.payload, 'bidCount')) + 1),
     },
   ]

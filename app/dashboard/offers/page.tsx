@@ -326,9 +326,16 @@ export default function OffersPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {offer.status === 'won' && (
+                      {/* Action column previously showed nothing at all for
+                          'repaid' rows — none of the conditions below
+                          matched that status, so a page with only repaid
+                          history (the common case once positions settle)
+                          had a blank Action column for every row. */}
+                      {(offer.status === 'won' || offer.status === 'repaid') && (
                         <span className={cn('flex items-center gap-1.5 text-xs font-medium', isFinancier ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')}>
-                          <Zap className="h-3.5 w-3.5" />{isFinancier ? '+' : '-'}${offer.estimatedYield.toLocaleString()}
+                          <Zap className="h-3.5 w-3.5" />
+                          {isFinancier ? '+' : '-'}${offer.estimatedYield.toLocaleString()}
+                          {offer.status === 'repaid' ? (isFinancier ? ' earned' : ' paid') : ''}
                         </span>
                       )}
                       {offer.overdue && (
