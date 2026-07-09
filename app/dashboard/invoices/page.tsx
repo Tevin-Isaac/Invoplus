@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip } from 'lucide-react'
+import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -68,16 +68,68 @@ export default function InvoicesPage() {
   // fields instead (see create-invoice/route.ts).
   const [attachedFile, setAttachedFile] = useState<{ name: string; hash: string } | null>(null)
   const [hashing, setHashing] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [extractNote, setExtractNote] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const hashFile = async (file: File) => {
     setHashing(true)
+    setExtractNote(null)
     try {
       const buf = await file.arrayBuffer()
       const digest = await crypto.subtle.digest('SHA-256', buf)
       const hex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('')
       setAttachedFile({ name: file.name, hash: `sha256:${hex}` })
       setShowForm(true)
+
+      // Real extraction — Claude reads the actual document. Only fields
+      // the model returns non-null overwrite the form, so a partial read
+      // never wipes something the seller already typed.
+      const isPdf = file.type === 'application/pdf'
+      if (isPdf || file.type.startsWith('image/')) {
+        setExtracting(true)
+        try {
+          // btoa needs a binary string, not raw bytes — chunk the conversion
+          // so large files don't blow the call stack via String.fromCharCode(...bytes).
+          const bytes = new Uint8Array(buf)
+          let binary = ''
+          const chunk = 8192
+          for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)))
+          }
+          const base64 = btoa(binary)
+          const res = await fetch('/api/extract-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileBase64: base64, mimeType: file.type }),
+          })
+          const data = await res.json()
+          if (data.ok) {
+            const f = data.fields ?? {}
+            const filled: string[] = []
+            setForm(prev => {
+              const next = { ...prev }
+              if (f.invoiceId) { next.invoiceId = String(f.invoiceId); filled.push('invoice number') }
+              if (f.debtorName) { next.debtorName = String(f.debtorName); filled.push('debtor') }
+              if (f.debtorTaxId) { next.debtorTaxId = String(f.debtorTaxId); filled.push('tax ID') }
+              if (typeof f.faceAmount === 'number') { next.amount = String(f.faceAmount); filled.push('amount') }
+              if (f.currency) { next.currency = String(f.currency).toUpperCase(); filled.push('currency') }
+              if (f.issueDate) { next.issueDate = String(f.issueDate); filled.push('issue date') }
+              if (f.dueDate) { next.dueDate = String(f.dueDate); filled.push('due date') }
+              return next
+            })
+            setExtractNote(filled.length > 0
+              ? `Read from the document: ${filled.join(', ')}. Review before submitting.`
+              : "Couldn't confidently read any fields from this document — fill them in below.")
+          } else {
+            setExtractNote(`Extraction failed (${data.error ?? 'unknown error'}) — fill the form in manually below.`)
+          }
+        } catch {
+          setExtractNote('Extraction failed — fill the form in manually below.')
+        } finally {
+          setExtracting(false)
+        }
+      }
     } catch {
       setResult({ ok: false, error: 'Could not read that file — try again or continue without attaching one.' })
     } finally {
@@ -233,6 +285,7 @@ export default function InvoicesPage() {
     })
     setEditingId(inv.id)
     setAttachedFile(null)
+    setExtractNote(null)
     setResult(null)
     setListOutcome(null)
     setShowForm(true)
@@ -359,6 +412,7 @@ export default function InvoicesPage() {
       if (data.ok) {
         setShowForm(false)
         setAttachedFile(null)
+        setExtractNote(null)
         if (editingId) {
           setInvoices(prev => prev.map(i => i.id === editingId ? {
             ...i, id: data.contractId, invoiceId: data.invoiceId, buyer: form.debtorName,
@@ -437,6 +491,12 @@ export default function InvoicesPage() {
               <p className="text-sm font-semibold text-slate-950 dark:text-white">Submitting to Canton ledger…</p>
               <p className="font-data text-xs text-slate-500 dark:text-slate-400">InvoiceContract · risk scoring · registry entry</p>
             </div>
+          ) : extracting ? (
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-10 w-10 animate-spin text-violet-500" />
+              <p className="text-sm font-semibold text-slate-950 dark:text-white">Reading document…</p>
+              <p className="font-data text-xs text-slate-500 dark:text-slate-400">Claude is extracting invoice fields to pre-fill the form below</p>
+            </div>
           ) : hashing ? (
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-10 w-10 animate-spin text-violet-500" />
@@ -450,18 +510,20 @@ export default function InvoicesPage() {
               </div>
               <p className="mb-1 text-sm font-semibold text-slate-950 dark:text-white">Attach an invoice document</p>
               <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-                PDF or image, hashed in your browser · the hash becomes part of the real <span className="font-data text-violet-600 dark:text-violet-300">InvoiceContract</span> on Canton
+                PDF or image — we read it and pre-fill the form below, and its hash becomes part of the real <span className="font-data text-violet-600 dark:text-violet-300">InvoiceContract</span> on Canton
               </p>
-              <span className="rounded-xl bg-violet-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-600">
-                Choose file
-              </span>
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); setAttachedFile(null); setShowForm(true) }}
-                className="mt-3 block w-full text-xs font-medium text-slate-400 underline-offset-2 hover:text-violet-600 hover:underline dark:hover:text-violet-300"
-              >
-                Or skip — new invoice without a document
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
+                <span className="rounded-xl bg-violet-500 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-violet-600">
+                  Choose file
+                </span>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setAttachedFile(null); setShowForm(true) }}
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-xs font-semibold text-slate-600 transition-colors hover:border-violet-500 hover:text-violet-600 dark:border-slate-600 dark:text-slate-300 dark:hover:border-violet-400 dark:hover:text-violet-300"
+                >
+                  Create a new invoice
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -474,7 +536,7 @@ export default function InvoicesPage() {
                 <ShieldCheck className="h-4 w-4 text-violet-600 dark:text-violet-300" />
                 <h3 className="text-sm font-semibold text-slate-950 dark:text-white">{editingId ? 'Edit Invoice — archives & recreates on Canton' : 'New Invoice → Canton InvoiceContract'}</h3>
               </div>
-              <button onClick={() => { setShowForm(false); setEditingId(null); setAttachedFile(null) }} className="text-slate-400 hover:text-slate-950 dark:hover:text-white"><X className="h-4 w-4" /></button>
+              <button onClick={() => { setShowForm(false); setEditingId(null); setAttachedFile(null); setExtractNote(null) }} className="text-slate-400 hover:text-slate-950 dark:hover:text-white"><X className="h-4 w-4" /></button>
             </div>
             {attachedFile && (
               <div className="flex items-center gap-2.5 rounded-xl border border-violet-500/25 bg-violet-500/[0.06] px-3.5 py-2.5">
@@ -484,6 +546,12 @@ export default function InvoicesPage() {
                   <p className="font-data truncate text-[10px] text-slate-500 dark:text-slate-400">{attachedFile.hash.slice(0, 26)}…</p>
                 </div>
                 <button type="button" onClick={() => setAttachedFile(null)} className="shrink-0 text-slate-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
+            {extractNote && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-3.5 py-2.5">
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{extractNote}</p>
               </div>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

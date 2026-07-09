@@ -76,6 +76,7 @@ Route handlers wrap the Canton JSON Ledger API through a small server module (`l
 - **Charts and UI:** Recharts, lucide-react, shadcn-style primitives
 - **Auth:** bcrypt, JWT, httpOnly cookies, Canton-backed sessions
 - **Wallet:** CIP-103 wallet connect, plus Seaport party id and M2M party provisioning
+- **Document extraction:** Claude (Anthropic) reads an uploaded invoice PDF/image and pre-fills the invoice form — a real vision call, not a canned response; fields it can't confidently read come back null rather than guessed
 
 ## Project structure
 
@@ -133,6 +134,11 @@ CANTON_PLATFORM_PARTY=
 # Auth
 JWT_SECRET=            # generate: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 AUTH_REQUIRED=false    # flip to true once the package is deployed and login works
+
+# Optional — invoice document extraction (Claude reads an uploaded PDF/image
+# and pre-fills the invoice form). Without this set, upload still works for
+# hashing/attaching a document, it just doesn't pre-fill the form.
+ANTHROPIC_API_KEY=
 ```
 
 ### 3. Run
@@ -163,6 +169,7 @@ Deployed and live at [www.invoplus.xyz](https://www.invoplus.xyz), connected to 
 
 **Working, verified end-to-end against live DevNet (not mocked)**
 - Full lifecycle: upload, risk-score, list for sealed-bid auction, bid, settle, fund, repay — every step is a real Daml choice, no demo data
+- Invoice document upload: real SHA-256 hash of the actual file becomes the on-chain `docHash`, and Claude extracts and pre-fills invoice fields from the document (verified against real test invoices, including correctly telling the debtor apart from the seller and returning null rather than guessing when a field isn't present)
 - Real value movement: settlement and repayment each move an actual `Balance` transfer on Canton, as its own separate transaction from the settlement/repayment choice itself — both transaction IDs are shown in the UI
 - Financiers are funded automatically ($350,000 USD demo balance) the moment they connect, on every connection path — instant identity, wallet, or pasted party ID
 - Dashboard reading live data (invoices, portfolio, analytics, balances) with connect and empty states
