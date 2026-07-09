@@ -42,8 +42,10 @@ Connecting to InvoPlus:
 - All three paths require a company/display name (required, not optional) since that's how you're labeled inside InvoPlus's own UI. Note: this display name is NOT written to Canton contracts — those only carry the real Canton party ID, which is your actual on-chain identity.
 - There's also a separate full account system (email + password, via Register/Login) that issues real Canton-backed sessions, but logging in isn't currently required to use the dashboard.
 
-How InvoPlus makes money:
-- A 10% servicing fee on the financier's yield, taken at the repayment step — not the settlement step. When a business marks an invoice repaid, the financier receives their principal back in full plus 90% of the yield they were owed; InvoPlus keeps the remaining 10% of yield as revenue. The seller's advance amount and total amount they repay are never touched by this — only how the repayment splits between the financier and InvoPlus changes. This is visible on the Analytics page (platform balance = real fee revenue collected on-ledger, plus an estimated lifetime revenue figure).
+How InvoPlus makes money — two separate fees, both real, both visible on Analytics:
+- A 10% servicing fee on the financier's yield, taken at the repayment step. When a business marks an invoice repaid, the financier receives their principal back in full plus 90% of the yield they were owed; InvoPlus keeps the remaining 10% of yield as revenue. The seller's total repayment amount is unaffected — this only changes how the repayment splits between the financier and InvoPlus.
+- A 0.5% origination fee on the seller's advance, taken at settlement. When a financier's winning bid funds the seller, the seller receives 99.5% of the agreed advance amount; InvoPlus keeps the remaining 0.5%.
+- Important nuance if asked: the advance rate and annual yield rate themselves — the actual terms agreed in the sealed-bid auction — are never altered by either fee. The fee is a separate deduction from the cash that moves at settlement/repayment, not a renegotiation of the bid terms. Platform balance on Analytics is real fee revenue collected on-ledger; there's also an estimated lifetime revenue figure covering both fee types.
 
 Where every page's data comes from (useful if a user asks "why don't I see X"):
 - Dashboard, Invoices, Offers, Portfolio: your own activity only — invoices/auctions/bids/funded positions/repayments where you're a party to the contract. Canton's privacy model means you can only ever see contracts you're a signatory or observer on.
