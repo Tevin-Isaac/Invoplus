@@ -60,7 +60,7 @@ interface PlatformStats {
 export default function AnalyticsPage() {
   const { party } = useCanton()
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; bids: any[]; registry: number; repaid: any[] }>({ invoices: [], auctions: [], funded: [], bids: [], registry: 0, repaid: [] })
+  const [data, setData] = useState<{ invoices: any[]; funded: any[]; registry: number; repaid: any[] }>({ invoices: [], funded: [], registry: 0, repaid: [] })
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null)
 
   useEffect(() => {
@@ -81,45 +81,35 @@ export default function AnalyticsPage() {
     if (!party?.id) { setLoading(false); return }
     let cancelled = false
     setLoading(true)
-    // Analytics is platform-wide, not just your own contracts — invoice,
-    // auction, funded, and registry all have the platform party as a
-    // signatory/observer, so routing the query through it (scope:
-    // 'platform') is a legitimate way to see every user's activity, not
-    // just yours. SealedBid is the one exception: it stays party-scoped no
-    // matter what, since a financier's own open bids are the only thing on
-    // this page that's genuinely private.
-    const post = async (template: string, scope?: 'platform') => {
+    // Analytics is a public-facing showcase of the whole platform's
+    // traction, not a personal dashboard — every one of these templates has
+    // the platform party as a signatory/observer, so routing the query
+    // through it (scope: 'platform') shows every user's activity to every
+    // visitor equally, regardless of their own role. Sealed bids are
+    // deliberately absent from this page entirely (not even "yours") since
+    // they're private by design and personal figures don't belong on a
+    // page meant to represent the platform as a whole to outside viewers.
+    const post = async (template: string) => {
       try {
         const res = await fetch('/api/canton/contracts/list', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parties: [party.id], template, scope }),
+          body: JSON.stringify({ parties: [party.id], template, scope: 'platform' }),
         })
         const d = await res.json()
         return d.ok ? (d.contracts || []) : []
       } catch { return [] }
     }
     Promise.all([
-      post('invoice', 'platform'), post('auction', 'platform'), post('funded', 'platform'),
-      post('bid'), post('registry', 'platform'), post('repayment', 'platform'),
-    ]).then(([invoices, auctions, funded, bids, registry, repaid]) => {
+      post('invoice'), post('funded'), post('registry'), post('repayment'),
+    ]).then(([invoices, funded, registry, repaid]) => {
       if (cancelled) return
-      setData({ invoices, auctions, funded, bids, registry: registry.length, repaid })
+      setData({ invoices, funded, registry: registry.length, repaid })
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [party])
 
-  const { invoices, auctions, funded, bids, registry, repaid } = data
-  const isFinancier = party?.type === 'financier'
-  const openBids = bids.filter(c => !val(c.payload?.isRevealed))
-  const capitalAtStake = openBids.reduce((s, c) => s + num(c.payload?.faceAmount) * num(c.payload?.advanceRate), 0)
-  // Platform-wide funded volume: active FundedInvoice positions plus ones
-  // that have since been repaid (FundedInvoice is archived on repayment —
-  // RepaymentConfirmation is what survives, and it still carries fundedAmount).
-  const totalVolume = funded.reduce((s, c) => s + num(c.payload?.fundedAmount), 0)
-    + repaid.reduce((s, c) => s + num(c.payload?.fundedAmount), 0)
-  const activeAuctions = auctions.filter(c => !val(c.payload?.settled)).length
-  const totalContracts = invoices.length + auctions.length + funded.length + repaid.length
+  const { invoices, funded, registry, repaid } = data
 
   const volMap = new Map<string, { month: string; funded: number; order: number }>()
   const rateMap = new Map<string, { month: string; sum: number; n: number; order: number }>()
@@ -160,36 +150,6 @@ export default function AnalyticsPage() {
   const totalGraded = Object.values(gradeCounts).reduce((s, n) => s + n, 0)
   const gradeBreakdown = Object.entries(gradeCounts).map(([g, n]) => ({ name: `Grade ${g}`, value: n, pct: totalGraded ? Math.round((n / totalGraded) * 100) : 0, color: gradeColor[g] || '#94a3b8' }))
 
-  // Platform-wide KPIs (every user's activity, not just yours) — except the
-  // bid-book figures, which stay personal since sealed bids are private by
-  // design. Financiers additionally see their own bid exposure; sellers see
-  // registry checks instead, since bids aren't relevant to them.
-  const kpis = isFinancier ? [
-    { label: 'Platform Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length + repaid.length} funded position${funded.length + repaid.length === 1 ? '' : 's'} · all users`, accent: true },
-    // A bare "0" / "$0" here reads as broken rather than "you just don't
-    // have an open bid right now" — this is a genuinely personal, often-
-    // empty number (unlike the platform-wide figures above), so it gets
-    // friendlier copy instead of a zero sitting on its own.
-    openBids.length > 0
-      ? { label: 'Your Open Sealed Bids', value: String(openBids.length), sub: 'Awaiting auction close' }
-      : { label: 'Your Open Sealed Bids', value: '—', sub: 'None right now — place one in the Marketplace' },
-    capitalAtStake > 0
-      ? { label: 'Your Capital at Stake', value: fmtUSD(capitalAtStake), sub: 'Committed across your open bids' }
-      : { label: 'Your Capital at Stake', value: '—', sub: 'Nothing committed until you place a bid' },
-  ] : [
-    { label: 'Platform Volume Financed', value: fmtUSD(totalVolume), sub: `${funded.length + repaid.length} funded position${funded.length + repaid.length === 1 ? '' : 's'} · all users`, accent: true },
-    { label: 'Active Auctions', value: String(activeAuctions), sub: 'Live sealed-bid auctions · all sellers' },
-    { label: 'Registry Checks', value: String(registry), sub: 'Anti double-finance entries · platform-wide' },
-  ]
-
-  // Platform-wide footprint — every user's contracts, not just yours.
-  // Network internals like block height belong in Settings, not analytics.
-  const performance = [
-    { label: 'Total Contracts', value: String(totalContracts), note: 'Invoice + Auction + Funded + Repaid, platform-wide' },
-    { label: 'Registry Entries', value: String(registry), note: 'Anti-fraud records on Canton, platform-wide' },
-    { label: 'Funded Positions', value: String(funded.length + repaid.length), note: 'Settled atomically on ledger', accent: true },
-    { label: 'Invoices Scored', value: String(invoices.length), note: 'Risk-graded by the engine, platform-wide' },
-  ]
 
   if (loading) {
     return (
@@ -235,73 +195,81 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {kpis.map(k => (
-            <div key={k.label} className={cn(panel, 'p-5')}>
-              <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">{k.label}</p>
-              <p className={cn('font-data text-3xl font-bold', k.accent ? 'text-violet-600 dark:text-violet-300' : 'text-slate-950 dark:text-white')}>{k.value}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{k.sub}</p>
+        {/* Platform Traction — the headline numbers, all lifetime/cumulative
+            rather than "right now" snapshots. This page exists to show
+            outside viewers (investors, a grant reviewer) real volume and
+            activity, so it leads with the figures that only ever grow —
+            a "currently open" count naturally reads as zero between
+            auctions, which looks like nothing is happening even when a lot
+            has. Single source of truth throughout: /api/canton/platform-
+            stats, not a second locally-computed version of the same
+            numbers (that duplication is exactly what produced two
+            differently-labeled cards for the same "active auctions" count
+            before this rewrite). */}
+        {platformStats && (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total Volume Financed</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><TrendingUp className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+              </div>
+              <p className="font-data text-2xl font-bold text-violet-600 dark:text-violet-300">{fmtUSD(platformStats.totalFundedVolumeEver)}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{platformStats.totalFundedEver} position{platformStats.totalFundedEver === 1 ? '' : 's'}, all users, ever</p>
             </div>
-          ))}
-        </div>
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Invoices Listed</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Landmark className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+              </div>
+              <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.totalInvoicesListed}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">across every seller, ever</p>
+            </div>
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Parties on InvoPlus</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Users className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+              </div>
+              <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.uniqueParties}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">businesses + financiers, provisioned</p>
+            </div>
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Registry Checks</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Store className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+              </div>
+              <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{registry}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">anti double-finance entries, ever</p>
+            </div>
+          </div>
+        )}
 
         {platformStats && (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className={cn(panel, 'p-5')}>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Platform Balance</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10"><Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-300" /></span>
-                </div>
-                <p className="font-data text-2xl font-bold text-emerald-600 dark:text-emerald-300">{fmtUSD(platformStats.platformBalance)}</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Real fee revenue collected, on-ledger</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Platform Balance</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10"><Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-300" /></span>
               </div>
-              <div className={cn(panel, 'p-5')}>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Est. Lifetime Revenue</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><TrendingUp className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
-                </div>
-                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{fmtUSD(platformStats.estimatedLifetimeRevenue)}</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{(platformStats.feeRate * 100).toFixed(0)}% of all yield ever generated</p>
-              </div>
-              <div className={cn(panel, 'p-5')}>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Fee Rate</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Percent className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
-                </div>
-                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{(platformStats.feeRate * 100).toFixed(0)}%</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">of financier yield, at repayment</p>
-              </div>
+              <p className="font-data text-2xl font-bold text-emerald-600 dark:text-emerald-300">{fmtUSD(platformStats.platformBalance)}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Real fee revenue collected, on-ledger</p>
             </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className={cn(panel, 'p-5')}>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Live Auctions</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Store className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
-                </div>
-                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.activeAuctions}</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">sealed-bid, in progress</p>
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Est. Lifetime Revenue</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><TrendingUp className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
               </div>
-              <div className={cn(panel, 'p-5')}>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Invoices Listed (ever)</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Landmark className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
-                </div>
-                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.totalInvoicesListed}</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">across every seller</p>
-              </div>
-              <div className={cn(panel, 'p-5')}>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Parties on InvoPlus</p>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Users className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
-                </div>
-                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.uniqueParties}</p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">businesses + financiers, provisioned</p>
-              </div>
+              <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{fmtUSD(platformStats.estimatedLifetimeRevenue)}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{(platformStats.feeRate * 100).toFixed(0)}% of yield + {(platformStats.originationFeeRate * 100).toFixed(1)}% of advances, ever</p>
             </div>
-          </>
+            <div className={cn(panel, 'p-5')}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Live Auctions Right Now</p>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Percent className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+              </div>
+              <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.activeAuctions}</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">open for sealed bidding, this moment</p>
+            </div>
+          </div>
         )}
 
         {/* Volume chart */}
@@ -376,20 +344,6 @@ export default function AnalyticsPage() {
             )}
           </div>
         )}
-
-        {/* Network performance */}
-        <div className={cn(panel, 'p-5 md:p-6')}>
-          <h3 className="mb-4 text-sm font-semibold text-slate-950 dark:text-white">Your On-Ledger Footprint</h3>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {performance.map(s => (
-              <div key={s.label} className={cn('rounded-xl border p-4', s.accent ? 'border-violet-500/30 bg-violet-500/[0.04]' : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950')}>
-                <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">{s.label}</p>
-                <p className={cn('font-data text-lg font-bold', s.accent ? 'text-violet-600 dark:text-violet-300' : 'text-slate-950 dark:text-white')}>{s.value}</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{s.note}</p>
-              </div>
-            ))}
-          </div>
-        </div>
 
       </div>
     </div>
