@@ -68,6 +68,7 @@ export default function InvoicesPage() {
   const [result, setResult] = useState<ScoreResult | null>(null)
   const [listing, setListing] = useState(false)
   const [listOutcome, setListOutcome] = useState<ListOutcome | null>(null)
+  const [showTechDetails, setShowTechDetails] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({
     invoiceId: '', debtorName: '', debtorTaxId: '', amount: '',
@@ -803,22 +804,15 @@ export default function InvoicesPage() {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
-                  <p className="font-data text-xs text-slate-500 dark:text-slate-400">{result.cantonTemplateId}</p>
-                </div>
-
                 {listOutcome?.ok ? (
                   <div className="space-y-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-emerald-500" />
-                      <p className="text-sm font-semibold text-slate-950 dark:text-white">Listed for sealed-bid auction</p>
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">Your invoice is live for financiers to bid on</p>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Auction runs {listOutcome.durationHours ?? 72}h — financiers can now bid blind. Auction + anti-fraud registry entry created in one atomic Canton transaction.
+                      Financiers have {listOutcome.durationHours ?? 72} hours to place private bids — you'll get notified as they come in, and no one can see another's offer.
                     </p>
-                    {listOutcome.auctionContractId && (
-                      <p className="font-data truncate text-xs text-slate-400 dark:text-slate-500">{listOutcome.auctionContractId}</p>
-                    )}
                     <a href="/dashboard/marketplace" className="inline-block text-xs font-semibold text-violet-600 hover:underline dark:text-violet-300">
                       View it in the marketplace →
                     </a>
@@ -845,6 +839,27 @@ export default function InvoicesPage() {
                         : 'List for Sealed-Bid Auction →'}
                     </button>
                   </>
+                )}
+
+                {/* Real Canton contract IDs — proof this is a genuine
+                    ledger transaction, not simulated. Collapsed by
+                    default: not something a normal business user needs
+                    staring back at them right after listing an invoice,
+                    but one click away for anyone (like a judge) who wants
+                    to verify. */}
+                <button
+                  onClick={() => setShowTechDetails(s => !s)}
+                  className="text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showTechDetails ? 'Hide' : 'Show'} ledger details {showTechDetails ? '▴' : '▾'}
+                </button>
+                {showTechDetails && (
+                  <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+                    <p className="font-data break-all text-[11px] text-slate-500 dark:text-slate-400">{result.cantonTemplateId}</p>
+                    {listOutcome?.auctionContractId && (
+                      <p className="font-data break-all text-[11px] text-slate-400 dark:text-slate-500">{listOutcome.auctionContractId}</p>
+                    )}
+                  </div>
                 )}
               </>
             ) : (
