@@ -48,6 +48,8 @@ interface CantonContextType {
   recentParties: RecentParty[]
   /** Reconnect a previously used identity (rights already granted on-ledger) */
   reconnectRecent: (party: RecentParty) => void
+  /** Clear this browser's saved-identity list (local only, doesn't touch the ledger) */
+  clearRecents: () => void
   disconnect: () => void
   isConnecting: boolean
   ledgerStatus: LedgerStatus | null
@@ -247,6 +249,18 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   }, [setParty])
 
   /**
+   * Wipe this browser's saved-identity list. Doesn't touch anything on the
+   * ledger — the parties themselves, their balances, and their contracts
+   * are untouched, this only clears the local "Welcome back" shortcuts.
+   * Exists for exactly the confusion of having accumulated many test
+   * accounts in one browser during development/testing.
+   */
+  const clearRecents = useCallback(() => {
+    try { window.localStorage.removeItem(RECENTS_KEY) } catch { /* unavailable */ }
+    setRecentParties([])
+  }, [])
+
+  /**
    * Set the app-level role after connecting. The role never lives on the
    * ledger — it only decides which UI the user sees (seller vs financier),
    * so it's safe to pick it after the party is already connected.
@@ -300,7 +314,7 @@ export function CantonProvider({ children }: { children: ReactNode }) {
   return (
     <CantonContext.Provider value={{
       isConnected: party !== null, party, connect, connectWithPartyId, connectWithWallet, updateRole,
-      recentParties, reconnectRecent, disconnect,
+      recentParties, reconnectRecent, clearRecents, disconnect,
       isConnecting, ledgerStatus, ledgerLoading,
     }}>
       {children}

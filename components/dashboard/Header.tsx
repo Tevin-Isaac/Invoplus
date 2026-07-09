@@ -37,7 +37,7 @@ function CopyBtn({ text }: { text: string }) {
 type ModalStep = 'closed' | 'connect' | 'paste' | 'role' | 'done'
 
 export function Header({ title }: { title: string }) {
-  const { isConnected, party, connect, connectWithPartyId, updateRole, recentParties, reconnectRecent, disconnect, isConnecting, ledgerStatus } = useCanton()
+  const { isConnected, party, connect, connectWithPartyId, updateRole, recentParties, reconnectRecent, clearRecents, disconnect, isConnecting, ledgerStatus } = useCanton()
   const { user, logout } = useAuth()
   const { notifications, unreadCount, notify, markAllRead, clearAll } = useNotifications()
   const router = useRouter()
@@ -96,6 +96,18 @@ export function Header({ title }: { title: string }) {
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [])
+
+  // Escape closes whichever connect-flow step is open — previously there
+  // was no way out of the role-picker step at all (no X, no backdrop
+  // click), so a user who didn't want to finish choosing a role had no
+  // exit. 'done' is excluded: closing it is the intended "let's go"
+  // action already handled by its own button, not an escape hatch.
+  useEffect(() => {
+    if (modal === 'closed' || modal === 'done') return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setModal('closed') }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [modal])
 
   // "paste party ID" form state
   const [pasteId, setPasteId] = useState('')
@@ -383,7 +395,10 @@ export function Header({ title }: { title: string }) {
 
       {/* ── Step 1: pick a connection method (web3 wallet-picker style) ───────── */}
       {modal === 'connect' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setModal('closed') }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        >
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-1 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connect to InvoPlus</h3>
@@ -399,7 +414,15 @@ export function Header({ title }: { title: string }) {
                 to log back in as your business or financier account. */}
             {recentParties.length > 0 && (
               <div className="mb-4">
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Welcome back — your accounts</p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Welcome back — your accounts</p>
+                  <button
+                    onClick={clearRecents}
+                    className="text-[10px] font-medium text-slate-400 underline-offset-2 hover:text-red-500 hover:underline dark:text-slate-500"
+                  >
+                    Clear all
+                  </button>
+                </div>
                 <div className="space-y-1.5">
                   {recentParties.slice(0, 4).map(rp => (
                     <button
@@ -494,11 +517,19 @@ export function Header({ title }: { title: string }) {
 
       {/* ── Step 2: how will you use the app? ─────────────────────────────────── */}
       {modal === 'role' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setModal('closed') }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        >
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="mb-1 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connected — one more thing</h3>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                <h3 className="text-base font-semibold text-slate-950 dark:text-white">Connected — one more thing</h3>
+              </div>
+              <button onClick={() => setModal('closed')} className="text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white" aria-label="Close">
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <p className="mb-4 text-xs text-slate-600 dark:text-slate-400">
               How will you use InvoPlus? This picks which dashboard you see — you can switch anytime.
@@ -604,7 +635,10 @@ export function Header({ title }: { title: string }) {
 
       {/* ── Seaport party ID (developer path) ─────────────────────────────────── */}
       {modal === 'paste' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setModal('closed') }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        >
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between mb-5">
               <div>
