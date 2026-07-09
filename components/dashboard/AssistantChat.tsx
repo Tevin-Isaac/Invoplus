@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, Fragment } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Sparkles, X, Loader2, Trash2 } from 'lucide-react'
@@ -10,6 +10,57 @@ import { useCanton } from '@/lib/canton'
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+}
+
+// Claude's replies use light markdown (**bold**, `code`, "- " lists) — this
+// renders exactly that, nothing more, so the chat bubble shows real
+// formatting instead of literal asterisks. Deliberately hand-rolled instead
+// of pulling in a markdown library: the surface area here is three inline
+// patterns and simple list lines, not enough to justify a new dependency.
+function InlineText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean)
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i} className="font-semibold text-slate-950 dark:text-white">{part.slice(2, -2)}</strong>
+        }
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return <code key={i} className="rounded bg-violet-500/10 px-1 py-0.5 font-data text-[0.85em] text-violet-700 dark:text-violet-300">{part.slice(1, -1)}</code>
+        }
+        return <Fragment key={i}>{part}</Fragment>
+      })}
+    </>
+  )
+}
+
+function FormattedMessage({ text }: { text: string }) {
+  const lines = text.split('\n')
+  const blocks: { type: 'list' | 'text'; lines: string[] }[] = []
+  for (const line of lines) {
+    const isListItem = /^\s*[-•]\s+/.test(line)
+    const kind = isListItem ? 'list' : 'text'
+    const last = blocks[blocks.length - 1]
+    if (last && last.type === kind) last.lines.push(line)
+    else blocks.push({ type: kind, lines: [line] })
+  }
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, i) => block.type === 'list' ? (
+        <ul key={i} className="list-disc space-y-1 pl-4">
+          {block.lines.map((l, j) => (
+            <li key={j}><InlineText text={l.replace(/^\s*[-•]\s+/, '')} /></li>
+          ))}
+        </ul>
+      ) : (
+        <p key={i} className="whitespace-pre-wrap">
+          {block.lines.map((l, j) => (
+            <Fragment key={j}>{j > 0 && <br />}<InlineText text={l} /></Fragment>
+          ))}
+        </p>
+      ))}
+    </div>
+  )
 }
 
 const STARTERS = [
@@ -158,22 +209,26 @@ export function AssistantChat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full z-50 mt-2 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            className="absolute right-0 top-full z-50 mt-2 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ring-1 ring-violet-500/10 dark:border-slate-700 dark:bg-slate-900"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-violet-500/10 to-transparent px-4 py-3 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-                  <Image src="/bot-icon.png" alt="" width={22} height={22} className="object-contain" />
+            <div className="relative flex items-center justify-between overflow-hidden border-b border-slate-100 bg-gradient-to-br from-violet-500/15 via-violet-500/5 to-transparent px-4 py-3 dark:border-slate-800">
+              <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-violet-400/20 blur-2xl" />
+              <div className="relative flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+                  <Image src="/bot-icon.png" alt="" width={24} height={24} className="object-contain" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-950 dark:text-white">InvoPlus Assistant</p>
+                  <p className="flex items-center gap-1 text-sm font-semibold text-slate-950 dark:text-white">
+                    InvoPlus Assistant
+                    <Sparkles className="h-3 w-3 text-violet-500" />
+                  </p>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500">
                     {party ? `Guiding you as a ${party.type}` : 'Ask me anything about InvoPlus'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="relative flex items-center gap-1">
                 {messages.length > 0 && (
                   <button onClick={clearHistory} className="text-slate-400 hover:text-red-500" title="Clear conversation" aria-label="Clear conversation">
                     <Trash2 className="h-3.5 w-3.5" />
@@ -211,14 +266,18 @@ export function AssistantChat() {
                 messages.map((m, i) => (
                   <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                     <div className={cn(
-                      'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-xs leading-relaxed',
+                      'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-sm',
                       m.role === 'user'
-                        ? 'bg-violet-500 text-white'
-                        : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
+                        ? 'bg-gradient-to-br from-violet-500 to-violet-600 text-white'
+                        : 'border border-slate-100 bg-slate-50 text-slate-800 dark:border-slate-700/60 dark:bg-slate-800 dark:text-slate-200'
                     )}>
-                      {m.content || (streaming && i === messages.length - 1 && (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />Thinking…
+                      {m.content ? <FormattedMessage text={m.content} /> : (streaming && i === messages.length - 1 && (
+                        <span className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
+                          <span className="flex gap-0.5">
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400 [animation-delay:-0.3s]" />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400 [animation-delay:-0.15s]" />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400" />
+                          </span>
                         </span>
                       ))}
                     </div>
