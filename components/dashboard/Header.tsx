@@ -73,7 +73,7 @@ export function Header({ title }: { title: string }) {
     load()
     const interval = setInterval(load, 15000)
     return () => { cancelled = true; clearInterval(interval) }
-  }, [party?.id])
+  }, [party?.id, party?.type])
 
   // Close dropdowns on outside click. A `fixed inset-0` backdrop can't do
   // this here: the header's backdrop-blur creates a containing block, so
@@ -162,6 +162,18 @@ export function Header({ title }: { title: string }) {
     updateRole(role, orgName)
     setModal('done')
     notify('connect', 'Connected to Canton', `You're set up as a ${role}${orgName.trim() ? ` — ${orgName.trim()}` : ''}. Every action you take is signed by your party on DevNet.`)
+    // This is the FIRST moment the role is actually confirmed (every
+    // connection path provisions with a placeholder role before this modal
+    // even shows) — fire the balance check right here, with the real role,
+    // so the lazy-create in that route sets the correct starting amount
+    // instead of whatever the placeholder would have produced.
+    if (party?.id) {
+      fetch('/api/canton/contracts/balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partyId: party.id, role }),
+      }).catch(() => { /* Header's own polling effect will retry */ })
+    }
   }
 
   const handleAccountLogout = async () => {

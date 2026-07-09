@@ -114,6 +114,7 @@ export async function POST(req: Request) {
     // atomic, ledger-verifiable Canton transfer.
     let balanceTransferred = false
     let balanceTransferTransactionId: string | undefined
+    let balanceTransferError: string | undefined
     if (totalDue) {
       try {
         const sellerBalanceCid = await findBalanceContractId(platform, sellerPartyId, packageId)
@@ -147,9 +148,16 @@ export async function POST(req: Request) {
             )
             balanceTransferred = true
             balanceTransferTransactionId = transferResult?.transactionId
+          } else {
+            balanceTransferError = 'Balance contract not found for financier after minting seller balance.'
           }
+        } else {
+          balanceTransferError = 'Balance contract not found for seller.'
         }
-      } catch { /* balance not provisioned for this party yet — repayment confirmation still stands */ }
+      } catch (err) {
+        // Genuinely surfaced now, not swallowed.
+        balanceTransferError = err instanceof Error ? err.message : 'Balance transfer failed'
+      }
     }
 
     return NextResponse.json({
@@ -157,9 +165,10 @@ export async function POST(req: Request) {
       confirmationContractId,
       transactionId: completeResult?.transactionId,
       balanceTransferTransactionId,
+      balanceTransferError,
       message: balanceTransferred
         ? `Repayment complete — $${totalDue} moved from the seller's balance to the financier's, on-ledger.`
-        : 'Repayment complete — principal and yield settled to the financier on Canton.',
+        : `Repayment confirmed on Canton, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'} — contact support.`,
       balanceTransferred,
     })
   } catch (err) {

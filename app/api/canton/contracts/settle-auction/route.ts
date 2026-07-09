@@ -136,6 +136,7 @@ export async function POST(req: Request) {
     // rights granted at provisioning) is required alongside platform's.
     let balanceTransferred = false
     let balanceTransferTransactionId: string | undefined
+    let balanceTransferError: string | undefined
     if (financierPartyId && fundedAmount && sellerPartyId) {
       try {
         const [financierBalanceCid, sellerBalanceCid] = await Promise.all([
@@ -157,8 +158,16 @@ export async function POST(req: Request) {
           )
           balanceTransferred = true
           balanceTransferTransactionId = transferResult?.transactionId
+        } else {
+          balanceTransferError = 'Balance contract not found for financier or seller — neither party has connected/provisioned a balance yet.'
         }
-      } catch { /* balance not provisioned for this party yet — settlement still stands */ }
+      } catch (err) {
+        // Genuinely surfaced now, not swallowed — an "Insufficient balance"
+        // assertion here means real money failed to move even though
+        // settlement itself succeeded, which is exactly the kind of
+        // failure that must never fail silently.
+        balanceTransferError = err instanceof Error ? err.message : 'Balance transfer failed'
+      }
     }
 
     return NextResponse.json({
@@ -166,9 +175,10 @@ export async function POST(req: Request) {
       transactionId: result?.transactionId,
       fundedInvoiceContractId,
       balanceTransferTransactionId,
+      balanceTransferError,
       message: balanceTransferred
         ? `Auction settled on Canton Network. $${fundedAmount} moved from the financier's balance to the seller's, on-ledger.`
-        : 'Auction settled on Canton Network. Losing bids rejected privately; winner funded atomically.',
+        : `Auction settled on Canton Network, but the balance transfer did not complete: ${balanceTransferError ?? 'unknown reason'}. Losing bids rejected privately; winner funded atomically on the invoice contract, but no cash moved yet — contact support.`,
       details: {
         losingBidsRejected: loserBidContractIds.length,
         winnerBidSettled: true,

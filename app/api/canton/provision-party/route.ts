@@ -1,17 +1,7 @@
 import { NextResponse } from 'next/server'
-import { allocateParty, createUser, grantM2MRights, submitAndWait } from '@/lib/canton-server'
+import { allocateParty, createUser, grantM2MRights } from '@/lib/canton-server'
 
 export const dynamic = 'force-dynamic'
-
-// Financiers need working capital to fund invoices; sellers don't need a
-// starting balance since they receive funding, not spend it. Both get a
-// Balance contract created up front so settle-auction/complete-repayment
-// can always exerciseByKey against it without a conditional "does one exist"
-// check on the hot path.
-const STARTING_BALANCE: Record<string, number> = {
-  financier: 350000,
-  business: 0,
-}
 
 export async function POST(req: Request) {
   try {
@@ -38,32 +28,15 @@ export async function POST(req: Request) {
       await createUser(`${hint}@invoplus`, partyId)
     } catch { /* may already exist */ }
 
-    // Best-effort: give the new party a real, ledger-backed Balance so
-    // bidding/settlement/repayment can move actual value for it. If the
-    // package isn't deployed yet (older Seaport builds) this silently no-ops
-    // rather than failing provisioning.
-    const packageId = process.env.INVOPLUS_PACKAGE_ID
-    const platformPartyId = process.env.CANTON_PLATFORM_PARTY
-    if (packageId && platformPartyId) {
-      try {
-        await submitAndWait(
-          [platformPartyId],
-          [partyId],
-          [{
-            CreateCommand: {
-              templateId: `${packageId}:InvoPlus.Token:Balance`,
-              createArguments: {
-                platform: platformPartyId,
-                owner: partyId,
-                amount: String(STARTING_BALANCE[role] ?? 0),
-                currency: 'USD',
-              },
-            },
-          }],
-        )
-      } catch { /* Token module not yet deployed, or balance already exists */ }
-    }
-
+    // Deliberately NOT creating a Balance here. Every connection path
+    // (instant identity, wallet, pasted party) provisions the party with a
+    // placeholder role BEFORE the user actually picks business/financier in
+    // the role modal — deciding the starting balance at this point locked
+    // in the wrong amount (a real financier's Balance was being created as
+    // if they were a business, i.e. $0, permanently, since it's never
+    // recreated once it exists). The Balance is now only ever created once
+    // — by /api/canton/contracts/balance, called with the CONFIRMED role
+    // right when chooseRole() fires client-side.
     return NextResponse.json({ ok: true, partyId, displayName, role })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown error'
