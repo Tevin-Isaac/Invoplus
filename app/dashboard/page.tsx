@@ -91,19 +91,36 @@ export default function DashboardPage() {
 
   const { invoices, auctions, bids, funded, repaid } = data
 
+  // Cumulative running total per funded position, not a monthly bucket — a
+  // hackathon demo's whole history can happen in one sitting, so waiting
+  // for a second calendar month to draw a "trend" meant the chart just
+  // never had anything to show. This draws a real rising line from the
+  // very first settlement, and reads well whether that history spans
+  // months or minutes.
   const monthly = (() => {
-    const m = new Map<number, { label: string; amount: number }>()
-    const add = (t: string, amount: number) => {
-      if (!t) return
-      const d = new Date(t); if (isNaN(d.getTime())) return
-      const k = d.getFullYear() * 12 + d.getMonth()
-      const e = m.get(k) || { label: `${MONTHS[d.getMonth()]}`, amount: 0 }
-      e.amount += amount
-      m.set(k, e)
+    const events: { t: number; amount: number }[] = []
+    const collect = (list: any[], dateField: string) => {
+      for (const c of list) {
+        const raw = pv(c.payload, dateField)
+        const t = raw ? new Date(raw).getTime() : NaN
+        if (!isNaN(t)) events.push({ t, amount: num(pv(c.payload, 'fundedAmount')) })
+      }
     }
-    funded.forEach((c: any) => add(pv(c.payload, 'settledAt'), num(pv(c.payload, 'fundedAmount'))))
-    repaid.forEach((c: any) => add(pv(c.payload, 'completedAt'), num(pv(c.payload, 'fundedAmount'))))
-    return Array.from(m.entries()).sort((a, b) => a[0] - b[0]).map(([, v]) => v)
+    collect(funded, 'settledAt')
+    collect(repaid, 'completedAt')
+    events.sort((a, b) => a.t - b.t)
+
+    let running = 0
+    const points = events.map(e => {
+      running += e.amount
+      const d = new Date(e.t)
+      const hours = d.getHours()
+      const label = `${MONTHS[d.getMonth()]} ${d.getDate()}, ${hours % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}${hours >= 12 ? 'pm' : 'am'}`
+      return { label, amount: running }
+    })
+    // A single real point still draws as a lone dot — prepend a zero
+    // baseline so even the very first settlement shows a rising line.
+    return points.length === 1 ? [{ label: 'Start', amount: 0 }, ...points] : points
   })()
 
   const totalFunded = funded.reduce((s: number, c: any) => s + num(pv(c.payload, 'fundedAmount')), 0)
@@ -194,7 +211,7 @@ export default function DashboardPage() {
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Funding volume</h2>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">disbursed to sellers, by settlement month</p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">cumulative total disbursed to sellers, per settlement</p>
                 </div>
                 <span className="font-data rounded-lg bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-600 dark:text-violet-300">USD</span>
               </div>
@@ -214,15 +231,6 @@ export default function DashboardPage() {
                     <Area type="monotone" dataKey="amount" stroke="#14B892" strokeWidth={2.5} fill="url(#fundGrad)" dot={{ fill: '#14B892', r: 3 }} />
                   </AreaChart>
                 </ResponsiveContainer>
-              ) : monthly.length === 1 ? (
-                // A single month can't draw a line — Recharts renders one
-                // point as a lone dot with no curve, which reads as broken
-                // rather than "not enough data for a trend yet." Show the
-                // one real number plainly instead.
-                <div className="flex h-[230px] flex-col items-center justify-center gap-1 text-center">
-                  <p className="font-data text-4xl font-bold text-emerald-500">${monthly[0].amount.toLocaleString()}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">funded in {monthly[0].label} — the trend line appears once you have a second month of activity</p>
-                </div>
               ) : (
                 <div className="flex h-[230px] flex-col items-center justify-center gap-2 text-center">
                   <TrendingUp className="h-5 w-5 text-slate-400 dark:text-slate-500" />
