@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/dashboard/Header'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
-import { Loader2, BarChart3, Wallet } from 'lucide-react'
+import { Loader2, BarChart3, Wallet, Landmark, TrendingUp, Users, Store, Percent } from 'lucide-react'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
 
@@ -38,10 +38,41 @@ function EmptyChart({ label }: { label: string }) {
   )
 }
 
+interface PlatformStats {
+  platformBalance: number
+  estimatedLifetimeRevenue: number
+  feeRate: number
+  totalRepayments: number
+  totalVolumeRepaid: number
+  totalYieldGenerated: number
+  activeFundedPositions: number
+  activeFundedVolume: number
+  totalFundedEver: number
+  totalFundedVolumeEver: number
+  activeAuctions: number
+  totalInvoicesListed: number
+  uniqueParties: number
+}
+
 export default function AnalyticsPage() {
   const { party } = useCanton()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<{ invoices: any[]; auctions: any[]; funded: any[]; bids: any[]; registry: number; repaid: any[] }>({ invoices: [], auctions: [], funded: [], bids: [], registry: 0, repaid: [] })
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/canton/platform-stats')
+        const d = await res.json()
+        if (!cancelled && d.ok) setPlatformStats(d)
+      } catch { /* keep null */ }
+    }
+    load()
+    const interval = setInterval(load, 30000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
 
   useEffect(() => {
     if (!party?.id) { setLoading(false); return }
@@ -188,6 +219,77 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
+
+        {/* Platform revenue — how InvoPlus makes money, and how much it has
+            so far. Same platform-wide reasoning as the KPIs above: platform
+            is a signatory/observer on every template this aggregates. */}
+        <div className="flex items-start gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4">
+          <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" />
+          <div>
+            <p className="text-sm font-medium text-slate-950 dark:text-white">How InvoPlus makes money</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              A {platformStats ? (platformStats.feeRate * 100).toFixed(0) : '10'}% servicing fee on the financier's yield, taken at repayment — the seller's advance and total amount repaid are never touched, only how the repayment splits between the financier and InvoPlus.
+            </p>
+          </div>
+        </div>
+
+        {platformStats && (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Platform Balance</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10"><Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-300" /></span>
+                </div>
+                <p className="font-data text-2xl font-bold text-emerald-600 dark:text-emerald-300">{fmtUSD(platformStats.platformBalance)}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Real fee revenue collected, on-ledger</p>
+              </div>
+              <div className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Est. Lifetime Revenue</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><TrendingUp className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+                </div>
+                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{fmtUSD(platformStats.estimatedLifetimeRevenue)}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{(platformStats.feeRate * 100).toFixed(0)}% of all yield ever generated</p>
+              </div>
+              <div className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Fee Rate</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Percent className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+                </div>
+                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{(platformStats.feeRate * 100).toFixed(0)}%</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">of financier yield, at repayment</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Live Auctions</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Store className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+                </div>
+                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.activeAuctions}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">sealed-bid, in progress</p>
+              </div>
+              <div className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Invoices Listed (ever)</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Landmark className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+                </div>
+                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.totalInvoicesListed}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">across every seller</p>
+              </div>
+              <div className={cn(panel, 'p-5')}>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Parties on InvoPlus</p>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10"><Users className="h-4 w-4 text-violet-600 dark:text-violet-300" /></span>
+                </div>
+                <p className="font-data text-2xl font-bold text-slate-950 dark:text-white">{platformStats.uniqueParties}</p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">businesses + financiers, provisioned</p>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Volume chart */}
         <div className={cn(panel, 'p-5 md:p-6')}>
