@@ -28,6 +28,7 @@ const MAX_KEPT = 50
 const storageKey = (partyId: string | null) => `invoplus-notifs:${partyId ?? 'anon'}`
 const seenBidsKey = (partyId: string) => `invoplus-bidcounts:${partyId}`
 const overdueSeenKey = (partyId: string) => `invoplus-overdue-seen:${partyId}`
+const seenListingsKey = (partyId: string) => `invoplus-seen-listings:${partyId}`
 
 const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
 
@@ -201,6 +202,53 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(check, 45_000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [partyId, notify])
+
+  // New-listing watcher, financiers only: poll the marketplace (through the
+  // platform party, same as the marketplace page itself — that's how
+  // auctions become visible to every financier per the shared-party
+  // pattern) and notify on any auction not seen before. Dedup'd by contract
+  // ID rather than invoice ID, since re-listing after a cancel produces a
+  // new contract for the same invoice and that's genuinely new news too.
+  const partyType = party?.type ?? null
+  useEffect(() => {
+    if (!partyId || partyType !== 'financier') return
+    let cancelled = false
+
+    const check = async () => {
+      try {
+        const res = await fetch('/api/canton/contracts/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parties: [partyId], template: 'auction' }),
+        })
+        const data = await res.json()
+        if (cancelled || !data.ok) return
+        const open = (data.contracts || []).filter((c: any) => !pv(c.payload?.settled))
+
+        const raw = window.localStorage.getItem(seenListingsKey(partyId))
+        const isFirstPoll = raw === null
+        let seen: string[] = []
+        try { seen = raw ? JSON.parse(raw) : [] } catch { /* fresh */ }
+        const seenSet = new Set(seen)
+
+        for (const c of open) {
+          if (seenSet.has(c.contractId)) continue
+          seenSet.add(c.contractId)
+          if (isFirstPoll) continue // baseline silently, same reasoning as the bid watcher
+          const p = c.payload || {}
+          const invoiceId = String(pv(p.invoiceId) ?? 'Invoice')
+          const grade = String(pv(p.riskGrade) ?? '').replace('Grade_', '')
+          const amount = Number(pv(p.faceAmount) ?? 0)
+          notify('invoice', 'New invoice up for financing', `${invoiceId} · $${amount.toLocaleString()}${grade ? ` · Grade ${grade}` : ''} just listed — sealed bidding is open.`)
+        }
+        window.localStorage.setItem(seenListingsKey(partyId), JSON.stringify(Array.from(seenSet)))
+      } catch { /* transient */ }
+    }
+
+    check()
+    const interval = setInterval(check, 30_000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [partyId, partyType, notify])
 
   return (
     <NotificationsContext.Provider value={{

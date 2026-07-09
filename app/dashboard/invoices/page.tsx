@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
 import { ConfirmDialog, ConfirmState } from '@/components/dashboard/ConfirmDialog'
-import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip, Sparkles } from 'lucide-react'
+import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip, Sparkles, Gavel, ArrowRight } from 'lucide-react'
 import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
@@ -465,6 +466,37 @@ export default function InvoicesPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // Invoices belong to businesses only — a financier creating and settling
+  // their own invoice would hit Token.daml's own "cannot transfer to self"
+  // guard, leaving a FundedInvoice that shows as funded with no money
+  // actually moved. Blocking financiers out here is cleaner than letting
+  // that confusing half-failure happen. Mirrors the "Financiers only" gate
+  // already on the marketplace's bid button.
+  if (party?.type === 'financier') {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <Header title="Invoices" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10">
+            <Gavel className="h-7 w-7 text-violet-500" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-950 dark:text-white">Invoices are for business accounts</p>
+            <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
+              As a financier, you fund invoices by bidding in the marketplace — you don't create them. Head over there to see what's live.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/marketplace"
+            className="flex items-center gap-1.5 rounded-xl bg-violet-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-500/25 transition-colors hover:bg-violet-600"
+          >
+            Go to Marketplace<ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
