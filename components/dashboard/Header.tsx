@@ -488,7 +488,7 @@ export function Header({ title }: { title: string }) {
                   <a href="https://wallet.validator.devnet.sandbox.fivenorth.io" target="_blank" rel="noreferrer" className="font-medium text-violet-600 hover:underline dark:text-violet-300">
                     hosted Canton DevNet wallet
                   </a>{' '}
-                  first, then connect here. CIP-103 browser extensions are detected automatically if installed — none are widely released yet, so most users should use <span className="font-medium text-slate-700 dark:text-slate-300">Instant identity</span> above.
+                  first, then connect here. This checks for a CIP-103 browser extension too, but per Canton's own wallet docs none exist as a downloadable product yet — the hosted wallet above is the only real CIP-103 wallet today, so most users should use <span className="font-medium text-slate-700 dark:text-slate-300">Instant identity</span> above instead.
                 </p>
               </div>
 
