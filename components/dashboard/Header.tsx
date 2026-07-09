@@ -51,6 +51,9 @@ export function Header({ title }: { title: string }) {
   const [balance, setBalance] = useState<number | null>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+  // Guards against a double-click/double-tap firing chooseRole twice in the
+  // same tick — see the comment at chooseRole() for why this matters.
+  const roleChoiceInFlight = useRef(false)
 
   // Real ledger balance — the InvoPlus.Token:Balance moved by settle-auction
   // and complete-repayment. Polled rather than event-driven since it can
@@ -119,6 +122,7 @@ export function Header({ title }: { title: string }) {
     setConnectError(null)
     setValidateResult(null)
     setPasteId('')
+    roleChoiceInFlight.current = false
   }
 
   /** Method 1: instant identity — provision a fresh party on DevNet. */
@@ -166,7 +170,16 @@ export function Header({ title }: { title: string }) {
     }
   }
 
+  // Two concurrent balance-check requests would each see "no Balance
+  // exists yet" and both create one, leaving two active Balance contracts
+  // for the same owner (found and fixed live: exactly this happened for a
+  // real user). The balance route has no way to enforce uniqueness itself
+  // (LF 2.1 here doesn't support contract keys), so the guard has to live
+  // on the client, at the one place that ever triggers creation on a
+  // fresh connection.
   const chooseRole = (role: 'business' | 'financier') => {
+    if (roleChoiceInFlight.current) return
+    roleChoiceInFlight.current = true
     updateRole(role, orgName)
     setModal('done')
     notify('connect', 'Connected to Canton', `You're set up as a ${role}${orgName.trim() ? ` — ${orgName.trim()}` : ''}. Every action you take is signed by your party on DevNet.`)

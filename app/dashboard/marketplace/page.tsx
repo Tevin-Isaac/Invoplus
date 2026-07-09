@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
+import { ConfirmDialog, ConfirmState } from '@/components/dashboard/ConfirmDialog'
 import { Lock, Shield, CheckCircle, Loader2, AlertTriangle, X, EyeOff, Wallet, Store, Building2, CalendarDays, Gauge, Timer, TrendingUp, Sparkles, ArrowUpRight, Zap } from 'lucide-react'
 import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -348,12 +349,16 @@ export default function MarketplacePage() {
     setAuctions(prev => prev.map(a => a.id === auctionId ? { ...a, myBid: advanceRate, bidsReceived: a.bidsReceived + 1 } : a))
   }
 
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
   // Sellers can pull their own listing: CancelAuction archives the Auction
   // + RegistryEntry and recreates the invoice as Verified (relist anytime).
   const [cancellingId, setCancellingId] = useState<string | null>(null)
-  const handleCancelListing = async (a: Auction) => {
+  const runCancelListing = async (a: Auction) => {
     if (!party?.id) return
-    if (!window.confirm(`Cancel the listing for ${a.invoiceId}? Bids received so far are discarded and the invoice returns to your Invoices page.`)) return
+    setConfirmBusy(true)
     setCancellingId(a.id)
     try {
       // The registry entry lives with the same hash prefix as the invoice —
@@ -381,13 +386,24 @@ export default function MarketplacePage() {
         setAuctions(prev => prev.filter(x => x.id !== a.id))
         notifyCancel('auction', 'Listing cancelled', `${a.invoiceId} was withdrawn from the marketplace. Find it back under Invoices (Verified).`)
       } else {
-        window.alert(data.error ?? 'Cancel failed')
+        setActionError(humanizeCantonError(data.error))
       }
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Network error')
+      setActionError(humanizeCantonError(e instanceof Error ? e.message : 'Network error'))
     } finally {
       setCancellingId(null)
+      setConfirmBusy(false)
+      setConfirmState(null)
     }
+  }
+  const handleCancelListing = (a: Auction) => {
+    setConfirmState({
+      title: 'Cancel this listing?',
+      message: `${a.invoiceId} will be pulled from the marketplace. Bids received so far are discarded and the invoice returns to your Invoices page — you can edit and relist anytime.`,
+      confirmLabel: 'Cancel listing',
+      danger: true,
+      onConfirm: () => runCancelListing(a),
+    })
   }
 
   // Settle: platform auto-picks the best sealed bid (seller never sees bid
@@ -396,9 +412,9 @@ export default function MarketplacePage() {
   // so their contents never touch anything the seller can read.
   const [settlingId, setSettlingId] = useState<string | null>(null)
   const [settleResult, setSettleResult] = useState<{ auction: Auction; data: any } | null>(null)
-  const handleSettleAuction = async (a: Auction) => {
+  const runSettleAuction = async (a: Auction) => {
     if (!party?.id) return
-    if (!window.confirm(`Settle ${a.invoiceId}? The best sealed bid is accepted automatically and funds are committed atomically on Canton. This can't be undone.`)) return
+    setConfirmBusy(true)
     setSettlingId(a.id)
     try {
       const res = await fetch('/api/canton/contracts/settle-auction', {
@@ -416,13 +432,23 @@ export default function MarketplacePage() {
         setSettleResult({ auction: a, data })
         notifyCancel('auction', 'Auction settled', `${a.invoiceId} funded on Canton. Find it under Invoices as Funded.`)
       } else {
-        window.alert(data.error ?? 'Settlement failed')
+        setActionError(humanizeCantonError(data.error))
       }
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Network error')
+      setActionError(humanizeCantonError(e instanceof Error ? e.message : 'Network error'))
     } finally {
       setSettlingId(null)
+      setConfirmBusy(false)
+      setConfirmState(null)
     }
+  }
+  const handleSettleAuction = (a: Auction) => {
+    setConfirmState({
+      title: 'Settle this auction?',
+      message: `The best sealed bid for ${a.invoiceId} is accepted automatically and funds are committed atomically on Canton. This can't be undone.`,
+      confirmLabel: 'Settle now',
+      onConfirm: () => runSettleAuction(a),
+    })
   }
 
   const open = auctions.filter(a => a.status === 'open')
@@ -432,6 +458,7 @@ export default function MarketplacePage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <Header title="Marketplace" />
+      <ConfirmDialog state={confirmState} busy={confirmBusy} onClose={() => setConfirmState(null)} />
       {selectedAuction && (
         <BidModal auction={selectedAuction} onClose={() => setSelectedAuction(null)} onBidPlaced={handleBidPlaced} />
       )}
@@ -528,6 +555,14 @@ export default function MarketplacePage() {
       </AnimatePresence>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+
+        {actionError && (
+          <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+            <p className="min-w-0 flex-1 break-words text-xs text-red-600 dark:text-red-300">{actionError}</p>
+            <button onClick={() => setActionError(null)} className="shrink-0 text-red-400 hover:text-red-600"><X className="h-3.5 w-3.5" /></button>
+          </div>
+        )}
 
         {/* Market summary strip */}
         <div className="relative overflow-hidden rounded-3xl border border-violet-500/25 bg-gradient-to-br from-violet-500/[0.12] via-slate-50 to-transparent p-6 dark:from-violet-500/20 dark:via-slate-950">

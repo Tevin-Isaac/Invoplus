@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/dashboard/Header'
+import { ConfirmDialog, ConfirmState } from '@/components/dashboard/ConfirmDialog'
 import { Upload, Search, FileText, CheckCircle, Clock, XCircle, Zap, Loader2, AlertTriangle, X, ShieldCheck, Pencil, Trash2, Paperclip, Sparkles } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, humanizeCantonError } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
 import { useNotifications } from '@/lib/notifications'
 
@@ -252,9 +253,12 @@ export default function InvoicesPage() {
   // Complete in one call (see complete-repayment route for why).
   const [repayingId, setRepayingId] = useState<string | null>(null)
   const [repayResult, setRepayResult] = useState<{ inv: any; data: any } | null>(null)
-  const handleMarkRepaid = async (inv: any) => {
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+
+  const runMarkRepaid = async (inv: any) => {
     if (!party?.id) return
-    if (!window.confirm(`Mark ${inv.invoiceId} as repaid? This sends principal + yield to the financier on Canton and can't be undone.`)) return
+    setConfirmBusy(true)
     setRepayingId(inv.id)
     setRowError(null)
     try {
@@ -279,7 +283,17 @@ export default function InvoicesPage() {
       setRowError(e instanceof Error ? e.message : 'Network error')
     } finally {
       setRepayingId(null)
+      setConfirmBusy(false)
+      setConfirmState(null)
     }
+  }
+  const handleMarkRepaid = (inv: any) => {
+    setConfirmState({
+      title: 'Mark this invoice as repaid?',
+      message: `This sends principal + yield for ${inv.invoiceId} to the financier on Canton and can't be undone.`,
+      confirmLabel: 'Mark as repaid',
+      onConfirm: () => runMarkRepaid(inv),
+    })
   }
 
   const startEdit = (inv: any) => {
@@ -301,9 +315,9 @@ export default function InvoicesPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleDelete = async (inv: any) => {
+  const runDelete = async (inv: any) => {
     if (!party?.id) return
-    if (!window.confirm(`Delete invoice ${inv.invoiceId || ''} (${inv.buyer})? This archives it on the ledger.`)) return
+    setConfirmBusy(true)
     setDeletingId(inv.id)
     setRowError(null)
     try {
@@ -323,7 +337,18 @@ export default function InvoicesPage() {
       setRowError(e instanceof Error ? e.message : 'Network error')
     } finally {
       setDeletingId(null)
+      setConfirmBusy(false)
+      setConfirmState(null)
     }
+  }
+  const handleDelete = (inv: any) => {
+    setConfirmState({
+      title: 'Delete this invoice?',
+      message: `${inv.invoiceId || ''} (${inv.buyer}) will be archived on the ledger.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: () => runDelete(inv),
+    })
   }
 
   // Two ledger transactions, in the order the Daml contract enforces:
@@ -445,6 +470,7 @@ export default function InvoicesPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <Header title="Invoices" />
+      <ConfirmDialog state={confirmState} busy={confirmBusy} onClose={() => setConfirmState(null)} />
       <AnimatePresence>
         {repayResult && (
           <motion.div
@@ -826,9 +852,10 @@ export default function InvoicesPage() {
         </div>
 
         {rowError && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+          <div className="flex items-start gap-2.5 overflow-hidden rounded-xl border border-red-500/30 bg-red-500/10 p-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-            <p className="text-xs text-red-600 dark:text-red-300">{rowError}</p>
+            <p className="min-w-0 flex-1 break-words text-xs text-red-600 dark:text-red-300">{humanizeCantonError(rowError)}</p>
+            <button onClick={() => setRowError(null)} className="shrink-0 text-red-400 hover:text-red-600"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
 

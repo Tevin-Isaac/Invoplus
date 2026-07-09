@@ -259,11 +259,18 @@ export async function queryACS(parties: string[], templateIds?: string[]) {
 export async function findBalanceContractId(platformPartyId: string, ownerPartyId: string, packageId: string): Promise<string | null> {
   const lines = await queryACS([platformPartyId], [`${packageId}:InvoPlus.Token:Balance`])
   const pv = (x: any) => (x && typeof x === 'object' && 'value' in x ? x.value : x)
-  const entry = lines
+  const matches = lines
     .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
     .map((l: any) => l.contractEntry.JsActiveContract.createdEvent)
-    .find((e: any) => pv(e.createArgument?.owner) === ownerPartyId)
-  return entry?.contractId ?? null
+    .filter((e: any) => pv(e.createArgument?.owner) === ownerPartyId)
+  if (matches.length === 0) return null
+  // Defensive: a client-side race at creation time can leave more than one
+  // active Balance for the same owner (seen live, now guarded against at
+  // the source in Header's chooseRole — this is the belt-and-suspenders
+  // half). Picking the highest amount rather than an arbitrary/first match
+  // means a stray $0 duplicate can never shadow the real balance.
+  matches.sort((a: any, b: any) => Number(pv(b.createArgument?.amount) ?? 0) - Number(pv(a.createArgument?.amount) ?? 0))
+  return matches[0].contractId
 }
 
 // ─── Submit a command and wait for completion ─────────────────────────────────

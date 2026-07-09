@@ -45,10 +45,15 @@ export async function POST(req: Request) {
     }
 
     const lines = await queryACS([partyId], [`${packageId}:InvoPlus.Token:Balance`])
-    let entry = lines
+    const matches = lines
       .filter((l: any) => l?.contractEntry?.JsActiveContract?.createdEvent)
       .map((l: any) => l.contractEntry.JsActiveContract.createdEvent)
-      .find((e: any) => pv(e.createArgument?.owner) === partyId)
+      .filter((e: any) => pv(e.createArgument?.owner) === partyId)
+    // Defensive against a duplicate-creation race (guarded against at the
+    // source in Header's chooseRole, but if one ever slips through, always
+    // prefer whichever has funds over an arbitrary/first match).
+    matches.sort((a: any, b: any) => Number(pv(b.createArgument?.amount) ?? 0) - Number(pv(a.createArgument?.amount) ?? 0))
+    let entry = matches[0]
 
     if (!entry && role) {
       const created = await submitAndWait(
