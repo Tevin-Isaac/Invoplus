@@ -33,6 +33,16 @@ interface BidResult { ok: boolean; message?: string; transactionId?: string; err
 
 const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 
+// Matches the actual thresholds in lib/risk-engine.ts — kept short enough
+// to read in a hover, so financiers get the "why" without us having to
+// explain the scoring engine in a support conversation every time.
+const GRADE_INFO: Record<string, string> = {
+  A: 'Score 85–100 · lowest risk · typical advance 87–93%',
+  B: 'Score 70–84 · moderate risk · typical advance 82–89%',
+  C: 'Score 50–69 · higher risk · typical advance 75–84%',
+  D: 'Score below 50 · highest risk · typical advance 65–78%',
+}
+
 const gradeStyle: Record<string, string> = {
   A: 'bg-emerald-500 text-white',
   B: 'bg-violet-500 text-white',
@@ -643,6 +653,7 @@ export default function MarketplacePage() {
         <div className="flex flex-wrap items-center gap-2">
           {['all', 'A', 'B', 'C', 'D'].map(g => (
             <button key={g} onClick={() => setGradeFilter(g)}
+              title={g === 'all' ? undefined : GRADE_INFO[g]}
               className={cn('relative rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-all',
                 gradeFilter === g
                   ? 'border-violet-500 bg-violet-500 text-white shadow-[0_4px_16px_-4px_rgba(20,184,146,0.6)]'
@@ -709,7 +720,10 @@ export default function MarketplacePage() {
                     {/* Card header: grade badge + live/countdown + status */}
                     <div className="relative flex items-center justify-between px-5 pt-4">
                       <div className="flex items-center gap-2.5">
-                        <span className={cn('flex h-9 w-9 items-center justify-center rounded-xl font-data text-sm font-bold shadow-lg', glow.badge)}>
+                        <span
+                          className={cn('flex h-9 w-9 items-center justify-center rounded-xl font-data text-sm font-bold shadow-lg cursor-help', glow.badge)}
+                          title={GRADE_INFO[a.grade] ?? 'Risk grade from InvoPlus\'s scoring engine'}
+                        >
                           {a.grade}
                         </span>
                         <div>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Header } from '@/components/dashboard/Header'
-import { FileText, TrendingUp, Lock, Shield, ArrowUpRight, Store, Tag } from 'lucide-react'
+import { CopyBtn } from '@/components/dashboard/CopyBtn'
+import { FileText, TrendingUp, ArrowUpRight, Store, Tag, EyeOff, DollarSign, Clock, BarChart3 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useCanton } from '@/lib/canton'
 import { cn } from '@/lib/utils'
@@ -16,6 +17,7 @@ const pv = (payload: any, key: string) => {
 }
 const num = (x: any) => Number(x ?? 0) || 0
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const money = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n).toLocaleString()}`
 
 const panel = 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
 
@@ -137,6 +139,24 @@ export default function DashboardPage() {
     amount: num(pv(c.payload, 'faceAmount')), chip: 'I',
   }))].slice(0, 7)
 
+  // Financier's own positions — the same data Portfolio used to show on its
+  // own page, folded in here instead so there's one less page in the app.
+  const openBids = bids.filter((c: any) => !pv(c.payload, 'isRevealed'))
+  const positions = [
+    ...funded.map((c: any) => {
+      const face = num(pv(c.payload, 'faceAmount')); const fund = num(pv(c.payload, 'fundedAmount'))
+      return { id: c.contractId, invoiceId: pv(c.payload, 'invoiceId') || '—', status: 'active' as const, fundedAmount: fund, returnAmount: Math.max(face - fund, 0) }
+    }),
+    ...repaid.map((c: any) => {
+      const fund = num(pv(c.payload, 'fundedAmount')); const total = num(pv(c.payload, 'totalDue'))
+      return { id: c.contractId, invoiceId: pv(c.payload, 'invoiceId') || '—', status: 'repaid' as const, fundedAmount: fund, returnAmount: Math.max(total - fund, 0) }
+    }),
+  ]
+  const activePositions = positions.filter(p => p.status === 'active')
+  const capitalDeployed = activePositions.reduce((s, p) => s + p.fundedAmount, 0)
+  const returnOwed = activePositions.reduce((s, p) => s + p.returnAmount, 0)
+  const yieldRealized = positions.filter(p => p.status === 'repaid').reduce((s, p) => s + p.returnAmount, 0)
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <Header title="Overview" />
@@ -199,25 +219,57 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Guarantees */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {[
-                { icon: Lock, title: 'Sealed bids', desc: 'Only the bidder and platform can see a bid — Canton observers, not app code.' },
-                { icon: Shield, title: 'No double financing', desc: 'The anti-fraud registry makes financing the same invoice twice fail at the ledger.' },
-                { icon: FileText, title: 'Atomic settlement', desc: 'Winner, funding, and transfer commit in one transaction.' },
-              ].map(c => {
-                const Icon = c.icon
-                return (
-                  <div key={c.title} className={cn(panel, 'p-5')}>
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300"><Icon className="h-4 w-4" /></span>
-                      <p className="font-semibold text-slate-950 dark:text-white">{c.title}</p>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{c.desc}</p>
+            {/* Positions — financier-only, folded in from what used to be a
+                separate Portfolio page. Businesses already have their own
+                invoice lifecycle front and center on Invoices. */}
+            {isFin && (
+              <div className={cn(panel, 'p-5 md:p-6')}>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Your Positions</h2>
+                  <Link href="/dashboard/marketplace" className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-500 dark:text-violet-300 dark:hover:text-violet-200">
+                    marketplace <ArrowUpRight className="h-3 w-3" />
+                  </Link>
+                </div>
+
+                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { label: 'Deployed', value: money(capitalDeployed), icon: DollarSign },
+                    { label: 'Owed (Active)', value: money(returnOwed), icon: Clock },
+                    { label: 'Realized (Repaid)', value: money(yieldRealized), icon: TrendingUp },
+                    { label: 'Open Bids', value: String(openBids.length), icon: EyeOff },
+                  ].map(s => {
+                    const Icon = s.icon
+                    return (
+                      <div key={s.label} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+                        <div className="mb-1 flex items-center gap-1.5 text-slate-400 dark:text-slate-500"><Icon className="h-3 w-3" /><span className="text-[10px] uppercase tracking-wider">{s.label}</span></div>
+                        <p className="font-data text-sm font-bold text-slate-950 dark:text-white">{loading ? '—' : s.value}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {positions.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-slate-500 dark:text-slate-400">No positions yet — place a sealed bid in the marketplace and win an auction to see it here.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {positions.slice(0, 5).map(p => (
+                      <div key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={cn('shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold',
+                            p.status === 'active'
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300')}>
+                            {p.status === 'active' ? 'Funded' : 'Repaid'}
+                          </span>
+                          <p className="truncate text-sm font-medium text-slate-950 dark:text-white">{p.invoiceId}</p>
+                        </div>
+                        <span className="font-data shrink-0 text-sm font-semibold text-violet-600 dark:text-violet-300">{money(p.fundedAmount)}</span>
+                      </div>
+                    ))}
                   </div>
-                )
-              })}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ══ Right column ══ */}
@@ -241,13 +293,22 @@ export default function DashboardPage() {
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {activity.map(a => (
-                    <div key={a.id} className="flex items-center gap-3 px-5 py-3.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10 font-data text-xs text-violet-600 dark:text-violet-300">{a.chip}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-950 dark:text-white">{a.name}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{a.note}</p>
+                    <div key={a.id} className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10 font-data text-xs text-violet-600 dark:text-violet-300">{a.chip}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-950 dark:text-white">{a.name}</p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{a.note}</p>
+                        </div>
+                        <p className="font-data text-sm font-bold text-violet-600 dark:text-violet-300">{a.amount ? `$${a.amount >= 1000 ? (a.amount / 1000).toFixed(1) + 'K' : Math.round(a.amount)}` : ''}</p>
                       </div>
-                      <p className="font-data text-sm font-bold text-violet-600 dark:text-violet-300">{a.amount ? `$${a.amount >= 1000 ? (a.amount / 1000).toFixed(1) + 'K' : Math.round(a.amount)}` : ''}</p>
+                      {/* Real Canton contract ID, not a placeholder — proof
+                          this row is a genuine ledger record, one click to
+                          copy for independent verification. */}
+                      <div className="mt-1.5 flex items-center gap-1 pl-11">
+                        <span className="font-data truncate text-[10px] text-slate-400 dark:text-slate-600">{a.id}</span>
+                        <CopyBtn text={a.id} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -260,7 +321,7 @@ export default function DashboardPage() {
                 { label: 'Submit', href: '/dashboard/invoices', icon: FileText },
                 { label: 'Auctions', href: '/dashboard/marketplace', icon: Store },
                 { label: 'Offers', href: '/dashboard/offers', icon: Tag },
-                { label: 'Portfolio', href: '/dashboard/portfolio', icon: TrendingUp },
+                { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
               ].map(a => {
                 const Icon = a.icon
                 return (

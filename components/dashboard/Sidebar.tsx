@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/brand/Logo'
 import {
   LayoutDashboard, FileText, Store, Tag, BarChart3,
-  Settings, Menu, X, TrendingUp, PanelLeftOpen, PanelLeftClose,
+  Settings, Menu, X, PanelLeftOpen, PanelLeftClose,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCanton } from '@/lib/canton'
@@ -17,10 +17,12 @@ const navItems = [
   { href: '/dashboard/invoices',    icon: FileText,        label: 'Invoices' },
   { href: '/dashboard/marketplace', icon: Store,           label: 'Marketplace' },
   { href: '/dashboard/offers',      icon: Tag,             label: 'My Offers' },
-  { href: '/dashboard/portfolio',   icon: TrendingUp,      label: 'Portfolio' },
   { href: '/dashboard/analytics',   icon: BarChart3,       label: 'Analytics' },
-  { href: '/dashboard/settings',    icon: Settings,        label: 'Settings' },
 ]
+// Settings sits apart from the main nav, just above the ledger-status/
+// profile block — the common pattern of "app stuff up top, account stuff
+// down bottom" instead of one long undifferentiated list.
+const settingsItem = { href: '/dashboard/settings', icon: Settings, label: 'Settings' }
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -61,10 +63,12 @@ export function Sidebar() {
   const role = user?.role ?? party?.type ?? 'guest'
 
   // Shared nav list — labels always render in the DOM (so widths animate
-  // smoothly) but collapse to zero width on the icon rail.
-  const NavList = ({ showLabels, onNavigate }: { showLabels: boolean; onNavigate?: () => void }) => (
-    <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-1">
-      {navItems.map(item => {
+  // smoothly) but collapse to zero width on the icon rail. Takes an
+  // explicit item list so the same link styling can render both the main
+  // nav and the standalone Settings link below it.
+  const NavList = ({ items, showLabels, onNavigate, className }: { items: typeof navItems; showLabels: boolean; onNavigate?: () => void; className?: string }) => (
+    <nav className={cn('space-y-1', className)}>
+      {items.map(item => {
         const Icon = item.icon
         const active = pathname === item.href
         return (
@@ -151,12 +155,16 @@ export function Sidebar() {
           </button>
         </div>
 
-        <NavList showLabels={expanded} />
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+          <NavList items={navItems} showLabels={expanded} />
+        </div>
 
-        {/* Bottom: ledger status + profile (display only — all identity
-            actions, including logout/disconnect, live in the header
-            profile menu so there's exactly one place for them) */}
+        {/* Settings, separated from the main nav — then ledger status and
+            profile (display only: all identity actions, including logout/
+            disconnect, live in the header profile menu, so there's exactly
+            one place for them). */}
         <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
+          <NavList items={[settingsItem]} showLabels={expanded} className="mb-2" />
           <LedgerDot showLabel={expanded} />
           <div className={cn('mt-1 flex items-center gap-2.5 py-2', expanded ? 'px-3' : 'justify-center px-0')}>
             <div
@@ -188,9 +196,12 @@ export function Sidebar() {
           </Link>
         </div>
 
-        <NavList showLabels onNavigate={() => setMobileOpen(false)} />
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+          <NavList items={navItems} showLabels onNavigate={() => setMobileOpen(false)} />
+        </div>
 
         <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
+          <NavList items={[settingsItem]} showLabels onNavigate={() => setMobileOpen(false)} className="mb-2" />
           <LedgerDot showLabel />
           <div className="mt-1 flex items-center gap-2.5 px-3 py-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-violet-700 text-sm font-semibold text-white">
