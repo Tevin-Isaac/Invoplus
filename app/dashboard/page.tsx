@@ -138,11 +138,10 @@ export default function DashboardPage() {
     + repaid.reduce((s: number, c: any) => s + num(pv(c.payload, 'fundedAmount')), 0)
   const isFin = party?.type === 'financier'
 
-  // A bare "0" as the headline number, paired with "no ledger data yet"
-  // underneath, reads as broken rather than "you just haven't done this
-  // yet" — especially for genuinely personal, often-empty counts like open
-  // bids. "—" plus an explanatory line reads as a real, current state
-  // instead of an error.
+  // An empty metric never renders a placeholder number ("0", "—") — the
+  // card flips into a call-to-action instead (icon + "Create your first
+  // invoice →", the whole card clickable). Dead space becomes onboarding,
+  // which reads as intentional design rather than missing data.
   const openBidsCount = isFin ? bids.length : invoices.length
   const activeAuctionsCount = auctions.filter((c: any) => !pv(c.payload, 'settled')).length
   const stats = [
@@ -150,21 +149,33 @@ export default function DashboardPage() {
       label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
       sub: `${funded.length + repaid.length} position${funded.length + repaid.length === 1 ? '' : 's'}`,
       bars: monthly.map(m => m.amount),
+      empty: totalFunded === 0,
+      emptyIcon: TrendingUp,
+      emptyText: isFin ? 'Win an auction to start earning yield' : 'Get an invoice funded to see volume here',
+      emptyHref: isFin ? '/dashboard/marketplace' : '/dashboard/invoices',
     },
     {
       label: isFin ? 'Open bids' : 'Invoices',
-      big: openBidsCount > 0 ? String(openBidsCount) : '—',
+      big: String(openBidsCount),
       // "created" covers both ways an invoice gets on the ledger — typed
       // into the form or extracted from an uploaded PDF — so this isn't
       // read as "only counts PDF uploads."
-      sub: openBidsCount > 0 ? (isFin ? 'sealed on ledger' : 'created') : (isFin ? 'Place one in the Marketplace' : 'Create your first invoice'),
+      sub: isFin ? 'sealed on ledger' : 'created',
       bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
+      empty: openBidsCount === 0,
+      emptyIcon: isFin ? Store : FileText,
+      emptyText: isFin ? 'Place your first sealed bid' : 'Create your first invoice',
+      emptyHref: isFin ? '/dashboard/marketplace' : '/dashboard/invoices',
     },
     {
       label: 'Active auctions',
-      big: activeAuctionsCount > 0 ? String(activeAuctionsCount) : '—',
-      sub: activeAuctionsCount > 0 ? 'sealed-bid live' : 'None open right now',
+      big: String(activeAuctionsCount),
+      sub: 'sealed-bid live',
       bars: auctions.slice(0, 8).map((c: any) => num(pv(c.payload, 'bidCount')) + 1),
+      empty: activeAuctionsCount === 0,
+      emptyIcon: Store,
+      emptyText: isFin ? 'Watch the marketplace for new listings' : 'List an invoice to open an auction',
+      emptyHref: isFin ? '/dashboard/marketplace' : '/dashboard/invoices',
     },
   ]
 
@@ -206,33 +217,45 @@ export default function DashboardPage() {
           {/* ══ Main column ══ */}
           <div className="min-w-0 space-y-5">
 
-            {/* Stat cards */}
+            {/* Stat cards — an empty metric renders as a clickable CTA
+                card (icon + "Create your first invoice →") instead of a
+                placeholder number, so a fresh account's overview reads as
+                a set of next steps, not a wall of zeros/dashes. */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {stats.map(s => (
-                <div key={s.label} className={cn(panel, 'p-5')}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-data text-3xl font-bold text-slate-950 dark:text-white">{loading ? '—' : s.big}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{s.sub}</p>
+              {stats.map(s => {
+                const EmptyIcon = s.emptyIcon
+                return !loading && s.empty ? (
+                  <Link
+                    key={s.label}
+                    href={s.emptyHref}
+                    className={cn(panel, 'group flex flex-col justify-between p-5 transition-all hover:-translate-y-0.5 hover:border-violet-500/40')}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
+                        <EmptyIcon className="h-5 w-5 text-violet-600 dark:text-violet-300" />
+                      </span>
+                      <span className="rounded-lg bg-violet-500/10 px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">{s.label}</span>
                     </div>
-                    <span className="rounded-lg bg-violet-500/10 px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">{s.label}</span>
+                    <p className="mt-4 flex items-center gap-1.5 text-sm font-medium text-slate-600 group-hover:text-violet-600 dark:text-slate-300 dark:group-hover:text-violet-300">
+                      {s.emptyText}
+                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </p>
+                  </Link>
+                ) : (
+                  <div key={s.label} className={cn(panel, 'p-5')}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-data text-3xl font-bold text-slate-950 dark:text-white">{loading ? '…' : s.big}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{s.sub}</p>
+                      </div>
+                      <span className="rounded-lg bg-violet-500/10 px-2 py-1 font-data text-[10px] uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">{s.label}</span>
+                    </div>
+                    <div className="mt-4 h-9">
+                      {s.bars.length > 0 && <MiniBars values={s.bars} />}
+                    </div>
                   </div>
-                  {/* The sub-caption above already explains an empty state
-                      ("Place one in the Marketplace" etc.) when big is "—"
-                      — repeating "no ledger data yet" here too was the same
-                      message shown three times in one card. Only fall back
-                      to it when there's a real count but somehow no bars;
-                      the wrapper stays present either way so every card in
-                      the row keeps the same height. */}
-                  <div className="mt-4 h-9">
-                    {s.bars.length > 0 ? (
-                      <MiniBars values={s.bars} />
-                    ) : s.big !== '—' ? (
-                      <p className="font-data text-[10px] text-slate-400 dark:text-slate-500">no ledger data yet</p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Big funding chart */}
