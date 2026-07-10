@@ -63,11 +63,26 @@ function FormattedMessage({ text }: { text: string }) {
   )
 }
 
-const STARTERS = [
-  'How do sealed bids stay private?',
-  "What's my balance and where did it come from?",
-  'How does settlement pick a winner?',
-]
+// Suggested questions match who's actually asking: a landing-page visitor
+// evaluating the product, a business wanting cash for an invoice, or a
+// financier deploying capital — not one generic set that half-fits everyone.
+const STARTERS_BY_AUDIENCE: Record<'visitor' | 'business' | 'financier', string[]> = {
+  visitor: [
+    'How does InvoPlus work?',
+    'What fees does InvoPlus charge?',
+    'How are sealed bids kept private?',
+  ],
+  business: [
+    'How do I get my invoice funded?',
+    'How much will financing cost me?',
+    'What happens when my invoice is repaid?',
+  ],
+  financier: [
+    'How do I earn yield on invoices?',
+    'How is my bid kept private from competitors?',
+    'What fees come out of my returns?',
+  ],
+}
 
 const MAX_HISTORY = 40
 // Conversation memory is scoped per identity, same pattern as
@@ -251,7 +266,7 @@ export function AssistantChat() {
                     I know how sealed bids, settlement, and balances actually work here — ask away.
                   </p>
                   <div className="flex flex-col gap-1.5 w-full">
-                    {STARTERS.map(s => (
+                    {STARTERS_BY_AUDIENCE[party?.type === 'financier' ? 'financier' : party?.type === 'business' ? 'business' : 'visitor'].map(s => (
                       <button
                         key={s}
                         onClick={() => send(s)}
