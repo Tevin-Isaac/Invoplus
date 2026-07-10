@@ -354,6 +354,7 @@ export default function OffersPage() {
                         </button>
                       )}
                       {offer.status === 'lost' && <span className="text-xs italic text-slate-400 dark:text-slate-500">Sealed forever</span>}
+                      {offer.status === 'withdrawn' && <span className="text-xs italic text-slate-400 dark:text-slate-500">No longer active</span>}
                     </div>
                   </div>
                 )

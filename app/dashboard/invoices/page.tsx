@@ -1052,9 +1052,12 @@ export default function InvoicesPage() {
                       {lc(inv.status) === 'bidding' && (
                         <a href="/dashboard/marketplace" className="rounded-lg bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-600 transition-all hover:bg-violet-500 hover:text-white dark:text-violet-300">View Offers</a>
                       )}
-                      {/* Pending/Verified invoices are still the seller's to
-                          manage — editable (archive+recreate) and deletable. */}
-                      {['pending', 'verified'].includes(lc(inv.status)) && (
+                      {/* Pending/Verified/Rejected invoices are still the
+                          seller's to manage — editable (archive+recreate)
+                          and deletable. Rejected included so a failed
+                          verification can be fixed-and-resubmitted or
+                          removed rather than sitting with no actions. */}
+                      {['pending', 'verified', 'rejected'].includes(lc(inv.status)) && (
                         <>
                           <button
                             onClick={() => startEdit(inv)}
@@ -1088,6 +1091,16 @@ export default function InvoicesPage() {
                           {repayingId === inv.id && <Loader2 className="h-3 w-3 animate-spin" />}
                           {repayingId === inv.id ? 'Repaying…' : overdue ? 'Overdue — Mark as Repaid' : 'Mark as Repaid'}
                         </button>
+                      )}
+                      {/* Repaid rows previously matched none of the cases
+                          above, leaving the Action column blank — show the
+                          closed outcome (financing cost + when) instead. */}
+                      {lc(inv.status) === 'repaid' && (
+                        <span className="flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-300" title="This invoice is fully repaid — the deal is closed.">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          {inv.yieldAmount > 0 ? `-$${Number(inv.yieldAmount).toLocaleString()} financing cost` : 'Closed'}
+                          {inv.completedAt ? ` · ${new Date(inv.completedAt).toLocaleDateString()}` : ''}
+                        </span>
                       )}
                     </div>
                   </div>
