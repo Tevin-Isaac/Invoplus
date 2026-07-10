@@ -29,7 +29,7 @@ const statValues = ['93%', '72h', '100%']
 // unrelated clips at the same time read as "two videos overlapping" since
 // they don't blend into each other narratively — a brief blackout between
 // cuts reads as an intentional scene change instead.
-const videos = ['/cashflow.mp4', '/invoice.mp4', '/woman.mp4']
+const videos = ['/cashflow.mp4', '/invoice.mp4', '/woman.mp4', '/over.mp4']
 const FADE_MS = 700
 const HOLD_MS = 9000
 const PLAYBACK_RATE = 0.65 // slower, calmer motion than native speed
