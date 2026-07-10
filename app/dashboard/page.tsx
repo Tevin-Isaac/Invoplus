@@ -144,6 +144,12 @@ export default function DashboardPage() {
   // which reads as intentional design rather than missing data.
   const openBidsCount = isFin ? bids.length : invoices.length
   const activeAuctionsCount = auctions.filter((c: any) => !pv(c.payload, 'settled')).length
+  // These counts only cover ACTIVE contracts — a fully-cycled deal leaves
+  // both (invoice archives into auction/funded/repaid; a settled bid
+  // archives too). Funded/repaid records are the lifetime evidence, so the
+  // CTA can tell a returning user "another" instead of wrongly implying
+  // they've never done this ("your first ...").
+  const hasHistory = funded.length + repaid.length > 0
   const stats = [
     {
       label: 'Funded volume', big: totalFunded >= 1000 ? `$${(totalFunded / 1000).toFixed(1)}K` : `$${Math.round(totalFunded)}`,
@@ -164,7 +170,9 @@ export default function DashboardPage() {
       bars: (isFin ? bids : invoices).slice(0, 8).map((c: any) => num(pv(c.payload, 'faceAmount'))),
       empty: openBidsCount === 0,
       emptyIcon: isFin ? Store : FileText,
-      emptyText: isFin ? 'Place your first sealed bid' : 'Create your first invoice',
+      emptyText: isFin
+        ? (hasHistory ? 'Place another sealed bid' : 'Place your first sealed bid')
+        : (hasHistory ? 'Create another invoice' : 'Create your first invoice'),
       emptyHref: isFin ? '/dashboard/marketplace' : '/dashboard/invoices',
     },
     {
