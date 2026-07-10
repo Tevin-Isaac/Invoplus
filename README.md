@@ -1,6 +1,6 @@
 <div align="center">
 
-# Invoplus
+<img src="public/invoplus-horizontal-light.png" alt="InvoPlus" width="420" />
 
 **Private invoice financing on Canton.**
 
