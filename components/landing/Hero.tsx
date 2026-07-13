@@ -101,8 +101,7 @@ export function Hero() {
 
       <nav className="absolute top-0 left-0 right-0 z-20 px-6 md:px-10 pt-6 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-3 bg-slate-900/90 backdrop-blur rounded-full px-4 py-3 border border-white/10">
-          <Logo size={28} showText={false} />
-          <span className="sr-only">Invoplus</span>
+          <Logo size={28} tone="dark" textClassName="text-lg" />
         </Link>
 
         <div className="hidden md:flex items-center gap-1 bg-slate-900/90 backdrop-blur rounded-full px-3 py-2">

@@ -10,8 +10,12 @@ export function Footer() {
     <footer className="border-t border-slate-200/20 bg-slate-50 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
       <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <Logo size={28} showText={false} />
-          <span className="sr-only">Invoplus</span>
+          {/* Two tone variants toggled by Tailwind's dark: class (no JS
+              theme state in this component) — light-mode footer bg is
+              slate-50 (needs the 'light' tone), dark-mode bg is
+              slate-950 (needs the 'dark' tone). */}
+          <span className="dark:hidden"><Logo size={28} tone="light" textClassName="text-lg" /></span>
+          <span className="hidden dark:inline-flex"><Logo size={28} tone="dark" textClassName="text-lg" /></span>
         </div>
 
         <div className="flex flex-wrap items-center gap-5 text-sm text-slate-500 dark:text-slate-400">
