@@ -48,6 +48,25 @@ The privacy and settlement guarantees are not application logic that could be by
 - **Settlement is atomic.** Choosing the winner, funding the seller, and transferring the obligation happen in a single transaction. There is no in-between state to exploit.
 - **No double financing.** A registry entry is created when an invoice is listed, which blocks the same invoice from being financed twice.
 
+## Deployment — Canton DevNet
+
+| Field | Value |
+| --- | --- |
+| Network | Canton Network — DevNet (FiveNorth-hosted validator) |
+| Ledger API endpoint | `ledger-api.validator.devnet.sandbox.fivenorth.io` |
+| Auth endpoint | `auth.sandbox.fivenorth.io` |
+| Synchronizer ID | `global-domain::1220be58c29e65de40bf273be1dc2b266d43a9a002ea5b18955aeef7aac881bb471a` |
+| Ledger API version | 3.5.7 |
+| Daml package ID (InvoPlus DAR) | `54b1ea33aeaaac7f0d184cf65fa37716b383b163c00b3105bfd5d2ca6d620422` |
+| Live product | [invoplus.xyz](https://www.invoplus.xyz) |
+
+This is genuinely DevNet, not LocalNet or a local sandbox:
+
+- The ledger endpoint resolves to a real, remote, publicly-reachable host, not `localhost` — it's FiveNorth's hosted DevNet participant, shared across every team on this hackathon.
+- Ledger offset was 4,300,305+ at time of writing — consistent with a persistent, shared ledger many teams have been transacting against for weeks, not a sandbox freshly spun up for submission.
+- Our Daml package is one of 641 packages currently vetted on this ledger, confirmed present and active via the participant's own package registry — the DAR is genuinely uploaded and recognized on-ledger, not just referenced locally.
+- The live production API reads real accumulated on-chain state (repayment counts, volume, fee revenue) directly from this ledger on every request, with no seeded/mock data path.
+
 ## Architecture
 
 ```
